@@ -44,6 +44,8 @@
 #' Regression and Classification (RF-SRC), R package version 1.4.
 #' 
 #' @importFrom ggplot2 ggplot aes_string geom_point geom_smooth labs element_text
+#' @importFrom tidyr gather
+#' @importFrom dplyr filter
 #' 
 #' @examples
 #' \dontrun{
@@ -90,17 +92,19 @@
 #' }
 ### error rate plot
 plot.gg_interaction <- function(x, x_var, color="black", ...){
+  
   object <- x 
-  if(is.matrix(object)){
+  if(is.matrix(x)){
     # Check to make sure it's the right type of matrix...
-    if(sum(colnames(object) != rownames(object)) > 0){
+    if(sum(colnames(x) != rownames(x)) > 0){
       stop("gg_interaction expects a rfsrc object, or a find.interaction object.")
     }
-    class(object) <- c("gg_interaction", "rfsrc",class(object))
   }
+  # Initialize variables for gather statement... to silence R CMD CHECK
+  vars <- dpth <- NA
   
   if(!inherits(object, "gg_interaction")) 
-    object <- gg_interaction(object, ...)
+    object <- gg_interaction(x, ...)
   
   if(sum(x_var %in% rownames(object)) == 0){
     stop(paste("Invalid x_var (",x_var, ") specified, covariate not found.", sep=""))
@@ -109,21 +113,37 @@ plot.gg_interaction <- function(x, x_var, color="black", ...){
   if(length(x_var)> 1){
     intPlt.dta <- data.frame(cbind(names=rownames(object),
                                    t(object[which(rownames(object) %in% x_var),])))
-    colnames(intPlt.dta) <- x_var
+    #colnames(intPlt.dta) <- x_var
     intPlt.dta$rank <- 1:dim(intPlt.dta)[1]
-    intPlt.dta <- melt(intPlt.dta, id.vars = "rank")
+    intPlt.dta <- intPlt.dta %>% 
+      gather(vars, dpth, -rank, -names)
     
+    intPlt.dta$dpth <- as.numeric(intPlt.dta$dpth)
+    intPlt.dta$names <- factor(intPlt.dta$names,
+                               levels=unique(intPlt.dta$names))
+    ggplot(intPlt.dta)+ 
+      geom_point(aes_string(x="names", y="dpth", shape="vars"))+
+      theme(text = element_text(size=10),
+            axis.text.x = element_text(angle=90)) +
+      labs(x="", y="Minimal Depth")+
+      facet_wrap(~vars)
   }else{
     intPlt.dta <- data.frame(cbind(rank=1:dim(object)[1], 
                                    t(object[which(rownames(object) %in% x_var),])))
     colnames(intPlt.dta)[2] <- "dpth" 
+    intPlt.dta$names <- rownames(intPlt.dta)
+    
+    intPlt.dta$dpth <- as.numeric(intPlt.dta$dpth)
+    intPlt.dta$names <- factor(intPlt.dta$names,
+                               levels=unique(intPlt.dta$names))
+    ggplot(intPlt.dta)+ 
+      geom_point(aes_string(x="names", y="dpth"))+
+      geom_point(aes_string(x="names", y="dpth"),
+                 data=intPlt.dta[which(rownames(intPlt.dta)==x_var),],
+                 shape=3, size=5,
+                 color="red")+
+      theme(text = element_text(size=10),
+            axis.text.x = element_text(angle=90)) +
+      labs(x="", y="Minimal Depth")
   }
-  intPlt.dta$names <- rownames(intPlt.dta)
-  #intPlt.dta <- intPlt.dta[-which(intPlt.dta$names=="viable"),]
-  intPlt.dta$names <- factor(intPlt.dta$names, levels=intPlt.dta$names)
-  ggplot(intPlt.dta)+ geom_point(aes_string(x="names", y="dpth"), color=color)+
-    theme(text = element_text(size=10),
-          axis.text.x = element_text(angle=90)) +
-    labs(x="", y="Minimal Depth")
-  
 }

@@ -2,6 +2,8 @@ ggRandomForests Package
 ========================================================
 [![DOI](https://zenodo.org/badge/5745/ehrlinger/ggRandomForests.png)](http://dx.doi.org/10.5281/zenodo.11526)
 
+[![Build Status](https://travis-ci.org/ehrlinger/ggRandomForests.svg?branch=master)](https://travis-ci.org/ehrlinger/ggRandomForests)
+
 Main Goal: Simplify graphical exploration of randomForests.
 
 ggRandomForests is designed to be used with the randomForestSRC (RF-SRC) package. 
@@ -16,14 +18,15 @@ The package has two main design elements :
 We have chosen to use the ggplot2 package for our graphics, as it allows the user to easily modify the graphic output in an intuitive manner. 
 
 We include a series of functions for working  with rfsrc objects:
-* ggRFsrc Prediction results from the randomForest[SRC] object 
-* ggError randomForest[SRC] convergence as OOB error rate stability
-* ggROC Receiver Operator Charactertic curves for classification forests
-* ggVimp Variable importance ranking for variable selection
-* ggMinimalDepth Minimal Depth ranking variable selection
-* ggVariable marginal variable dependence 
-* ggPartial partial variable dependence
-* ggInteractions Reporting minimal depth based variable interactions
+* gg_rfsrc Prediction results from the randomForest[SRC] object 
+* gg_error randomForest[SRC] convergence as OOB error rate stability
+* gg_roc Receiver Operator Charactertic curves for classification forests
+* gg_vimp Variable importance ranking for variable selection
+* gg_minimal_depth Minimal Depth ranking variable selection
+* gg_minimal_vimp Minimal depth vs VIMP camparison by variable rank
+* gg_variable marginal variable dependence 
+* gg_partial partial variable dependence
+* gg_interaction Reporting minimal depth based variable interactions
 
 We use the S3 object model to provide plot methods each of these objects. 
 

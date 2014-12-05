@@ -11,12 +11,12 @@ The \code{randomForestSRC::find.interaction} data set for the \code{pbc} surviva
 \dontrun{
 ## Examples from randomForestSRC::rfsrc
 ##
-# data(pbc, package = "randomForestSRC")
-# pbc.obj <- rfsrc(Surv(days, status) ~ ., pbc, nsplit = 10)
-# print(pbc.obj)
-# pbc_interaction <- find.interaction(pbc.oj)
+data(pbc, package = "randomForestSRC")
+pbc_rf <- rfsrc(Surv(days, status) ~ ., pbc, nsplit = 10, ntree=500)
+print(pbc.obj)
 
-data(pbc_interaction, package="ggRandomForests")
+pbc_interaction <- find.interaction(pbc_rf)
+
 plot(pbc_interaction, x_var="bili")
 }
 }

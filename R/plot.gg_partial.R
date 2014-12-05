@@ -98,17 +98,30 @@
 #' }
 ### error rate plot
 plot.gg_partial <- function(x, points=TRUE, smooth="loess", ...){
+  
+  
   object <- x 
+  if(inherits(x, "plot.variable")){
+    object <- gg_partial(x, ...)
+  }else if(!inherits(x, "gg_partial")){
+    stop("gg_partial expects an object from the rfsrc::plot.variable function")
+  }
   
   # Get the colname of the independent variable
   hName <- colnames(object)[2]
   
   colnames(object)[2] <- "x"
-  prt.plt<- ggplot(object,aes_string(x="x", y="yhat"))+
+  
+  if(is.null(object$group)){
+    prt.plt<- ggplot(object,aes_string(x="x", y="yhat"))
+  }else{
+    prt.plt<- ggplot(object,aes_string(x="x", y="yhat", shape="group", color="group"))
+  }
+  prt.plt <- prt.plt+
     labs(x=hName, y="predicted")
   
   if(points)  
-    prt.plt<- prt.plt+geom_point()
+    prt.plt<- prt.plt+geom_point( ...)
   if(!is.null(smooth)){
     prt.plt<- prt.plt+geom_smooth(method=smooth, ...)
   }

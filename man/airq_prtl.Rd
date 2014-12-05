@@ -33,8 +33,8 @@ Department of Conservation (ozone data) and the National Weather Service
 load(air1_rf, package="ggRandomForests)
 
 # Save the "Wind" partial plot data
-air_prtl <- plot.variable(airq_rf, xvar.names = "Wind",
-                          partial=TRUE, show.plot=FALSE)
+airq_prtl <- plot.variable(airq_rf, xvar.names = "Wind",
+                          partial=TRUE, show.plots=FALSE)
 
 # Generate a ggRandomForests plot.
 ggpartial <- gg_partial(airq_prtl)

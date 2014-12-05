@@ -3,8 +3,8 @@
 \alias{plot.gg_variable}
 \title{Plot a \code{\link{gg_variable}} object,}
 \usage{
-\method{plot}{gg_variable}(x, x_var, time, time_labels, oob = TRUE,
-  smooth = TRUE, span, ...)
+\method{plot}{gg_variable}(x, x_var, time, time_labels, panel = FALSE,
+  oob = TRUE, smooth = TRUE, ...)
 }
 \arguments{
 \item{x}{\code{\link{gg_variable}} object created from a \code{randomForestSRC::rfsrc} object}
@@ -15,11 +15,11 @@
 
 \item{time_labels}{string labels for times}
 
+\item{panel}{Should plots be facetted along multiple x_var?}
+
 \item{oob}{oob estimates (boolean)}
 
 \item{smooth}{type of smooth curve}
-
-\item{span}{tuning parameter for loess smooths}
 
 \item{...}{arguments passed to the \code{\link{gg_variable}} function.}
 }
@@ -38,9 +38,6 @@ Plot a \code{\link{gg_variable}} object,
 ## iris
 #iris.obj <- rfsrc(Species ~., data = iris)
 data(iris_rf, package="ggRandomForests")
-
-## !! TODO... finish classification variable dependence
-# ggrf <- gg_variable(iris_rf, which.outcome=1)
 
 
 ## ------------------------------------------------------------
@@ -77,7 +74,7 @@ plot(ggrf, x_var="wt")
 # veteran_rf <- rfsrc(Surv(time,status)~., veteran, nsplit = 10, ntree = 100)
 data(veteran_rf, package="ggRandomForests")
 
-# get the 1 year survival time.
+# get the 30 day survival time.
 ggrf <- gg_variable(veteran_rf, time=30)
 
 # Generate variable dependance plots for age and diagtime

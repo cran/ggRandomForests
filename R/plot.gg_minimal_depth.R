@@ -90,12 +90,12 @@
 #' @importFrom ggplot2 ggplot geom_line theme aes_string labs coord_cartesian geom_text annotate geom_hline coord_flip geom_vline
 ### error rate plot
 plot.gg_minimal_depth <- function(x, selection=FALSE, 
-                                list_vars = TRUE, 
-                                type=c("named","rank"),
-                                ...){
+                                  list_vars = TRUE, 
+                                  type=c("named","rank"),
+                                  ...){
   object <- x
-  if(!inherits(object, "gg_minimal_depth")){
-    object <-  gg_minimal_depth(object, ...)
+  if(!inherits(x, "gg_minimal_depth")){
+    object <- gg_minimal_depth(x, ...)
   }
   type=match.arg(type)
   
@@ -113,7 +113,11 @@ plot.gg_minimal_depth <- function(x, selection=FALSE,
       md.labs[ind] <- paste(ind, md.labs[ind], sep=". ")
     }
     vSel <- object$varselect[1:modelSize,]
-    vSel$rank <- 1:dim(vSel)[1]
+    vSel$rank <- 1:nrow(vSel)
+    
+    ## Reorder the minimal depth to place most "important" at top of figure
+    vSel$names <- factor(vSel$names, 
+                         levels=rev(levels(vSel$names )))
     gDta <- ggplot(vSel)
     gDta <- switch(type,
                    rank = gDta +
@@ -121,7 +125,7 @@ plot.gg_minimal_depth <- function(x, selection=FALSE,
                      coord_cartesian(xlim=xl) + 
                      geom_text(aes_string(y="rank", x="depth"-.7, label="rank"), 
                                size=3, hjust=0),
-                   named  =gDta +
+                   named = gDta +
                      geom_point(aes_string(y="depth", x="names"))+
                      coord_cartesian(ylim=xl)
     )
@@ -144,7 +148,8 @@ plot.gg_minimal_depth <- function(x, selection=FALSE,
   }else{ 
     vSel <- object$varselect
     vSel$rank <- 1:dim(vSel)[1]
-    
+    vSel$names <- factor(vSel$names, 
+                         levels=rev(levels(vSel$names )))
     gDta <- ggplot(vSel)
     gDta <- switch(type,
                    rank = gDta +
@@ -161,7 +166,7 @@ plot.gg_minimal_depth <- function(x, selection=FALSE,
     gDta <- gDta+
       geom_hline(yintercept=sel.th, lty=2)+
       labs(y="Minimal Depth of a Variable", x="")+
-      coord_flip()
+      coord_flip() 
   }else{
     gDta <- gDta+
       labs(y="Rank", x="Minimal Depth of a Variable")+
