@@ -37,16 +37,16 @@
 #' data(iris_rf, package="ggRandomForests")
 #'
 #' # ROC for setosa
-#' ggrf <- gg_roc(iris_rf, which.outcome=1)
-#' plot.gg_roc(ggrf)
+#' gg_dta <- gg_roc(iris_rf, which.outcome=1)
+#' plot.gg_roc(gg_dta)
 #' 
 #' # ROC for versicolor
-#' ggrf <- gg_roc(iris_rf, which.outcome=2)
-#' plot.gg_roc(ggrf)
+#' gg_dta <- gg_roc(iris_rf, which.outcome=2)
+#' plot.gg_roc(gg_dta)
 #' 
 #' # ROC for virginica
-#' ggrf <- gg_roc(iris_rf, which.outcome=3)
-#' plot.gg_roc(ggrf)
+#' gg_dta <- gg_roc(iris_rf, which.outcome=3)
+#' plot.gg_roc(gg_dta)
 #' 
 #' # Alternatively, you can plot all three outcomes in one go
 #' # by calling the plot function on the full forest. 
@@ -73,15 +73,15 @@ gg_roc.ggRandomForests <- function(object, which.outcome, oob=TRUE){
     if(object$type != "classification")
       stop("gg_roc is intended for classification forests only.")
     
-    roc<- calc_roc.randomForest(object, object$y, which.outcome=which.outcome)
+    gg_dta<- calc_roc.randomForest(object, object$y, which.outcome=which.outcome)
   }else{
     if(object$family != "class")
       stop("gg_roc is intended for classification forests only.")
     
-    roc<- calc_roc.rfsrc(object, object$yvar, which.outcome=which.outcome, oob=oob)
+    gg_dta<- calc_roc.rfsrc(object, object$yvar, which.outcome=which.outcome, oob=oob)
   }
-  class(roc) <- c("gg_roc", class(roc))
+  class(gg_dta) <- c("gg_roc", class(gg_dta))
   
-  invisible(roc)
+  invisible(gg_dta)
 }
 gg_roc <- gg_roc.ggRandomForests

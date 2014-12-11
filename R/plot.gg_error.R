@@ -55,10 +55,10 @@
 #' data(iris_rf, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' ggrf.obj<- gg_error(iris_rf)
+#' gg_dta<- gg_error(iris_rf)
 #' 
 #' # Plot the gg_error object
-#' plot(ggrf.obj)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Regression example
@@ -68,10 +68,10 @@
 #' data(airq_rf, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' ggrf.obj<- gg_error(airq_rf)
+#' gg_dta<- gg_error(airq_rf)
 #' 
 #' # Plot the gg_error object
-#' plot(ggrf.obj)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Survival example
@@ -84,8 +84,8 @@
 #' # Load a cached randomForestSRC object
 #' data(veteran_rf, package="ggRandomForests")
 #' 
-#' ggrf.obj <- gg_error(veteran_rf)
-#' plot(ggrf.obj)
+#' gg_dta <- gg_error(veteran_rf)
+#' plot(gg_dta)
 #' 
 #'}
 #' @importFrom ggplot2 ggplot geom_line theme aes_string labs 
@@ -93,29 +93,29 @@
 ### error rate plot
 
 plot.gg_error <- function(x, ...){
-  obj <- x
+  gg_dta <- x
   
   # Initialize variables for gather statement... to silence R CMD CHECK
   set <- error <- ntree <- NA
   
-  if(inherits(obj, "rfsrc")) obj <- gg_error(obj)
+  if(inherits(gg_dta, "rfsrc")) gg_dta <- gg_error(gg_dta)
   
-  if(!inherits(obj, "gg_error")) stop("Incorrect object type: Expects a gg_error object")
+  if(!inherits(gg_dta, "gg_error")) stop("Incorrect object type: Expects a gg_error object")
   
-  if(dim(obj)[2] > 2){
-    obj <- obj %>% gather(set, error,-ntree)
-    gDta <- ggplot(obj, aes_string(x="ntree",y="error", col="set"))
+  if(dim(gg_dta)[2] > 2){
+    gg_dta <- gg_dta %>% gather(set, error,-ntree)
+    gg_plt <- ggplot(gg_dta, aes_string(x="ntree",y="error", col="set"))
   }else{
     # We expect the object to have the following columns
-    gDta <- ggplot(obj, aes_string(x="ntree",y="error"))
+    gg_plt <- ggplot(gg_dta, aes_string(x="ntree",y="error"))
   }
-  gDta <- gDta +
+  gg_plt <- gg_plt +
     geom_line() +
     labs(x = "Number of Trees",
          y = "OOB Error Rate")
   
-  if(length(unique(obj$variable)) == 1){
-    gDta <- gDta + theme(legend.position="none")
+  if(length(unique(gg_dta$variable)) == 1){
+    gg_plt <- gg_plt + theme(legend.position="none")
   }
-  return(gDta)
+  return(gg_plt)
 }

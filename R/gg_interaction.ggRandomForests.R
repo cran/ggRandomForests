@@ -16,8 +16,8 @@
 ####**********************************************************************
 #' Minimal Depth Variable Interaction data object (\code{randomForestSRC::find.interaction}). 
 #' 
-#' Basically, this function adds attributes to the results of running
-#' \code{randomForestSRC::find.interaction} on an \code{randomForestSRC::rfsrc} random forest. 
+#' Converts the matrix returned from
+#' \code{randomForestSRC::find.interaction} to a data.frame and add attributes for identification. 
 #' If passed  a \code{randomForestSRC::rfsrc} object, gg_interaction first runs 
 #' the \code{randomForestSRC::find.interaction} 
 #' function with all optional arguments.
@@ -57,10 +57,10 @@
 #' ## find.interaction(iris.obj, method = "vimp", nrep = 3)
 #' ## iris_interaction <- find.interaction(iris.obj)
 #' data(iris_interaction, package="ggRandomForests")
-#' gg_int <- gg_interaction(iris_interaction)
+#' gg_dta <- gg_interaction(iris_interaction)
 #' 
-#' plot(gg_int, x_var="Petal.Width")
-#' plot(gg_int, x_var="Petal.Length")
+#' plot(gg_dta, x_var="Petal.Width")
+#' plot(gg_dta, x_var="Petal.Length")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, regression setting
@@ -71,10 +71,10 @@
 #' ## find.interaction(airq.obj, method = "vimp", nrep = 3)
 #' ## airq_interaction <- find.interaction(airq.obj)
 #' data(airq_interaction, package="ggRandomForests")
-#' gg_int <- gg_interaction(airq_interaction)
+#' gg_dta <- gg_interaction(airq_interaction)
 #' 
-#' plot(gg_int, x_var="Temp")
-#' plot(gg_int, x_var="Solar.R")
+#' plot(gg_dta, x_var="Temp")
+#' plot(gg_dta, x_var="Solar.R")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, survival setting
@@ -83,35 +83,35 @@
 #' ## pbc.obj <- rfsrc(Surv(days,status) ~ ., pbc, nsplit = 10)
 #' ## pbc_interaction <- find.interaction(pbc.obj, nvar = 8)
 #' data(pbc_interaction, package="ggRandomForests")
-#' gg_int <- gg_interaction(pbc_interaction)
+#' gg_dta <- gg_interaction(pbc_interaction)
 #' 
-#' plot(gg_int, x_var="bili")
-#' plot(gg_int, x_var="copper")
+#' plot(gg_dta, x_var="bili")
+#' plot(gg_dta, x_var="copper")
 #' 
 gg_interaction.ggRandomForests <- function(object, ...){
   if(inherits(object, "matrix")){
-    object <- data.frame(object)
+    gg_dta <- data.frame(object)
     
     # Check to make sure it's the right type of matrix...
-    if(sum(colnames(object) != rownames(object)) > 0){
+    if(sum(colnames(gg_dta) != rownames(gg_dta)) > 0){
       stop("gg_interaction expects a find.interaction object.")
     }
     
-    class(object) <- c("gg_interaction",  class(object))
-
+    class(gg_dta) <- c("gg_interaction",  class(gg_dta))
+    
   }else if (inherits(object, "rfsrc")) {
     
     # If we called this with a rfsrc object, we need to run find.interaction.
     warning("Forest object means we assume max.subtree method for finding interactions.\nThis may take some time.")
     
     object_interact <- find.interaction(object,...)
-    object <- data.frame(object_interact)
-    class(object) <- c("gg_interaction", class(object_interact))
+    gg_dta <- data.frame(object_interact)
+    class(gg_dta) <- c("gg_interaction", class(gg_dta))
   }else{
     stop("gg_interaction expects a rfsrc or find.interaction object.")
   }
-
-  invisible(object)
+  
+  invisible(gg_dta)
 }
 
 gg_interaction <- gg_interaction.ggRandomForests

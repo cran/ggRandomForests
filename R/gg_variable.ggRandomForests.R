@@ -54,9 +54,9 @@
 #' #iris.obj <- rfsrc(Species ~., data = iris)
 #' data(iris_rf, package="ggRandomForests")
 #' 
-#' ggrf <- gg_variable(iris_rf)
-#' plot(ggrf, x_var="Sepal.Width")
-#' plot(ggrf, x_var="Sepal.Length")
+#' gg_dta <- gg_variable(iris_rf)
+#' plot(gg_dta, x_var="Sepal.Width")
+#' plot(gg_dta, x_var="Sepal.Length")
 #' 
 #' ## ------------------------------------------------------------
 #' ## regression
@@ -65,23 +65,27 @@
 #' ## airquality
 #' #airq.obj <- rfsrc(Ozone ~ ., data = airquality)
 #' data(airq_rf, package="ggRandomForests")
-#' ggrf <- gg_variable(airq_rf)
-#' plot(ggrf, x_var="Wind")
-#' plot(ggrf, x_var="Temp")
-#' plot(ggrf, x_var="Solar.R")
+#' gg_dta <- gg_variable(airq_rf)
+#' plot(gg_dta, x_var="Wind")
+#' plot(gg_dta, x_var="Temp")
+#' plot(gg_dta, x_var="Solar.R")
 #' 
 #' ## motor trend cars
 #' #mtcars.obj <- rfsrc(mpg ~ ., data = mtcars)
 #' data(mtcars_rf, package="ggRandomForests")
-#' ggrf <- gg_variable(mtcars_rf)
+#' gg_dta <- gg_variable(mtcars_rf)
 #' 
-#' # mtcars$cyl is an ordinal variable
-#' plot(ggrf, x_var="cyl")
+#' # mtcars$cyl is an ordinal variable 
+#' gg_dta$cyl <- factor(gg_dta$cyl)
+#' plot(gg_dta, x_var="cyl")
 #' 
 #' # Others are continuous
-#' plot(ggrf, x_var="disp")
-#' plot(ggrf, x_var="hp")
-#' plot(ggrf, x_var="wt")
+#' plot(gg_dta, x_var="disp")
+#' plot(gg_dta, x_var="hp")
+#' plot(gg_dta, x_var="wt")
+#' 
+#' # panel
+#' plot(gg_dta, x_var=c("disp","hp"), panel=TRUE)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival examples
@@ -93,19 +97,25 @@
 #' data(veteran_rf, package="ggRandomForests")
 #' 
 #' # get the 1 year survival time.
-#' ggrf <- gg_variable(veteran_rf, time=30)
+#' gg_dta <- gg_variable(veteran_rf, time=90)
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(ggrf, x_var = "age")
-#' plot(ggrf, x_var = "diagtime")
+#' plot(gg_dta, x_var = "age")
+#' plot(gg_dta, x_var = "diagtime")
+#' 
+#' # Generate coplots
+#' plot(gg_dta, x_var = c("age", "diagtime"), panel=TRUE)
 #' 
 #' # If we want to compare survival at different time points, say 30, 90 day 
 #' # and 1 year
-#' ggrf <- gg_variable(veteran_rf, time=c(30, 90, 365))
+#' gg_dta <- gg_variable(veteran_rf, time=c(30, 90, 365))
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(ggrf, x_var = "age")
-#' plot(ggrf, x_var = "diagtime") 
+#' plot(gg_dta, x_var = "age")
+#' plot(gg_dta, x_var = "diagtime") 
+#' 
+#' # Generate coplots
+#' plot(gg_dta, x_var =  c("age", "diagtime"), panel=TRUE)
 #' 
 gg_variable.ggRandomForests <- function(object,
                                        time,
@@ -126,67 +136,67 @@ gg_variable.ggRandomForests <- function(object,
   #!! Have to verify this works with a plot.variable object...
   
   # gg_variable is really just cutting the data into time slices.
-  pDat <- data.frame(object$xvar)
+  gg_dta <- data.frame(object$xvar)
   
   if(object$family == "regr"){
     if(oob)
-      pDat$yhat <- object$predicted.oob
+      gg_dta$yhat <- object$predicted.oob
     else
-      pDat$yhat <- object$predicted
+      gg_dta$yhat <- object$predicted
     
   }else  if(object$family == "class"){
     if(oob){
       colnames(object$predicted.oob) <- paste("yhat.", colnames(object$predicted.oob),
                                               sep="")
-      pDat <- cbind(pDat, object$predicted.oob)
+      gg_dta <- cbind(gg_dta, object$predicted.oob)
       
     }else{
       colnames(object$predicted) <- paste("yhat.", colnames(object$predicted),
                                           sep="")
-      pDat <- object$predicted
+      gg_dta <- object$predicted
     }
-    pDat$yvar <- object$yvar
+    gg_dta$yvar <- object$yvar
     
   }else if(object$family == "surv"){
-    pDat$cens <- as.logical(object$yvar[,2])
-    colnames(pDat) <- c(object$xvar.names, "cens")
+    gg_dta$cens <- as.logical(object$yvar[,2])
+    colnames(gg_dta) <- c(object$xvar.names, "cens")
     
     lng <- length(time)
     for(ind in 1:lng){
       if(ind > 1){
-        pDat.t.old <- pDat.t
+        gg_dta.t.old <- gg_dta.t
       }
       ## For marginal plot.
       # Plot.variable returns the resubstituted survival, not OOB. So we calculate it.
       # Time is really straight forward since survival is a step function
       #
       # Get the event time occuring before or at 1 year. 
-      pDat.t <- pDat
+      gg_dta.t <- gg_dta
       inTime <-which(object$time.interest> time[ind])[1] -1
       if(inTime == 0)
         stop("The time of interest is less than the first event time. Make sure you are using the correct time units.")
       
       if(oob)
-        pDat.t$yhat=100*object$survival.oob[,inTime]
+        gg_dta.t$yhat=100*object$survival.oob[,inTime]
       else
-        pDat.t$yhat=100*object$survival[,inTime]
+        gg_dta.t$yhat=100*object$survival[,inTime]
       
       if(missing(time.labels)){
-        pDat.t$time <- time[ind]
+        gg_dta.t$time <- time[ind]
       }else{
-        pDat.t$time <- time.labels[ind]
+        gg_dta.t$time <- time.labels[ind]
       }
       
       if(ind > 1){
-        pDat.t<- rbind(pDat.t.old, pDat.t)
+        gg_dta.t<- rbind(gg_dta.t.old, gg_dta.t)
       }    
     }
     
-    pDat <- pDat.t
-    pDat$time <- factor(pDat$time, levels=unique(pDat$time))
+    gg_dta <- gg_dta.t
+    gg_dta$time <- factor(gg_dta$time, levels=unique(gg_dta$time))
   }
-  class(pDat) <- c("gg_variable", object$family, class(pDat))
-  invisible(pDat)
+  class(gg_dta) <- c("gg_variable", object$family, class(gg_dta))
+  invisible(gg_dta)
 }
 
 

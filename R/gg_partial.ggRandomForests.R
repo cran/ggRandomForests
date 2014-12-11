@@ -38,8 +38,9 @@
 #' @seealso \code{\link{plot.gg_partial}} \code{randomForestSRC::plot.variable}
 #' 
 #' @aliases gg_partial
-#' 
 #' @export gg_partial.ggRandomForests gg_partial
+#' 
+#' @importFrom parallel mclapply
 #' 
 #' @examples
 #' 
@@ -54,8 +55,8 @@
 #' #                            partial=TRUE)
 #' data(iris_prtl, package="ggRandomForests")
 #' 
-#' ggrf_obj <- gg_partial(iris_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(iris_prtl)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## regression
@@ -68,8 +69,8 @@
 #' #                            partial=TRUE, show.plot=FALSE)
 #' data(airq_prtl, package="ggRandomForests")
 #'
-#' ggrf_obj <- gg_partial(airq_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(airq_prtl)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival examples
@@ -86,11 +87,11 @@
 #' #                               show.plots=FALSE)
 #' data(veteran_prtl, package="ggRandomForests")
 #' 
-#' ggrf_obj <- gg_partial(veteran_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(veteran_prtl)
+#' plot(gg_dta)
 gg_partial.ggRandomForests <- function(object, 
-                                      named,
-                                      ...){
+                                       named,
+                                       ...){
   if(!inherits(object,"plot.variable")){
     stop("gg_partial expects a plot.variable object, Run plot.variable with partial=TRUE")
   }
@@ -99,28 +100,40 @@ gg_partial.ggRandomForests <- function(object,
   # How many variables
   n.var=length(object$pData)
   
+  
   # Create a list of data
-  pDat <- lapply(1:n.var, function(ind){
-    data.frame(cbind(yhat=object$pData[[ind]]$yhat, 
-                     x=object$pData[[ind]]$x.uniq))
+  gg_dta <- mclapply(1:n.var, function(ind){
+    
+    if(length(object$pData[[ind]]$x.uniq) == length(object$pData[[ind]]$yhat)){
+      data.frame(cbind(yhat=object$pData[[ind]]$yhat, 
+                       x=object$pData[[ind]]$x.uniq))
+    }else{
+      
+      x <- rep(as.character(object$pData[[ind]]$x.uniq),
+               rep(object$n, object$pData[[ind]]$n.x))
+      tmp <- data.frame(cbind(yhat=x, x=x))        
+      tmp$x <- factor(tmp$x)
+      tmp$yhat <- object$pData[[ind]]$yhat
+      tmp
+    }
   })
   
-  names(pDat) <- object$xvar.names
+  names(gg_dta) <- object$xvar.names
   
   # name the data, so labels come out correctly.
   for(ind in 1:n.var){
-    colnames(pDat[[ind]])[-1] <- object$xvar.names[ind]
-    if(!missing(named)) pDat[[ind]]$id=named
-    class(pDat[[ind]]) <- c("gg_partial", class(pDat[[ind]]))
+    colnames(gg_dta[[ind]])[-1] <- object$xvar.names[ind]
+    if(!missing(named)) gg_dta[[ind]]$id=named
+    class(gg_dta[[ind]]) <- c("gg_partial", class(gg_dta[[ind]]))
   }
   
   if(n.var ==1 ){
     # If there is only one, no need for a list
-    invisible(pDat[[1]])
+    invisible(gg_dta[[1]])
   }else{
     # otherwise, add a class label so we can handle it correctly. 
-    class(pDat) <- c("gg_partial_list", class(pDat))
-    invisible(pDat)
+    class(gg_dta) <- c("gg_partial_list", class(gg_dta))
+    invisible(gg_dta)
   }
   
 }

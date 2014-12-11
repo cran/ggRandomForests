@@ -41,29 +41,30 @@
 #' ## ------------------------------------------------------------
 #' # iris_rf <- rfsrc(Species ~ ., data = iris)
 #' data(iris_rf, package="ggRandomForests")
-#' ggrf<- gg_rfsrc(iris_rf)
+#' gg_dta<- gg_rfsrc(iris_rf)
 #' 
-#' plot.gg_rfsrc(ggrf)
+#' plot.gg_rfsrc(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
 #' # airq.obj <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' data(airq_rf, package="ggRandomForests")
-#' ggrf<- gg_rfsrc(airq_rf)
+#' gg_dta<- gg_rfsrc(airq_rf)
 #' 
-#' plot.gg_rfsrc(ggrf)
+#' plot.gg_rfsrc(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Survival example
 #' ## ------------------------------------------------------------
 #' ## veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
-#' # data(veteran, package = "randomForestSRCM")
+#' # data(veteran, package = "randomForestSRC")
 #' # veteran_rf <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
 #' data(veteran_rf, package = "ggRandomForests")
-#' ggrf <- gg_rfsrc(veteran_rf)
-#' plot(ggrf)
+#' gg_dta <- gg_rfsrc(veteran_rf)
+#' plot(gg_dta)
+#' plot(gg_dta, se=.68)
 #' 
 #' @aliases gg_rfsrc
 #'
@@ -73,6 +74,8 @@ gg_rfsrc.ggRandomForests <- function(object,
                                      oob=TRUE, 
                                      se, 
                                      ...) {
+  ##!!TODO!! Stratified predictions...
+  
   ## Check that the input obect is of the correct type.
   if (inherits(object, "rfsrc") == FALSE){
     stop("This function only works for Forests grown with the randomForestSRC package.")
@@ -91,29 +94,29 @@ gg_rfsrc.ggRandomForests <- function(object,
     
     # Need to add multiclass methods
     if(oob){
-      dta <- 
-        if(dim(object$predicted.oob)[2] <= 2){
+      gg_dta <- 
+        if(ncol(object$predicted.oob) <= 2){
           data.frame(cbind(object$predicted.oob[,-1]))
         }else{ 
           data.frame(cbind(object$predicted.oob))
         }
     }else{
-      dta <- if(dim(object$predicted)[2] <= 2){
+      gg_dta <- if(ncol(object$predicted) <= 2){
         data.frame(cbind(object$predicted[,-1]))
       }else{ 
         data.frame(cbind(object$predicted))
       }
     }
-    if(dim(dta)[2] == 1){
-      colnames(dta)<- object$yvar.names
+    if(ncol(gg_dta) == 1){
+      colnames(gg_dta)<- object$yvar.names
       # Force this to logical return value... 
       #
       # This may be a bug in rfsrc, as it converts all classification models
       # into factors.
-      dta$y = as.logical(as.numeric(object$yvar)-1)
+      gg_dta$y = as.logical(as.numeric(object$yvar)-1)
     }else{
-      colnames(dta) <- levels(object$yvar)
-      dta$y <- object$yvar
+      colnames(gg_dta) <- levels(object$yvar)
+      gg_dta$y <- object$yvar
       
     }
     
@@ -142,9 +145,9 @@ gg_rfsrc.ggRandomForests <- function(object,
     if(missing(se)){
       colnames(rng) <- object$time.interest
       
-      rng$ptid <- 1:dim(rng)[1]
+      rng$ptid <- 1:nrow(rng)
       rng$cens <- as.logical(object$yvar[,2])
-      dta <- rng
+      gg_dta <- rng
     }else{
       # If we have one value, then it's two sided.
       if(length(se) ==1 ){
@@ -157,37 +160,51 @@ gg_rfsrc.ggRandomForests <- function(object,
         se.set <- sort(se) 
       }
       
-      rng <-sapply(1:dim(rng)[2], 
-                   function(tPt){quantile(rng[,tPt],probs=c(se.set, .5) )})
-      mn <- sapply(1:dim(rng)[2], function(tPt){mean(rng[,tPt])})
-      
-      dta <- data.frame(cbind(object$time.interest,t(rng),mn))
-      
-      if(dim(dta)[2] == 5){
-        colnames(dta)<- c("time", "lower",  "upper", "median", "mean")
-      }else{
-        colnames(dta)<- c("time", se.set, "mean")
+      ## Calculate the leave one out estimate of the mean
+      arg_set <- list(...)
+      if(is.null(arg_set$bs.sample))
+        bs.samples <- nrow(rng)
+      else{
+        bs.samples <- arg_set$bs.sample 
       }
-      class(dta) <- c("survSE", surv_type, class(dta))
+      
+      mn.bs <- t(sapply(1:bs.samples, 
+                      function(pat){
+                        st <- sample(1:nrow(rng), size=nrow(rng), replace=T)
+                        colMeans(rng[st,])}))
+      
+      ## now get the confidence interval of the mean, and the median (.5)
+      rng <-sapply(1:ncol(mn.bs), 
+                   function(tPt){quantile(mn.bs[,tPt],probs=c(se.set, .5) )})
+      mn <- sapply(1:ncol(rng), function(tPt){mean(rng[,tPt])})
+      
+      gg_dta <- data.frame(cbind(object$time.interest,t(rng),mn))
+      
+      if(ncol(gg_dta) == 5){
+        colnames(gg_dta)<- c("time", "lower",  "upper", "median", "mean")
+      }else{
+        colnames(gg_dta)<- c("time", se.set, "mean")
+      }
+      class(gg_dta) <- c("survSE", surv_type, class(gg_dta))
     }
-    class(dta) <- c(surv_type, class(dta))
+    class(gg_dta) <- c(surv_type, class(gg_dta))
     
   }else if(object$family == "regr"){
     
     # Need to add multiclass methods
     if(oob){
-      dta <- data.frame(cbind(object$predicted.oob, object$yvar))
+      gg_dta <- data.frame(cbind(object$predicted.oob, object$yvar))
     }else{
-      dta <- data.frame(cbind(object$predicted, object$yvar))
+      gg_dta <- data.frame(cbind(object$predicted, object$yvar))
     }
     
-    colnames(dta) <- c("yhat", object$yvar.names)
+    colnames(gg_dta) <- c("yhat", object$yvar.names)
   }else{
     stop(paste("Plotting for ", object$family, " randomForestSRC is not yet implemented.", sep=""))
   }
   
-  class(dta) <- c("gg_rfsrc", object$family, class(dta))
-  invisible(dta)
+  class(gg_dta) <- c("gg_rfsrc", object$family, class(gg_dta))
+  invisible(gg_dta)
 }
 
 gg_rfsrc <- gg_rfsrc.ggRandomForests

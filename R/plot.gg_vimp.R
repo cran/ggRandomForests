@@ -21,9 +21,9 @@
 #' 
 #' @param x \code{\link{gg_vimp}} object created from a \code{randomForestSRC::rfsrc} object
 #' @param n_var restrict the plot to only nvar variable importance measures
-#' @param barcolor Vector of booleans to color vimp bars. By default the "positive" column, TRUE-> "blue". 
-#' @param label A vector of alternative variable names.
 #' @param relative should we plot vimp or relative vimp. Defaults to vimp.
+#' @param lbls A vector of alternative variable names.
+#' @param bars A vector of alternative variable colors.
 #' @param ... optional arguments passed to gg_vimp if necessary
 #' 
 #' @return \code{ggplot} object
@@ -48,8 +48,8 @@
 #' ## ------------------------------------------------------------
 #' # iris_rf <- rfsrc(Species ~ ., data = iris)
 #' data(iris_rf, package="ggRandomForests")
-#' ggrf <- gg_vimp(iris_rf)
-#' plot(ggrf)
+#' gg_dta <- gg_vimp(iris_rf)
+#' plot(gg_dta)
 #'  
 #' ## ------------------------------------------------------------
 #' ## regression example
@@ -57,74 +57,76 @@
 #' 
 #' # airq.obj <- rfsrc(Ozone ~ ., airquality)
 #' data(airq_rf, package="ggRandomForests")
-#' ggrf <- gg_vimp(airq_rf)
-#' plot(ggrf)
+#' gg_dta <- gg_vimp(airq_rf)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival example
 #' ## ------------------------------------------------------------
 #' data(veteran_rf, package="ggRandomForests")
-#' ggrf <- gg_vimp(veteran_rf)
-#' plot(ggrf)
+#' gg_dta <- gg_vimp(veteran_rf)
+#' plot(gg_dta)
 #'}
 #'
-#' @importFrom ggplot2 ggplot geom_bar aes_string labs coord_flip facet_grid
+#' @importFrom ggplot2 ggplot geom_bar aes_string labs coord_flip facet_grid scale_x_discrete
 ### error rate plot
-plot.gg_vimp<- function(x, n_var, barcolor, label, relative, ...){
-  object  <- x
-  if(!inherits(object, "gg_vimp")) object<- gg_vimp(object, ...)
-  if(missing(n_var)) n_var <- dim(object)[1]
-  if(n_var > dim(object)[1]) n_var <- dim(object)[1]
+plot.gg_vimp<- function(x, n_var, relative, lbls, bars, ...){
+  gg_dta  <- x
+  if(!inherits(gg_dta, "gg_vimp")) gg_dta<- gg_vimp(gg_dta, ...)
+  if(missing(n_var)) n_var <- dim(gg_dta)[1]
+  if(n_var > dim(gg_dta)[1]) n_var <- dim(gg_dta)[1]
   
-  if(!missing(barcolor)){
+  if(!missing(bars)){
     # We have an alternative coloring
-    if(length(barcolor)==n_var){
-      object$positive[1:n_var]  <- barcolor
-    }  
-  }
-  if(!missing(label)){
-    # We have an alternative coloring
-    if(length(label)==n_var){
-      object$vars <- as.character(object$vars)
-      object$vars[1:n_var]  <- label
-      object$vars  <- factor(object$vars, levels=object$vars[order(object$vimp)])
+    if(length(bars)==n_var){
+      gg_dta$positive[1:n_var]  <- bars
     }  
   }
   
-  vimp.plt<-ggplot(object[1:n_var,])
+  gg_plt<-ggplot(gg_dta[1:n_var,])
   
-  if(missing(relative) | is.null(object$rel_vimp)){
-    if(length(unique(object$positive))>1){
-      vimp.plt<-vimp.plt+
+  if(missing(relative) | is.null(gg_dta$rel_vimp)){
+    if(length(unique(gg_dta$positive))>1){
+      gg_plt<-gg_plt+
         geom_bar(aes_string(y="vimp", x="vars", fill="positive"), 
                  stat="identity", width=.5, color="black")
     }else{
-      vimp.plt<-vimp.plt+
+      gg_plt<-gg_plt+
         geom_bar(aes_string(y="vimp", x="vars"), 
                  stat="identity", width=.5, color="black")
     }
-    vimp.plt<-vimp.plt+labs(x="", y="Variable Importance")
-      
+    gg_plt<-gg_plt+labs(x="", y="Variable Importance")
+    
   }else{
-    if(length(unique(object$positive))>1){
-      vimp.plt<-vimp.plt+
+    if(length(unique(gg_dta$positive))>1){
+      gg_plt<-gg_plt+
         geom_bar(aes_string(y="rel_vimp", x="vars", fill="positive"), 
                  stat="identity", width=.5, color="black")
     }else{
-      vimp.plt<-vimp.plt+
+      gg_plt<-gg_plt+
         geom_bar(aes_string(y="rel_vimp", x="vars"), 
                  stat="identity", width=.5, color="black")
     }   
-    vimp.plt<-vimp.plt+ 
+    gg_plt<-gg_plt+ 
       labs(x="", y="Relative Variable Importance") 
   }
   
-  if(is.null(object$set))
-    vimp.plt<-vimp.plt+ 
+  if(!missing(lbls) ){
+    if(length(lbls) >= length(gg_dta$vars)){
+      st.lbls <- lbls[as.character(gg_dta$vars)]
+      names(st.lbls) <- as.character(gg_dta$vars)
+      st.lbls[which(is.na(st.lbls))] <- names(st.lbls[which(is.na(st.lbls))])
+      
+      gg_plt <- gg_plt+
+        scale_x_discrete(labels=st.lbls)
+    }
+  }
+  if(is.null(gg_dta$set))
+    gg_plt<-gg_plt+ 
     coord_flip()
   else  
-    vimp.plt<-vimp.plt+ 
+    gg_plt<-gg_plt+ 
     coord_flip()+facet_grid(~set)
   
-  return(vimp.plt)
+  return(gg_plt)
 }

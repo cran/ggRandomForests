@@ -56,10 +56,10 @@
 #' data(iris_rf, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' ggrf.obj<- gg_error(iris_rf)
+#' gg_dta<- gg_error(iris_rf)
 #' 
 #' # Plot the gg_error object
-#' plot(ggrf.obj)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Regression example
@@ -69,10 +69,10 @@
 #' data(airq_rf, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' ggrf.obj<- gg_error(airq_rf)
+#' gg_dta<- gg_error(airq_rf)
 #' 
 #' # Plot the gg_error object
-#' plot(ggrf.obj)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Survival example
@@ -85,8 +85,8 @@
 #' # Load a cached randomForestSRC object
 #' data(veteran_rf, package="ggRandomForests")
 #' 
-#' ggrf.obj <- gg_error(veteran_rf)
-#' plot(ggrf.obj)
+#' gg_dta <- gg_error(veteran_rf)
+#' plot(gg_dta)
 #' 
 #'
 ### error rate plot
@@ -99,18 +99,18 @@ gg_error.ggRandomForests <- function(object, ...) {
     stop("Performance values are not available for this forest.")
   }
   
-  error <- data.frame(object$err.rate)
-  if(is.null(dim(error))){
-    error<- data.frame(error=cbind(error))
+  gg_dta <- data.frame(object$err.rate)
+  if(is.null(dim(gg_dta))){
+    gg_dta<- data.frame(error=cbind(gg_dta))
   }
   
-  if("object.err.rate" %in% colnames(error))
-    colnames(error)[which(colnames(error)=="object.err.rate")] <- "error"
+  if("object.err.rate" %in% colnames(gg_dta))
+    colnames(gg_dta)[which(colnames(gg_dta)=="object.err.rate")] <- "error"
   
-  error$ntree <- 1:dim(error)[1]
+  gg_dta$ntree <- 1:dim(gg_dta)[1]
   
-  class(error) <- c("gg_error",class(error))
-  invisible(error)
+  class(gg_dta) <- c("gg_error",class(gg_dta))
+  invisible(gg_dta)
 }
 
 gg_error <- gg_error.ggRandomForests

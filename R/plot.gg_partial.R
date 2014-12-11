@@ -61,8 +61,8 @@
 #' #                            partial=TRUE)
 #' data(iris_prtl, package="ggRandomForests")
 #' 
-#' ggrf_obj <- gg_partial(iris_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(iris_prtl)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## regression
@@ -75,8 +75,8 @@
 #' #                            partial=TRUE, show.plot=FALSE)
 #' data(airq_prtl, package="ggRandomForests")
 #'
-#' ggrf_obj <- gg_partial(airq_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(airq_prtl)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival examples
@@ -93,39 +93,45 @@
 #' #                               show.plots=FALSE)
 #' data(veteran_prtl, package="ggRandomForests")
 #' 
-#' ggrf_obj <- gg_partial(veteran_prtl)
-#' plot(ggrf_obj)
+#' gg_dta <- gg_partial(veteran_prtl)
+#' plot(gg_dta)
 #' }
 ### error rate plot
 plot.gg_partial <- function(x, points=TRUE, smooth="loess", ...){
   
   
-  object <- x 
+  gg_dta <- x 
   if(inherits(x, "plot.variable")){
-    object <- gg_partial(x, ...)
+    gg_dta <- gg_partial(x, ...)
   }else if(!inherits(x, "gg_partial")){
     stop("gg_partial expects an object from the rfsrc::plot.variable function")
   }
   
   # Get the colname of the independent variable
-  hName <- colnames(object)[2]
+  hName <- colnames(gg_dta)[2]
   
-  colnames(object)[2] <- "x"
+  colnames(gg_dta)[2] <- "x"
   
-  if(is.null(object$group)){
-    prt.plt<- ggplot(object,aes_string(x="x", y="yhat"))
+  if(is.null(gg_dta$group)){
+    gg_plt<- ggplot(gg_dta,aes_string(x="x", y="yhat"))
   }else{
-    prt.plt<- ggplot(object,aes_string(x="x", y="yhat", shape="group", color="group"))
+    gg_plt<- ggplot(gg_dta,aes_string(x="x", y="yhat", shape="group", color="group"))
   }
-  prt.plt <- prt.plt+
+  
+  gg_plt <- gg_plt+
     labs(x=hName, y="predicted")
-  
-  if(points)  
-    prt.plt<- prt.plt+geom_point( ...)
-  if(!is.null(smooth)){
-    prt.plt<- prt.plt+geom_smooth(method=smooth, ...)
+  if(!is.factor(gg_dta$x)){
+    if(points)  
+      gg_plt<- gg_plt+geom_point( ...)
+    if(!is.null(smooth)){
+      gg_plt<- gg_plt+geom_smooth(method=smooth, ...)
+    }
+  }else{
+    if(points)  
+      gg_plt<- gg_plt+geom_jitter( ...)
+    gg_plt<- gg_plt+geom_boxplot(...)
   }
   
-  return(prt.plt)
+  return(gg_plt)
   
 }

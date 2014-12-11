@@ -3,8 +3,8 @@
 \alias{plot.gg_minimal_depth}
 \title{Plot a \code{\link{gg_minimal_depth}} object for random forest variable ranking.}
 \usage{
-\method{plot}{gg_minimal_depth}(x, selection = FALSE, list_vars = TRUE,
-  type = c("named", "rank"), ...)
+\method{plot}{gg_minimal_depth}(x, selection = FALSE, type = c("named",
+  "rank"), lbls, ...)
 }
 \arguments{
 \item{x}{\code{\link{gg_minimal_depth}} object created from a \code{randomForestSRC::rfsrc} object}
@@ -12,9 +12,9 @@
 \item{selection}{should we restrict the plot to only include variables selected by the
 minimal depth criteria (boolean).}
 
-\item{list_vars}{add text list of ranked variables. Only used if selection = TRUE (boolean)}
-
 \item{type}{select type of y axis labels c("named","rank")}
+
+\item{lbls}{a vector of alternative variable names.}
 
 \item{...}{optional arguments passed to \code{\link{gg_minimal_depth}}}
 }
@@ -37,10 +37,10 @@ Plot a \code{\link{gg_minimal_depth}} object for random forest variable ranking.
 data(iris_vs, package="ggRandomForests")
 
 # Get a data.frame containing minimaldepth measures
-ggrf.obj<- gg_minimal_depth(iris_vs)
+gg_dta<- gg_minimal_depth(iris_vs)
 
 # Plot the gg_mkinimal_depth object
-plot(ggrf.obj)
+plot(gg_dta)
 
 ## ------------------------------------------------------------
 ## Regression example
@@ -51,10 +51,10 @@ plot(ggrf.obj)
 data(airq_vs, package="ggRandomForests")
 
 # Get a data.frame containing error rates
-ggrf.obj<- gg_minimal_depth(airq_vs)
+gg_dta<- gg_minimal_depth(airq_vs)
 
 # Plot the gg_error object
-plot(ggrf.obj)
+plot(gg_dta)
 
 ## ------------------------------------------------------------
 ## Survival example
@@ -67,8 +67,8 @@ plot(ggrf.obj)
 # Load a cached randomForestSRC object
 data(veteran_vs, package="ggRandomForests")
 
-ggrf.obj <- gg_minimal_depth(veteran_vs)
-plot(ggrf.obj)
+gg_dta <- gg_minimal_depth(veteran_vs)
+plot(gg_dta)
 
 }
 }
