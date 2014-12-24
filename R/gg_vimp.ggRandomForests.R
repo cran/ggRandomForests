@@ -24,7 +24,7 @@
 #' @param ... arguments passed to the \code{randomForestSRC::vimp.rfsrc} function if the 
 #' \code{randomForestSRC::rfsrc} object does not contain importance information.
 #' 
-#' @return a matrix of VIMP measures, in rank order.
+#' @return \code{gg_vimp} object. A \code{data.frame} of VIMP measures, in rank order.
 #' 
 #' @seealso \code{\link{plot.gg_vimp}} \code{randomForestSRC::rfsrc} \code{randomForestSRC::vimp}
 #' 
@@ -32,38 +32,37 @@
 #' Ishwaran H. (2007). Variable importance in binary regression trees and forests, 
 #' \emph{Electronic J. Statist.}, 1:519-537.
 #' 
-#' @importFrom tidyr gather_
-#' @importFrom dplyr arrange desc %>%
+#' @importFrom reshape2 melt
+#' @importFrom randomForestSRC vimp
 #' 
 #' @examples
 #' ## ------------------------------------------------------------
 #' ## classification example
 #' ## ------------------------------------------------------------
-#' # iris_rf <- rfsrc(Species ~ ., data = iris)
-#' data(iris_rf, package="ggRandomForests")
-#' gg_dta <- gg_vimp(iris_rf)
+#' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
+#' gg_dta <- gg_vimp(rfsrc_iris)
 #' plot(gg_dta)
 #'  
 #' ## ------------------------------------------------------------
 #' ## regression example
 #' ## ------------------------------------------------------------
 #' 
-#' # airq.obj <- rfsrc(Ozone ~ ., airquality)
-#' data(airq_rf, package="ggRandomForests")
-#' gg_dta <- gg_vimp(airq_rf)
+#' # rfsrc_airq <- rfsrc(Ozone ~ ., airquality)
+#' data(rfsrc_airq, package="ggRandomForests")
+#' gg_dta <- gg_vimp(rfsrc_airq)
 #' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival example
 #' ## ------------------------------------------------------------
-#' data(veteran_rf, package="ggRandomForests")
-#' gg_dta <- gg_vimp(veteran_rf)
+#' data(rfsrc_veteran, package="ggRandomForests")
+#' gg_dta <- gg_vimp(rfsrc_veteran)
 #' plot(gg_dta)
 #' 
 #' @export gg_vimp.ggRandomForests
 #' @export gg_vimp
 #' @aliases gg_vimp
-#' @importFrom randomForestSRC vimp
 
 gg_vimp.ggRandomForests <- function(object, ...){
   
@@ -71,9 +70,6 @@ gg_vimp.ggRandomForests <- function(object, ...){
         sum(inherits(object, c("rfsrc", "predict"), TRUE) == c(1, 2)) != 2) {
     stop("This function only works for objects of class `(rfsrc, grow)' or '(rfsrc, predict)'.")
   }
-  
-  # To quite R CMD CHECK... for gather statements 
-  cls  <- vars <- NA
   
   ### set importance to NA if it is NULL
   if (is.null(object$importance)){
@@ -89,8 +85,9 @@ gg_vimp.ggRandomForests <- function(object, ...){
     gg_dta$vars <- rownames(gg_dta)
     
     clnms <- colnames(gg_dta)[-which(colnames(gg_dta)=="vars")]
-    gg_dta <- gg_dta %>% gather(cls, vimp, -vars) %>% arrange(desc(vimp))
-    colnames(gg_dta)[2] <- "set"
+    gg_dta <- melt(gg_dta, id.vars="vars", 
+                   variable.name="set", value.name="vimp")
+    gg_dta <- gg_dta[order(gg_dta$vimp, decreasing=TRUE),]
     gg_dta$vars <- factor(gg_dta$vars)
   }else{
     gg_dta <- data.frame(sort(gg_dta, decreasing=TRUE))

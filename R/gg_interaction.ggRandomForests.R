@@ -17,19 +17,24 @@
 #' Minimal Depth Variable Interaction data object (\code{randomForestSRC::find.interaction}). 
 #' 
 #' Converts the matrix returned from
-#' \code{randomForestSRC::find.interaction} to a data.frame and add attributes for identification. 
-#' If passed  a \code{randomForestSRC::rfsrc} object, gg_interaction first runs 
+#' \code{randomForestSRC::find.interaction} to a \code{data.frame} and add attributes 
+#' for S3 identification. 
+#' If passed  a \code{randomForestSRC::rfsrc} object, \code{gg_interaction} first runs 
 #' the \code{randomForestSRC::find.interaction} 
 #' function with all optional arguments.
 #'
 #' @param object a \code{randomForestSRC::rfsrc} object or the output from the
 #' \code{randomForestSRC::find.interaction} function call.
-#' @param ... optional extra arguments passed to find.interaction.
+#' @param ... optional extra arguments passed to \code{randomForestSRC::find.interaction}.
 #' 
-#' @seealso \code{\link{plot.gg_interaction}} \code{randomForestSRC::rfsrc} 
+#' @return \code{gg_interaction} object
+#' 
+#' @seealso \code{randomForestSRC::rfsrc} 
 #' \code{randomForestSRC::find.interaction} 
-#' \code{randomForestSRC::max.subtree} \code{randomForestSRC::var.select} 
+#' \code{randomForestSRC::max.subtree} 
+#' \code{randomForestSRC::var.select} 
 #' \code{randomForestSRC::vimp}
+#' \code{\link{plot.gg_interaction}} 
 #' 
 #' @export gg_interaction gg_interaction.ggRandomForests 
 #' @aliases gg_interaction
@@ -55,12 +60,12 @@
 #' ## iris.obj <- rfsrc(Species ~., data = iris)
 #' ## TODO: VIMP interactions not handled yet....
 #' ## find.interaction(iris.obj, method = "vimp", nrep = 3)
-#' ## iris_interaction <- find.interaction(iris.obj)
-#' data(iris_interaction, package="ggRandomForests")
-#' gg_dta <- gg_interaction(iris_interaction)
+#' ## interaction_iris <- find.interaction(iris.obj)
+#' data(interaction_iris, package="ggRandomForests")
+#' gg_dta <- gg_interaction(interaction_iris)
 #' 
-#' plot(gg_dta, x_var="Petal.Width")
-#' plot(gg_dta, x_var="Petal.Length")
+#' plot(gg_dta, xvar="Petal.Width")
+#' plot(gg_dta, xvar="Petal.Length")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, regression setting
@@ -69,24 +74,24 @@
 #' ##
 #' ## TODO: VIMP interactions not handled yet....
 #' ## find.interaction(airq.obj, method = "vimp", nrep = 3)
-#' ## airq_interaction <- find.interaction(airq.obj)
-#' data(airq_interaction, package="ggRandomForests")
-#' gg_dta <- gg_interaction(airq_interaction)
+#' ## interaction_airq <- find.interaction(airq.obj)
+#' data(interaction_airq, package="ggRandomForests")
+#' gg_dta <- gg_interaction(interaction_airq)
 #' 
-#' plot(gg_dta, x_var="Temp")
-#' plot(gg_dta, x_var="Solar.R")
+#' plot(gg_dta, xvar="Temp")
+#' plot(gg_dta, xvar="Solar.R")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, survival setting
 #' ## ------------------------------------------------------------
 #' ## data(pbc, package = "randomForestSRC") 
 #' ## pbc.obj <- rfsrc(Surv(days,status) ~ ., pbc, nsplit = 10)
-#' ## pbc_interaction <- find.interaction(pbc.obj, nvar = 8)
-#' data(pbc_interaction, package="ggRandomForests")
-#' gg_dta <- gg_interaction(pbc_interaction)
+#' ## interaction_pbc <- find.interaction(pbc.obj, nvar = 8)
+#' data(interaction_pbc, package="ggRandomForests")
+#' gg_dta <- gg_interaction(interaction_pbc)
 #' 
-#' plot(gg_dta, x_var="bili")
-#' plot(gg_dta, x_var="copper")
+#' plot(gg_dta, xvar="bili")
+#' plot(gg_dta, xvar="copper")
 #' 
 gg_interaction.ggRandomForests <- function(object, ...){
   if(inherits(object, "matrix")){

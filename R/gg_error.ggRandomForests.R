@@ -18,18 +18,18 @@
 #'
 #' randomForestSRC error rate data object
 #' 
-#' Extract the cumulative (OOB) randomForestSRC error rate as a function of 
+#' Extract the cumulative (OOB) \code{randomForestSRC} error rate as a function of 
 #' number of trees.
 #' 
-#' @details The gg_error function simply returns the rfsrc$err.rate object as 
-#' a data.frame, and assigns the class for connecting to the \code{\link{plot.gg_error}}
-#' function. 
+#' @details The \code{gg_error} function simply returns the 
+#' \code{randomForestSRC::rfsrc$err.rate} object as a data.frame, and assigns the class 
+#' for connecting to the S3 \code{\link{plot.gg_error}} function. 
 #' 
-#' @param object randomForestSRC object.
+#' @param object \code{randomForestSRC::rfsrc} object.
 #' @param ... optional arguments (not used).
 #' 
-#' @return gg_error data.frame with one column indicating the tree number, 
-#' and the remaining columns from the rfsrc$err.rate return value. 
+#' @return \code{gg_error} \code{data.frame} with one column indicating the tree number, 
+#' and the remaining columns from the \code{randomForestSRC::rfsrc$err.rate} return value. 
 #' 
 #' @export gg_error.ggRandomForests gg_error
 #' 
@@ -51,12 +51,12 @@
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## You can build a randomForest
-#' # iris_rf <- rfsrc(Species ~ ., data = iris)
+#' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
 #' # ... or load a cached randomForestSRC object
-#' data(iris_rf, package="ggRandomForests")
+#' data(rfsrc_iris, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' gg_dta<- gg_error(iris_rf)
+#' gg_dta<- gg_error(rfsrc_iris)
 #' 
 #' # Plot the gg_error object
 #' plot(gg_dta)
@@ -64,12 +64,12 @@
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
-#' # airq_rf <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
+#' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' # ... or load a cached randomForestSRC object
-#' data(airq_rf, package="ggRandomForests")
+#' data(rfsrc_airq, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
-#' gg_dta<- gg_error(airq_rf)
+#' gg_dta<- gg_error(rfsrc_airq)
 #' 
 #' # Plot the gg_error object
 #' plot(gg_dta)
@@ -80,12 +80,12 @@
 #' ## veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
 #' # data(veteran, package = "randomForestSRC")
-#' # veteran_rf <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
+#' # rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
 #' 
 #' # Load a cached randomForestSRC object
-#' data(veteran_rf, package="ggRandomForests")
+#' data(rfsrc_veteran, package="ggRandomForests")
 #' 
-#' gg_dta <- gg_error(veteran_rf)
+#' gg_dta <- gg_error(rfsrc_veteran)
 #' plot(gg_dta)
 #' 
 #'

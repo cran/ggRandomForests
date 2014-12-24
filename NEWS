@@ -1,4 +1,21 @@
-ggRandomForests 1.1.1
+Package: ggRandomForests
+Version: 1.1.2
+
+ggRandomForests v1.1.2
+===================
+* Add package vignette "ggRandomForests: Visually Exploring a Random Forest for Regression"
+* Add gg_partial_coplot, quantile_cuts and surface_matrix functions
+* export the calc_roc and calc_auc functions.
+* replace tidyr function dependency with reshape2 (melt instead of gather) due to lazy eval issues.
+* reduce dplyr dependencies (remove select and %>% usage for base equivalents, I still use tbl_df for printing)
+* Further development of package vignette "Survival with Random Forests" 
+* Refactor cached example datasets for better documentation, estimates and examples.
+* Improved help files.
+* Updated DESCRIPTION file to remove redundant parts.
+* Misc Bug Fixes.
+
+
+ggRandomForests v1.1.1
 ===================
 Maintenance release, mostly to fix gg_survival and gg_partial plots.
 * Fix the gg_survival functions to plot kaplan-meier estimates.
@@ -11,7 +28,7 @@ Maintenance release, mostly to fix gg_survival and gg_partial plots.
 * Misc Bug Fixes.
 
 
-ggRandomForests 1.1.0
+ggRandomForests v1.1.0
 ===================
 * Add panel option for gg_variable and gg_partial
 * Rework interactions plot
@@ -21,14 +38,14 @@ ggRandomForests 1.1.0
 * Include package vignette "Random Forests for Survival" 
 * Misc Bug Fixes
 
-ggRandomForests 1.0.0
+ggRandomForests v1.0.0
 ===================
 * First CRAN release.
 
-ggRandomForests 0.2.0.99
+ggRandomForests v0.2.0.99
 ===================
 * correct case/underscore function names. 
 
-ggRandomForests 0.2
+ggRandomForests v0.2
 ===================
 * Initial useR!2014 release. 

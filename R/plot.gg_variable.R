@@ -20,15 +20,15 @@
 #' Plot a \code{\link{gg_variable}} object,
 #' 
 #' @param x \code{\link{gg_variable}} object created from a \code{randomForestSRC::rfsrc} object
-#' @param x_var variable (or list of variables) of interest.
+#' @param xvar variable (or list of variables) of interest.
 #' @param time For survival, one or more times of interest
 #' @param time_labels string labels for times
-#' @param panel Should plots be facetted along multiple x_var?
+#' @param panel Should plots be facetted along multiple xvar?
 #' @param oob oob estimates (boolean)
 #' @param smooth type of smooth curve
 #' @param ... arguments passed to the \code{\link{gg_variable}} function.
 #'   
-#' @return \code{ggplot} object
+#' @return A single \code{ggplot} object, or list of \code{ggplot} objects
 #'   
 #' @export plot.gg_variable
 #'   
@@ -42,6 +42,7 @@
 #' 
 #' @importFrom ggplot2 ggplot aes_string geom_point geom_smooth labs facet_wrap
 #' @importFrom parallel mclapply
+#' @importFrom reshape2 melt
 #' 
 #' @examples
 #' \dontrun{
@@ -62,9 +63,9 @@
 #' #airq.obj <- rfsrc(Ozone ~ ., data = airquality)
 #' data(airq_rf, package="ggRandomForests")
 #' gg_dta <- gg_variable(airq_rf)
-#' plot(gg_dta, x_var="Wind")
-#' plot(gg_dta, x_var="Temp")
-#' plot(gg_dta, x_var="Solar.R")
+#' plot(gg_dta, xvar="Wind")
+#' plot(gg_dta, xvar="Temp")
+#' plot(gg_dta, xvar="Solar.R")
 #' 
 #' ## motor trend cars
 #' #mtcars.obj <- rfsrc(mpg ~ ., data = mtcars)
@@ -72,12 +73,12 @@
 #' gg_dta <- gg_variable(mtcars_rf)
 #' 
 #' # mtcars$cyl is an ordinal variable
-#' plot(gg_dta, x_var="cyl")
+#' plot(gg_dta, xvar="cyl")
 #' 
 #' # Others are continuous
-#' plot(gg_dta, x_var="disp")
-#' plot(gg_dta, x_var="hp")
-#' plot(gg_dta, x_var="wt")
+#' plot(gg_dta, xvar="disp")
+#' plot(gg_dta, xvar="hp")
+#' plot(gg_dta, xvar="wt")
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival examples
@@ -92,26 +93,26 @@
 #' gg_dta <- gg_variable(veteran_rf, time=30)
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(gg_dta, x_var = "age")
-#' plot(gg_dta, x_var = "diagtime")
+#' plot(gg_dta, xvar = "age")
+#' plot(gg_dta, xvar = "diagtime")
 #' 
 #' # If we want to compare survival at different time points, say 30, 90 day 
 #' # and 1 year
 #' gg_dta <- gg_variable(veteran_rf, time=c(30, 90, 365))
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(gg_dta, x_var = "age")
-#' plot(gg_dta, x_var = "diagtime") 
+#' plot(gg_dta, xvar = "age")
+#' plot(gg_dta, xvar = "diagtime") 
 #'
 #' }
 ### error rate plot
-plot.gg_variable<- function(x, x_var, 
+plot.gg_variable<- function(x, xvar, 
                             time, time_labels, 
                             panel=FALSE,
                             oob=TRUE, smooth=TRUE,  ...){
   gg_dta <- x 
   if(inherits(x, "rfsrc")) gg_dta <- gg_variable(x, ...)
-
+  
   if(inherits(gg_dta, "surv")){
     family <- "surv"
   }else if(inherits(gg_dta, "regr")){
@@ -131,7 +132,7 @@ plot.gg_variable<- function(x, x_var,
       gg_dtaY <- gg_dta[, grep("yhat.", colnames(gg_dta))]
       lng <- ncol(gg_dtaY)
       gg2 <- mclapply(1:ncol(gg_dtaY),
-                    function(ind){cbind(gg_dtaX, yhat=gg_dtaY[,ind], outcome=ind)})
+                      function(ind){cbind(gg_dtaX, yhat=gg_dtaY[,ind], outcome=ind)})
       gg3 <- do.call(rbind,gg2)
       gg3$outcome <- factor(gg3$outcome)
       gg_dta <- gg3 
@@ -141,82 +142,91 @@ plot.gg_variable<- function(x, x_var,
   
   if(sum(colnames(gg_dta) == "cens") != 0) family <- "surv"
   
-  if(missing(x_var)){
+  if(missing(xvar)){
     # We need to remove response variables here
     cls <- c(grep("yhat", colnames(gg_dta)),
              grep("cens", colnames(gg_dta)))
-    x_var <- colnames(gg_dta)[-cls]
+    xvar <- colnames(gg_dta)[-cls]
   }
   
-  lng <- length(x_var)
+  lng <- length(xvar)
   
   # For now, we only plot survival families as panels. 
   if(panel){
     if(family == "surv"){
       variable <- value <- time <- yhat <- cens <- NA
       ## Create a panel plot
-      wchXvar <- which(colnames(gg_dta) %in% x_var)
+      wchXvar <- which(colnames(gg_dta) %in% xvar)
       
       wchYvar <- which(colnames(gg_dta) %in% c("cens", "yhat", "time"))
       
-      gg_dta.mlt <- gg_dta %>% select(c(wchYvar, wchXvar)) %>%
-        gather(variable, value,-time, -yhat, -cens)
+      gg_dta.mlt <- melt(gg_dta[,c(wchYvar, wchXvar)], id.vars=c("time","yhat","cens"))
       
+      gg_dta.mlt$variable <- factor(gg_dta.mlt$variable, levels=xvar)
       gg_plt <- ggplot(gg_dta.mlt)+
-        labs(y= "Survival") +
-        geom_point(aes_string(x="value", y="yhat", color="cens", shape="cens"), 
-                   ...)
+      labs(y= "Survival") +
+      geom_point(aes_string(x="value", y="yhat", color="cens", shape="cens"), 
+                 ...)
       
       if(smooth){
         gg_plt <- gg_plt +
-          geom_smooth(aes_string(x="value", y="yhat"), ...)
+        geom_smooth(aes_string(x="value", y="yhat"), ...)
       }
       if(length(levels(gg_dta$time)) > 1){
         gg_plt<- gg_plt+
-          facet_grid(reformulate("variable", "time"),
-                     scales="free_x")+
-          labs(x="")
+        facet_grid(reformulate("variable", "time"),
+                   scales="free_x")+
+        labs(x="")
       }else{
         gg_plt<- gg_plt + 
-          facet_wrap(~variable,
-                     scales="free_x")+
-          labs(x="",y= paste("Survival at", gg_dta$time[1], "year"))
+        facet_wrap(~variable,
+                   scales="free_x")+
+        labs(x="",y= paste("Survival at", gg_dta$time[1], "year"))
       }
       
     }else{
       # This will work for regression and binary classification... maybe.
-      variable <- value <- yhat <- NA
+      variable <- value <- yhat <- yvar <- NA
       ## Create a panel plot
-      wchXvar <- which(colnames(gg_dta) %in% x_var)
+      wchXvar <- which(colnames(gg_dta) %in% xvar)
       
       wchYvar <- which(colnames(gg_dta) %in% c("yhat"))
+      if(family=="class"){
+        wchYvar <- c(wchYvar, which(colnames(gg_dta)=="yvar"))
+        gg_dta.mlt <- melt(gg_dta[,c(wchYvar, wchXvar)], id.vars=c("yhat", "yvar"))
+        
+      }else{
+        gg_dta.mlt <- melt(gg_dta[,c(wchYvar, wchXvar)], id.vars="yhat")
+        
+      }
+      gg_dta.mlt$variable <- factor(gg_dta.mlt$variable, levels=xvar)
       
-      gg_dta.mlt <- gg_dta %>% select(c(wchYvar, wchXvar)) %>%
-        gather(variable, value, -yhat)
+      gg_plt <- ggplot(gg_dta.mlt)
       
-      gg_dta.mlt$variable <- factor(gg_dta.mlt$variable,
-                                    levels=unique(gg_dta.mlt$variable))
-      
-      gg_plt <- ggplot(gg_dta.mlt)+
-        geom_point(aes_string(x="value", y="yhat"), 
-                   ...)
+      if(family=="class"){
+        gg_plt <- gg_plt +
+        geom_point(aes_string(x="value", y="yhat", color="yvar", shape="yvar"), ...)
+      }else{
+        gg_plt <- gg_plt +
+        geom_point(aes_string(x="value", y="yhat"), ...)
+      }
       
       if(smooth){
         gg_plt <- gg_plt +
-          geom_smooth(aes_string(x="value", y="yhat"), ...)
+        geom_smooth(aes_string(x="value", y="yhat"), ...)
       }
       
       gg_plt <- gg_plt +
-        facet_wrap(~variable,
-                   scales="free_x")+
-        labs(x="")
+      facet_wrap(~variable,
+                 scales="free_x")+
+      labs(x="")
     }
   }else{
     # Plot or list of plots.
     gg_plt <- vector("list", length=lng)
     
     for(ind in 1:lng){
-      chIndx <- which(colnames(gg_dta)==x_var[ind])
+      chIndx <- which(colnames(gg_dta)==xvar[ind])
       hName <- colnames(gg_dta)[chIndx]
       colnames(gg_dta)[chIndx] <- "var"
       ccls <- class(gg_dta[,"var"])
@@ -230,68 +240,68 @@ plot.gg_variable<- function(x, x_var,
       
       if(family == "surv"){
         gg_plt[[ind]] <- gg_plt[[ind]]+
-          labs(x=hName, y= "Survival")
+        labs(x=hName, y= "Survival")
         if(ccls=="numeric"){
           gg_plt[[ind]] <- gg_plt[[ind]]+
-            geom_point(aes_string(x="var", y="yhat", color="cens", shape="cens"), 
-                       ...)
+          geom_point(aes_string(x="var", y="yhat", color="cens", shape="cens"), 
+                     ...)
           
           if(smooth){
             
             gg_plt[[ind]] <- gg_plt[[ind]] +
-              geom_smooth(aes_string(x="var", y="yhat"), ...)
+            geom_smooth(aes_string(x="var", y="yhat"), ...)
             
           }
         }else{
           gg_plt[[ind]] <- gg_plt[[ind]]+
-            geom_boxplot(aes_string(x="var", y="yhat"), color="grey",
-                         ...,outlier.shape = NA)+
-            geom_jitter(aes_string(x="var", y="yhat", color="cens", shape="cens"), 
-                        ...)
+          geom_boxplot(aes_string(x="var", y="yhat"), color="black",
+                       ..., outlier.shape = NA)+
+          geom_jitter(aes_string(x="var", y="yhat", color="cens", shape="cens"), 
+                      ...)
           
         }
         if(length(levels(gg_dta$time)) > 1){
           gg_plt[[ind]]<- gg_plt[[ind]] + facet_wrap(~time, ncol=1)
         }else{
           gg_plt[[ind]]<- gg_plt[[ind]] + 
-            labs(x=hName, y= paste("Survival at", gg_dta$time[1], "year"))
+          labs(x=hName, y= paste("Survival at", gg_dta$time[1], "year"))
         }
       }else if(family == "class"){
         gg_plt[[ind]] <- gg_plt[[ind]] +
-          labs(x=hName, y="Predicted")
+        labs(x=hName, y="Predicted")
         
         if(sum(colnames(gg_dta) == "outcome") ==0){ 
           if(ccls=="numeric"){
             gg_plt[[ind]] <- gg_plt[[ind]] +
-              geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
-                         ...)
+            geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
+                       ...)
             
             if(smooth){
               
               gg_plt[[ind]] <- gg_plt[[ind]] +
-                geom_smooth(aes_string(x="var", y="yhat"), ...)
+              geom_smooth(aes_string(x="var", y="yhat"), ...)
             }
           }else{
             gg_plt[[ind]] <- gg_plt[[ind]]+
-              geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
-                           ..., outlier.shape = NA)+
-              geom_jitter(aes_string(x="var", y="yhat", color="yvar", shape="yvar"), 
-                          ...)
+            geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
+                         ..., outlier.shape = NA)+
+            geom_jitter(aes_string(x="var", y="yhat", color="yvar", shape="yvar"), 
+                        ...)
             
           }
         }else{
           
           if(ccls=="numeric"){
             gg_plt[[ind]] <- gg_plt[[ind]] +
-              geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
-                         ...)
+            geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
+                       ...)
             
           }else{
             gg_plt[[ind]] <- gg_plt[[ind]]+
-              geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
-                           ..., outlier.shape = NA)+
-              geom_jitter(aes_string(x="var", y="yhat", color="yvar", shape="yvar"), 
-                          ...)
+            geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
+                         ..., outlier.shape = NA)+
+            geom_jitter(aes_string(x="var", y="yhat", color="yvar", shape="yvar"), 
+                        ...)
             
           }
           
@@ -300,23 +310,23 @@ plot.gg_variable<- function(x, x_var,
       }else{
         # assume regression
         gg_plt[[ind]] <- gg_plt[[ind]] +
-          labs(x=hName, y="Predicted")
+        labs(x=hName, y="Predicted")
         if(ccls=="numeric"){
           gg_plt[[ind]] <- gg_plt[[ind]] +
-            geom_point(aes_string(x="var", y="yhat"), ...)
+          geom_point(aes_string(x="var", y="yhat"), ...)
           
           if(smooth){
             
             gg_plt[[ind]] <- gg_plt[[ind]] +
-              geom_smooth(aes_string(x="var", y="yhat"), ...)
+            geom_smooth(aes_string(x="var", y="yhat"), ...)
             
           }
         }else{
           gg_plt[[ind]] <- gg_plt[[ind]]+
-            geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
-                         ..., outlier.shape = NA)+
-            geom_jitter(aes_string(x="var", y="yhat"), 
-                        ...)
+          geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 
+                       ..., outlier.shape = NA)+
+          geom_jitter(aes_string(x="var", y="yhat"), 
+                      ...)
         }
         # Replace the original colname
         colnames(gg_dta)[chIndx] <- hName

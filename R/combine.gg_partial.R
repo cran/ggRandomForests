@@ -1,50 +1,67 @@
 #' combine two gg_partial objects
 #' 
-#' The combine.gg_partial function assumes the two gg_partial object
-#' were generated from the same randomForestSRC::rfsrc object. Further,
-#' we assume the combine is along the group variable.
+#' @description
+#' The \code{combine.gg_partial} function assumes the two \code{\link{gg_partial}} objects
+#' were generated from the same \code{randomForestSRC::rfsrc} object. So, the 
+#' function joins along the \code{\link{gg_partial}} list item names (one per partial
+#' plot variable). Further, we combine the two \code{\link{gg_partial}} objects along 
+#' the group variable.
 #' 
-#'  @param x gg_partial object
-#'  @param y gg_partial object
-#'  @param lbls how to label the combined data.
+#' Hence, to join three \code{\link{gg_partial}} objects together (i.e. for three different 
+#' time points from a survival random forest)
+#' would require two \code{combine.gg_partial} calls: One to join the first two 
+#' \code{\link{gg_partial}} object, 
+#' and one to append the third \code{\link{gg_partial}} object to the output from the first call.
+#' The second call will append a single \code{lbls} label to the \code{\link{gg_partial}} object.
+#' 
+#'  @param x \code{\link{gg_partial}}  object
+#'  @param y \code{\link{gg_partial}}  object
+#'  @param lbls vector of 2 strings to label the combined data.
 #'  @param ... not used
 #'  
-#'  @export combine.gg_partial_list combine.gg_partial combine
-#'  @aliases combine combine.gg_partial combine.gg_partial_list
+#'  @return \code{\link{gg_partial}}  or \code{gg_partial_list} based on class of x and y.
+#'  
+#'  @export combine.gg_partial_list combine.gg_partial
+#'  @aliases combine.gg_partial combine.gg_partial_list
 #' 
 #' @importFrom parallel mclapply
 #' 
 #' @examples 
-#' \dontrun{
-#' #!!TODO!! examples
-#' # Calculate the 1 year partial dependence
-#' pbc_prtl <- plot.variable(pbc_rf, surv.type = "surv", 
-#'                           time = 364.25, 
-#'                           xvar.names = xvar, partial = TRUE, 
-#'                           show.plots = FALSE)
+#' # Load a set of plot.variable partial plot data
+#' data(partial_veteran)
 #' 
-#' # Calculate the 3 year partial dependence
-#' pbc_prtl.3 <- plot.variable(pbc_rf, surv.type = "surv", 
-#'                             time = 3*364.25, 
-#'                             xvar.names = xvar, partial = TRUE, 
-#'                             show.plots = FALSE)
+#' # A list of 2 plot.variable objects
+#' length(partial_veteran) 
+#' class(partial_veteran)
+#' 
+#' class(partial_veteran[[1]])
+#' class(partial_veteran[[2]])
 #' 
 #' # Create gg_partial objects
-#' ggPrtl <- gg_partial(pbc_prtl)
-#' ggPrtl.3 <- gg_partial(pbc_prtl.3)
+#' ggPrtl.1 <- gg_partial(partial_veteran[[1]])
+#' ggPrtl.2 <- gg_partial(partial_veteran[[2]])
 #' 
 #' # Combine the objects to get multiple time curves 
 #' # along variables on a single figure.
-#' pbc_ggpart <- combine(ggPrtl, ggPrtl.3, 
-#'                       lbls = c("1 Year", "3 Years"))
+#' ggpart <- combine.gg_partial(ggPrtl.1, ggPrtl.2, 
+#'                              lbls = c("30 day", "6 month"))
+#'                              
+#' # Plot each figure separately
+#' plot(ggpart)                                  
 #' 
-#' }
-combine <- function(x, y, lbls,...){
-  UseMethod("combine",x)
-}
+#' # Get the continuous data for a panel of continuous plots.
+#' ggcont <- ggpart
+#' ggcont$celltype <- ggcont$trt <- ggcont$prior <- NULL
+#' plot(ggcont, panel=TRUE) 
+#' 
+#' # And the categorical for a panel of categorical plots.
+#' ggpart$karno <- ggpart$diagtime <- ggpart$age <- NULL
+#' plot(ggpart, panel=TRUE) 
+#' 
 combine.gg_partial <- function(x, y, lbls, ...){
   return(combine.gg_partial_list(x, y, lbls, ...))
 }
+
 combine.gg_partial_list <- function(x, y, lbls, ...){
   
   if(inherits(x,"plot.variable"))

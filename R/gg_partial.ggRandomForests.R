@@ -21,26 +21,30 @@
 #' list of either marginal variable dependance or partial variable dependence
 #' data from a \code{randomForestSRC::rfsrc} object. 
 #' The \code{gg_partial} function formulates the \code{randomForestSRC::plot.variable} output
-#' for partial plots  (where partial=TRUE) into a data object for creation of 
+#' for partial plots  (where \code{partial=TRUE}) into a data object for creation of 
 #' partial dependence plots using the \code{\link{plot.gg_partial}} function. 
 #' 
-#' Partial variable dependence plots are the risk adjusted estimates of the specified response as a 
-#' function of a single covariate, possibly subsetted on other covariates.
+#' Partial variable dependence plots are the risk adjusted estimates of the specified 
+#' response as a function of a single covariate, possibly subsetted on other covariates.
 #' 
 #' @param object the partial variable dependence data object from 
 #'   \code{randomForestSRC::plot.variable} function
 #' @param named optional column for merging multiple plots together
 #' @param ... optional arguments
 #'  
-#' @return A \code{data.frame} or \code{list} of data.frames corresponding the variables 
+#' @return \code{gg_partial} object. A \code{data.frame} or \code{list} of 
+#' \code{data.frames} corresponding the variables 
 #' contained within the \code{randomForestSRC::plot.variable} output. 
 #' 
 #' @seealso \code{\link{plot.gg_partial}} \code{randomForestSRC::plot.variable}
 #' 
-#' @aliases gg_partial
 #' @export gg_partial.ggRandomForests gg_partial
 #' 
 #' @importFrom parallel mclapply
+#' 
+#' @references 
+#' Friedman, Jerome H. 2000. "Greedy Function Approximation: A Gradient Boosting 
+#' Machine." Annals of Statistics 29: 1189-1232.
 #' 
 #' @examples
 #' 
@@ -50,12 +54,12 @@
 #' 
 #' ## iris "Petal.Width" partial dependence plot
 #' ##
-#' # iris_rf <- rfsrc(Species ~., data = iris)
-#' # iris_prtl <- plot.variable(iris_rf, xvar.names = "Petal.Width",
+#' # rfsrc_iris <- rfsrc(Species ~., data = iris)
+#' # partial_iris <- plot.variable(rfsrc_iris, xvar.names = "Petal.Width",
 #' #                            partial=TRUE)
-#' data(iris_prtl, package="ggRandomForests")
+#' data(partial_iris, package="ggRandomForests")
 #' 
-#' gg_dta <- gg_partial(iris_prtl)
+#' gg_dta <- gg_partial(partial_iris)
 #' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
@@ -64,12 +68,12 @@
 #' 
 #' ## airquality "Wind" partial dependence plot
 #' ##
-#' # airq_rf <- rfsrc(Ozone ~ ., data = airquality)
-#' # airq_prtl <- plot.variable(airq_rf, xvar.names = "Wind",
+#' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality)
+#' # partial_airq <- plot.variable(rfsrc_airq, xvar.names = "Wind",
 #' #                            partial=TRUE, show.plot=FALSE)
-#' data(airq_prtl, package="ggRandomForests")
+#' data(partial_airq, package="ggRandomForests")
 #'
-#' gg_dta <- gg_partial(airq_prtl)
+#' gg_dta <- gg_partial(partial_airq)
 #' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
@@ -78,17 +82,22 @@
 #' ## survival "age" partial variable dependence plot
 #' ##
 #' # data(veteran, package = "randomForestSRC")
-#' # veteran_rf <- rfsrc(Surv(time,status)~., veteran, nsplit = 10, ntree = 100)
+#' # rfsrc_veteran <- rfsrc(Surv(time,status)~., veteran, nsplit = 10, ntree = 100)
 #' #
 #' ## 30 day partial plot for age
-#' # veteran_prtl <- plot.variable(veteran_rf, surv.type = "surv", 
+#' # partial_veteran <- plot.variable(rfsrc_veteran, surv.type = "surv", 
 #' #                               partial = TRUE, time=30, 
 #' #                               xvar.names = "age", 
 #' #                               show.plots=FALSE)
-#' data(veteran_prtl, package="ggRandomForests")
+#' data(partial_veteran, package="ggRandomForests")
 #' 
-#' gg_dta <- gg_partial(veteran_prtl)
+#' gg_dta <- gg_partial(partial_veteran[[1]])
 #' plot(gg_dta)
+#' 
+#' @aliases gg_partial gg_partial_list
+#' @name gg_partial
+#' @name gg_partial_list
+#' 
 gg_partial.ggRandomForests <- function(object, 
                                        named,
                                        ...){

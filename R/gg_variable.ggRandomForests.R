@@ -36,7 +36,7 @@
 #' @param oob indicate if predicted results should include oob or full data set.
 #' @param ... extra arguments 
 #'  
-#' @return A matrix for creating the marginal variable dependence plots.
+#' @return \code{gg_variable} object
 #' 
 #' @seealso  \code{\link{plot.gg_variable}} \code{randomForestSRC::plot.variable}
 #' 
@@ -51,41 +51,41 @@
 #' ## ------------------------------------------------------------
 #' 
 #' ## iris
-#' #iris.obj <- rfsrc(Species ~., data = iris)
-#' data(iris_rf, package="ggRandomForests")
+#' #rfsrc_iris <- rfsrc(Species ~., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
 #' 
-#' gg_dta <- gg_variable(iris_rf)
-#' plot(gg_dta, x_var="Sepal.Width")
-#' plot(gg_dta, x_var="Sepal.Length")
+#' gg_dta <- gg_variable(rfsrc_iris)
+#' plot(gg_dta, xvar="Sepal.Width")
+#' plot(gg_dta, xvar="Sepal.Length")
 #' 
 #' ## ------------------------------------------------------------
 #' ## regression
 #' ## ------------------------------------------------------------
 #' 
 #' ## airquality
-#' #airq.obj <- rfsrc(Ozone ~ ., data = airquality)
-#' data(airq_rf, package="ggRandomForests")
-#' gg_dta <- gg_variable(airq_rf)
-#' plot(gg_dta, x_var="Wind")
-#' plot(gg_dta, x_var="Temp")
-#' plot(gg_dta, x_var="Solar.R")
+#' #rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality)
+#' data(rfsrc_airq, package="ggRandomForests")
+#' gg_dta <- gg_variable(rfsrc_airq)
+#' plot(gg_dta, xvar="Wind")
+#' plot(gg_dta, xvar="Temp")
+#' plot(gg_dta, xvar="Solar.R")
 #' 
 #' ## motor trend cars
-#' #mtcars.obj <- rfsrc(mpg ~ ., data = mtcars)
-#' data(mtcars_rf, package="ggRandomForests")
-#' gg_dta <- gg_variable(mtcars_rf)
+#' #rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars)
+#' data(rfsrc_mtcars, package="ggRandomForests")
+#' gg_dta <- gg_variable(rfsrc_mtcars)
 #' 
 #' # mtcars$cyl is an ordinal variable 
 #' gg_dta$cyl <- factor(gg_dta$cyl)
-#' plot(gg_dta, x_var="cyl")
+#' plot(gg_dta, xvar="cyl")
 #' 
 #' # Others are continuous
-#' plot(gg_dta, x_var="disp")
-#' plot(gg_dta, x_var="hp")
-#' plot(gg_dta, x_var="wt")
+#' plot(gg_dta, xvar="disp")
+#' plot(gg_dta, xvar="hp")
+#' plot(gg_dta, xvar="wt")
 #' 
 #' # panel
-#' plot(gg_dta, x_var=c("disp","hp"), panel=TRUE)
+#' plot(gg_dta, xvar=c("disp","hp"), panel=TRUE)
 #' 
 #' ## ------------------------------------------------------------
 #' ## survival examples
@@ -93,29 +93,29 @@
 #' 
 #' ## survival
 #' # data(veteran, package = "randomForestSRC")
-#' # veteran_rf <- rfsrc(Surv(time,status)~., veteran, nsplit = 10, ntree = 100)
-#' data(veteran_rf, package="ggRandomForests")
+#' # rfsrc_veteran <- rfsrc(Surv(time,status)~., veteran, nsplit = 10, ntree = 100)
+#' data(rfsrc_veteran, package="ggRandomForests")
 #' 
 #' # get the 1 year survival time.
-#' gg_dta <- gg_variable(veteran_rf, time=90)
+#' gg_dta <- gg_variable(rfsrc_veteran, time=90)
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(gg_dta, x_var = "age")
-#' plot(gg_dta, x_var = "diagtime")
+#' plot(gg_dta, xvar = "age")
+#' plot(gg_dta, xvar = "diagtime")
 #' 
 #' # Generate coplots
-#' plot(gg_dta, x_var = c("age", "diagtime"), panel=TRUE)
+#' plot(gg_dta, xvar = c("age", "diagtime"), panel=TRUE)
 #' 
 #' # If we want to compare survival at different time points, say 30, 90 day 
 #' # and 1 year
-#' gg_dta <- gg_variable(veteran_rf, time=c(30, 90, 365))
+#' gg_dta <- gg_variable(rfsrc_veteran, time=c(30, 90, 365))
 #' 
 #' # Generate variable dependance plots for age and diagtime
-#' plot(gg_dta, x_var = "age")
-#' plot(gg_dta, x_var = "diagtime") 
+#' plot(gg_dta, xvar = "age")
+#' plot(gg_dta, xvar = "diagtime") 
 #' 
 #' # Generate coplots
-#' plot(gg_dta, x_var =  c("age", "diagtime"), panel=TRUE)
+#' plot(gg_dta, xvar =  c("age", "diagtime"), panel=TRUE)
 #' 
 gg_variable.ggRandomForests <- function(object,
                                        time,
@@ -177,9 +177,9 @@ gg_variable.ggRandomForests <- function(object,
         stop("The time of interest is less than the first event time. Make sure you are using the correct time units.")
       
       if(oob)
-        gg_dta.t$yhat=100*object$survival.oob[,inTime]
+        gg_dta.t$yhat=object$survival.oob[,inTime]
       else
-        gg_dta.t$yhat=100*object$survival[,inTime]
+        gg_dta.t$yhat=object$survival[,inTime]
       
       if(missing(time.labels)){
         gg_dta.t$time <- time[ind]

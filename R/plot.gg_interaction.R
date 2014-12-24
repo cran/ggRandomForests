@@ -21,7 +21,7 @@
 #' Plot a \code{\link{gg_interaction}} object, 
 #' 
 #' @param x gg_interaction object created from a \code{randomForestSRC::rfsrc} object
-#' @param x_var variable (or list of variables) of interest.
+#' @param xvar variable (or list of variables) of interest.
 #' @param lbls A vector of alternative variable names.
 #' @param ... arguments passed to the \code{\link{gg_interaction}} function.
 #' 
@@ -29,10 +29,11 @@
 #' 
 #' @export plot.gg_interaction
 #' 
-#' @seealso \code{\link{plot.gg_interaction}} \code{randomForestSRC::rfsrc} 
+#' @seealso \code{randomForestSRC::rfsrc} 
 #' \code{randomForestSRC::find.interaction} 
 #' \code{randomForestSRC::max.subtree} \code{randomForestSRC::var.select} 
 #' \code{randomForestSRC::vimp}
+#' \code{\link{plot.gg_interaction}} 
 #' 
 #' @references
 #' Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
@@ -44,8 +45,7 @@
 #' Regression and Classification (RF-SRC), R package version 1.4.
 #' 
 #' @importFrom ggplot2 ggplot aes_string geom_point geom_smooth labs element_text
-#' @importFrom tidyr gather
-#' @importFrom dplyr filter
+#' @importFrom reshape2 melt
 #' 
 #' @examples
 #' \dontrun{
@@ -60,8 +60,8 @@
 #' data(iris_interaction, package="ggRandomForests")
 #' gg_dta <- gg_interaction(iris_interaction)
 #' 
-#' plot(gg_dta, x_var="Petal.Width")
-#' plot(gg_dta, x_var="Petal.Length")
+#' plot(gg_dta, xvar="Petal.Width")
+#' plot(gg_dta, xvar="Petal.Length")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, regression setting
@@ -74,8 +74,8 @@
 #' data(airq_interaction, package="ggRandomForests")
 #' gg_dta <- gg_interaction(airq_interaction)
 #' 
-#' plot(gg_dta, x_var="Temp")
-#' plot(gg_dta, x_var="Solar.R")
+#' plot(gg_dta, xvar="Temp")
+#' plot(gg_dta, xvar="Solar.R")
 #' 
 #' ## ------------------------------------------------------------
 #' ## find interactions, survival setting
@@ -86,14 +86,14 @@
 #' data(pbc_interaction, package="ggRandomForests")
 #' gg_dta <- gg_interaction(pbc_interaction)
 #' 
-#' plot(gg_dta, x_var="bili")
-#' plot(gg_dta, x_var="copper")
+#' plot(gg_dta, xvar="bili")
+#' plot(gg_dta, xvar="copper")
 #' 
-#' plot(gg_dta, x_var=c("bili", "copper", "age", "albumin"), panel=TRUE)
+#' plot(gg_dta, xvar=c("bili", "copper", "age", "albumin"), panel=TRUE)
 #' 
 #' }
 ### error rate plot
-plot.gg_interaction <- function(x, x_var, lbls, ...){
+plot.gg_interaction <- function(x, xvar, lbls, ...){
   
   object <- x 
   if(is.matrix(x)){
@@ -102,32 +102,35 @@ plot.gg_interaction <- function(x, x_var, lbls, ...){
       stop("gg_interaction expects a rfsrc object, or a find.interaction object.")
     }
   }
-  # Initialize variables for gather statement... to silence R CMD CHECK
-  vars <- dpth <- NA
   
   if(!inherits(object, "gg_interaction")) 
     object <- gg_interaction(x, ...)
   
-  if(sum(x_var %in% rownames(object)) == 0){
-    stop(paste("Invalid x_var (",x_var, ") specified, covariate not found.", sep=""))
+  if(sum(xvar %in% rownames(object)) == 0){
+    stop(paste("Invalid xvar (",xvar, ") specified, covariate not found.", sep=""))
   }
   
-  if(length(x_var) > 1){
-    gg_dta <- data.frame(cbind(names=rownames(object),
-                                   t(object[which(rownames(object) %in% x_var),])))
-    #colnames(gg_dta) <- x_var
-    gg_dta$rank <- 1:dim(gg_dta)[1]
-    gg_dta <- gg_dta %>% 
-      gather(vars, dpth, -rank, -names)
+  if(length(xvar) > 1){
+    gg_dta <- data.frame(t(object[which(rownames(object) %in% xvar),]))
     
-    gg_dta$dpth <- as.numeric(gg_dta$dpth)
+    gg_dta$names <- rownames(object)
+    gg_dta$rank <- 1:dim(gg_dta)[1]
+    
+    gg_dta <- melt(gg_dta, 
+                   id.vars=c("rank", "names"))
+    
+    gg_dta$value <- as.numeric(gg_dta$value)
     gg_dta$names <- factor(gg_dta$names,
-                               levels=unique(gg_dta$names))
+                           levels=unique(gg_dta$names))
     gg_plt <- ggplot(gg_dta)+ 
-      geom_point(aes_string(x="names", y="dpth", shape="vars"))+
-      theme(text = element_text(size=10),
-            axis.text.x = element_text(angle=90)) +
-      labs(x="", y="Minimal Depth")
+    geom_point(aes_string(x="names", y="value"))+
+    geom_point(aes_string(x="names", y="value"),
+               data=gg_dta[which(as.character(gg_dta$names) == gg_dta$variable),],
+               shape=3, size=5,
+               color="red")+
+    theme(text = element_text(size=10),
+          axis.text.x = element_text(angle=90)) +
+    labs(x="", y="Minimal Depth")
     
     if(!missing(lbls)){
       if(length(lbls) >= length(colnames(object))){
@@ -136,29 +139,30 @@ plot.gg_interaction <- function(x, x_var, lbls, ...){
         st.lbls[which(is.na(st.lbls))] <- names(st.lbls[which(is.na(st.lbls))])
         
         gg_plt <- gg_plt +
-          scale_x_discrete(labels=st.lbls)
+        scale_x_discrete(labels=st.lbls)
       }
     }
     
-    gg_plt + facet_wrap(~vars)
+    
+    gg_plt + facet_wrap(~variable)
   }else{
     gg_dta <- data.frame(cbind(rank=1:dim(object)[1], 
-                                   t(object[which(rownames(object) %in% x_var),])))
+                               t(object[which(rownames(object) %in% xvar),])))
     colnames(gg_dta)[2] <- "dpth" 
     gg_dta$names <- rownames(gg_dta)
     
     gg_dta$dpth <- as.numeric(gg_dta$dpth)
     gg_dta$names <- factor(gg_dta$names,
-                               levels=unique(gg_dta$names))
+                           levels=unique(gg_dta$names))
     gg_plt <- ggplot(gg_dta)+ 
-      geom_point(aes_string(x="names", y="dpth"))+
-      geom_point(aes_string(x="names", y="dpth"),
-                 data=gg_dta[which(rownames(gg_dta)==x_var),],
-                 shape=3, size=5,
-                 color="red")+
-      theme(text = element_text(size=10),
-            axis.text.x = element_text(angle=90)) +
-      labs(x="", y="Minimal Depth")
+    geom_point(aes_string(x="names", y="dpth"))+
+    geom_point(aes_string(x="names", y="dpth"),
+               data=gg_dta[which(rownames(gg_dta)==xvar),],
+               shape=3, size=5,
+               color="red")+
+    theme(text = element_text(size=10),
+          axis.text.x = element_text(angle=90)) +
+    labs(x="", y="Minimal Depth")
     
     
     if(!missing(lbls)){
@@ -168,7 +172,7 @@ plot.gg_interaction <- function(x, x_var, lbls, ...){
         st.lbls[which(is.na(st.lbls))] <- names(st.lbls[which(is.na(st.lbls))])
         
         gg_plt <- gg_plt +
-          scale_x_discrete(labels=st.lbls)
+        scale_x_discrete(labels=st.lbls)
       }
     }
     gg_plt

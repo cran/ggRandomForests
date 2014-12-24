@@ -18,8 +18,9 @@
 #' 
 #' Nonparametric survival estimates.
 #' 
-#' @details gg_survival is a wrapper function for both generating nonparametric 
-#' survival estimates using either nelson-aalen or kaplan-meier estimates.  
+#' @details \code{gg_survival} is a wrapper function for generating nonparametric 
+#' survival estimates using either \code{\link{nelson}}-aalen or 
+#' \code{\link{kaplan}}-meier estimates.  
 #' 
 #' @param data name of the training data.frame
 #' @param interval name of the interval variable in the training dataset.
@@ -28,7 +29,7 @@
 #' @param type one of ("kaplan","nelson"), defaults to kaplan-meier
 #' @param ... extra arguments passed to kaplan or nelson functions.
 #' 
-#' @return A gg_survival object created using the non-parametric kaplan-meier or 
+#' @return A \code{gg_survival} object created using the non-parametric kaplan-meier or 
 #' nelson-aalon estimators.
 #' 
 #' @seealso \code{\link{kaplan}} \code{\link{nelson}} \code{\link{plot.gg_survival}}
