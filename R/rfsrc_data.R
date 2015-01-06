@@ -18,11 +18,11 @@
 #' Constructing random forests are computationally expensive.
 #' We cache \code{randomForestSRC::rfsrc} objects to improve the \code{ggRandomForests} 
 #' examples, diagnostics and vignettes run times. 
-#' (see \code{\link{rebuild_cache_datasets}} to rebuild a complete set of these data sets.)
+#' (see \code{\link{rfsrc_cache_datasets}} to rebuild a complete set of these data sets.)
 #' 
 #' For each data set listed, we build a \code{randomForestSRC::rfsrc}. Tuning parameters used
 #' in each case are documented in the examples. Each data set is built with the 
-#' \code{\link{rebuild_cache_datasets}} with the \code{randomForestSRC} version listed
+#' \code{\link{rfsrc_cache_datasets}} with the \code{randomForestSRC} version listed
 #' in the \code{ggRandomForests} DESCRIPTION file.
 #' 
 #' \itemize{
@@ -62,7 +62,7 @@
 #' @seealso \code{iris} \code{airquality} \code{mtcars} \code{MASS::Boston}
 #' \code{randomForestSRC::pbc} \code{randomForestSRC::veteran}
 #'  \code{randomForestSRC::rfsrc}
-#'  \code{\link{rebuild_cache_datasets}} 
+#'  \code{\link{rfsrc_cache_datasets}} 
 #'  \code{\link{gg_rfsrc}} 
 #'  \code{\link{plot.gg_rfsrc}} 
 #'  \code{\link{gg_error}} 
@@ -249,7 +249,7 @@
 #' Venables, W. N. and Ripley, B. D. (2002) Modern Applied Statistics with S. 
 #' Fourth edition. Springer.
 #' 
-#' @aliases rfsrc_data rfsrc_airq rfsrc_iris rfsrc_Boston rfsrc_mtcars rfsrc_pbc rfsrc_veteran
+#' @aliases rfsrc_data rfsrc_airq rfsrc_iris rfsrc_Boston rfsrc_mtcars rfsrc_pbc rfsrc_veteran rfsrc_pbc_test
 #' @docType data
 #' @keywords datasets
 #' @format \code{randomForestSRC::rfsrc} object
@@ -260,5 +260,5 @@
 #' @name rfsrc_mtcars
 #' @name rfsrc_pbc
 #' @name rfsrc_veteran
-#' 
+#' @name rfsrc_pbc_test
 NULL

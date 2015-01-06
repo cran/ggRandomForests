@@ -13,7 +13,7 @@ test_that("gg_minimal_vimp classifications",{
   expect_is(varsel_iris, "list")
   
   # Test the forest family
-  expect_that(is.null(varsel_iris$md.obj), is_false())
+  expect_false(is.null(varsel_iris$md.obj))
   
   ## Create the correct gg_error object
   ggrf.obj<- gg_minimal_vimp(varsel_iris)
@@ -91,4 +91,71 @@ test_that("gg_minimal_vimp regression",{
   
   # Test return is s ggplot object
   expect_is(gg.obj, "ggplot")
+  
+  data(varsel_Boston, package="ggRandomForests")
+  data(Boston, package="MASS")
+  
+  cls <- sapply(Boston, class) 
+  # 
+  lbls <- 
+    #crim
+    c("Crime rate by town.",
+      # zn
+      "Proportion of residential land zoned for lots over 25,000 sq.ft.",
+      # indus
+      "Proportion of non-retail business acres per town.",
+      # chas
+      "Charles River (tract bounds river).",
+      # nox
+      "Nitrogen oxides concentration (10 ppm).",
+      # rm
+      "Number of rooms per dwelling.",
+      # age
+      "Proportion of units built prior to 1940.",
+      # dis
+      "Distances to Boston employment center.",
+      # rad
+      "Accessibility to highways.",
+      # tax
+      "Property-tax rate per $10,000.",
+      # ptratio
+      "Pupil-teacher ratio by town.",
+      # black
+      "Proportion of blacks by town.",
+      # lstat
+      "Lower status of the population (percent).",
+      # medv
+      "Median value of homes ($1000s).")
+  
+  # Build a table for data description
+  dta.labs <- data.frame(cbind(Variable=names(cls), Description=lbls, type=cls))
+  
+  # Build a named vector for labeling figures later/
+  st.labs <- as.character(dta.labs$Description)
+  names(st.labs) <- names(cls)
+  
+  ## Test plotting the gg_error object
+  gg_plt <- plot.gg_minimal_vimp(varsel_Boston, lbls=st.labs)
+  expect_is(gg_plt, "ggplot")
+  
+})
+
+
+test_that("gg_minimal_vimp exceptions",{
+  data(varsel_airq, package="ggRandomForests")
+  
+  # Test the cached forest type
+  expect_is(varsel_airq, "list")
+  
+  vsel <- varsel_airq
+  vsel$varselect <- NULL
+  
+  expect_error(gg_minimal_depth(vsel))
+  
+  vsel$threshold <- NULL
+  expect_error(gg_minimal_depth(vsel))
+  
+  vsel <- varsel_airq
+  vsel$varselect$vimp <- NULL
+  gg_dta <- gg_minimal_depth(vsel)
 })

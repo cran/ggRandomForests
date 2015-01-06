@@ -19,12 +19,12 @@
 #' Constructing partial plot data with the randomForestsSRC::plot.variable function are 
 #' computationally expensive. We cache \code{randomForestSRC::plot.variable} objects
 #' to improve the \code{ggRandomForests} examples, diagnostics and vignettes run times. 
-#' (see \code{\link{rebuild_cache_datasets}} to rebuild a complete set of these data sets.)
+#' (see \code{\link{rfsrc_cache_datasets}} to rebuild a complete set of these data sets.)
 #' 
 #' For each data set listed, we build a \code{randomForestSRC::rfsrc} 
 #' (see \code{\link{rfsrc_data}}), then calculate the partial plot data with 
 #' \code{randomForestSRC::plot.variable} function, setting \code{partial=TRUE}. Each data set is 
-#' built with the \code{\link{rebuild_cache_datasets}} with the \code{randomForestSRC} version 
+#' built with the \code{\link{rfsrc_cache_datasets}} with the \code{randomForestSRC} version 
 #' listed in the \code{ggRandomForests} DESCRIPTION file.
 #' 
 #' \itemize{
@@ -65,7 +65,7 @@
 #' \code{randomForestSRC::pbc} \code{randomForestSRC::veteran}
 #' \code{randomForestSRC::plot.variable}
 #' \code{\link{rfsrc_data}}
-#'  \code{\link{rebuild_cache_datasets}} 
+#'  \code{\link{rfsrc_cache_datasets}} 
 #'  \code{\link{gg_partial}} 
 #'  \code{\link{plot.gg_partial}}
 #'  
@@ -244,16 +244,17 @@
 #' Venables, W. N. and Ripley, B. D. (2002) Modern Applied Statistics with S. 
 #' Fourth edition. Springer.
 #' 
-#' @aliases partial_data partial_airq partial_iris partial_Boston partial_mtcars partial_pbc partial_veteran
+#' @aliases partial_data partial_airq partial_iris partial_Boston partial_mtcars partial_pbc partial_veteran partial_pbc_time
 #' @docType data
 #' @keywords datasets
-#' @format \code{randomForestSRC::find.interaction} matrix
+#' @format \code{randomForestSRC::plot.variable} 
 #' @name partial_data
 #' @name partial_iris
 #' @name partial_airq
 #' @name partial_Boston
 #' @name partial_mtcars
 #' @name partial_pbc
+#' @name partial_pbc_time
 #' @name partial_veteran
 #' 
 NULL

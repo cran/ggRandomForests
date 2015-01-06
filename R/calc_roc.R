@@ -44,9 +44,13 @@
 #' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
 #' data(rfsrc_iris)
 #' gg_dta <- calc_roc.rfsrc(rfsrc_iris, rfsrc_iris$yvar, which.outcome=1, oob=TRUE)
+#' gg_dta <- calc_roc.rfsrc(rfsrc_iris, rfsrc_iris$yvar, which.outcome=1, oob=FALSE)
 #' 
+
 calc_roc.rfsrc <- function(object, yvar, which.outcome="all", oob=TRUE){
+  
   if(!is.factor(yvar)) yvar <- factor(yvar)
+  
   if(which.outcome!="all"){
     dta.roc <- data.frame(cbind(res=(yvar == levels(yvar)[which.outcome]), 
                                 prd=object$predicted[, which.outcome],
@@ -58,6 +62,7 @@ calc_roc.rfsrc <- function(object, yvar, which.outcome="all", oob=TRUE){
   }else{
     stop("Must specify which.outcome for now.")
   }
+  
   pct<- pct[-length(pct)]
   
   gg_dta <- mclapply(pct, function(crit){
@@ -77,32 +82,33 @@ calc_roc.rfsrc <- function(object, yvar, which.outcome="all", oob=TRUE){
   gg_dta <- data.frame(gg_dta, row.names=1:nrow(gg_dta))
   gg_dta$pct <- c(0,pct,1)
   invisible(gg_dta)
-  
 }
 
 calc_roc<- calc_roc.rfsrc
 
-calc_roc.randomForest <- function(object, dta, which.outcome=1){
-  prd <- predict(object, type="prob")
-  dta.roc <- data.frame(cbind(res=(dta == levels(dta)[which.outcome]), 
-                              prd=prd[,which.outcome]))
-  
-  pct <- sort(unique(prd[,which.outcome]))
-  pct<- pct[-length(pct)]
-  
-  gg_dta <-mclapply(pct, function(crit){
-    tbl <- xtabs(~res+(prd>crit), dta.roc)
-    
-    spec<-tbl[2,2]/rowSums(tbl)[2]
-    sens<-tbl[1,1]/rowSums(tbl)[1]
-    cbind(sens=sens, spec=spec)
-  })
-  gg_dta <- data.frame(do.call(rbind, gg_dta))
-  
-  gg_dta$pct <- c(0,pct,1)
-  
-  invisible(gg_dta)
-}
+## This is in development still.
+## We'll return to this when we start the next version.
+# calc_roc.randomForest <- function(object, dta, which.outcome=1){
+#   prd <- predict(object, type="prob")
+#   dta.roc <- data.frame(cbind(res=(dta == levels(dta)[which.outcome]), 
+#                               prd=prd[,which.outcome]))
+#   
+#   pct <- sort(unique(prd[,which.outcome]))
+#   pct<- pct[-length(pct)]
+#   
+#   gg_dta <-mclapply(pct, function(crit){
+#     tbl <- xtabs(~res+(prd>crit), dta.roc)
+#     
+#     spec<-tbl[2,2]/rowSums(tbl)[2]
+#     sens<-tbl[1,1]/rowSums(tbl)[1]
+#     cbind(sens=sens, spec=spec)
+#   })
+#   gg_dta <- data.frame(do.call(rbind, gg_dta))
+#   
+#   gg_dta$pct <- c(0,pct,1)
+#   
+#   invisible(gg_dta)
+# }
 
 #'
 #' Area Under the ROC Curve calculator
