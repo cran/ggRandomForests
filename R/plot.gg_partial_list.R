@@ -32,8 +32,6 @@
 #' 
 #' @return list of \code{ggplot} objects, or a single faceted \code{ggplot} object
 #' 
-#' @export plot.gg_partial_list
-#' 
 #' @seealso \code{randomForestSRC::plot.variable} \code{\link{gg_partial}} 
 #' \code{\link{plot.gg_partial}} \code{\link{gg_variable}} 
 #' \code{\link{plot.gg_variable}} 
@@ -154,7 +152,7 @@
 #' @importFrom ggplot2 ggplot aes labs geom_point geom_smooth facet_wrap
 #' @importFrom parallel mclapply
 #'
-### error rate plot
+#' @export
 plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
   gg_dta <- x 
   
@@ -169,11 +167,13 @@ plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
     # and rename the value column to "value"
     nms <- names(gg_dta)
     
-    cls <- sapply(nms, function(nm){class(gg_dta[[nm]][,nm])})
+    cls <- sapply(nms, function(nm){
+      class(gg_dta[[nm]][,nm])
+      })
     
     gg_dta <- mclapply(nms, function(nm){
       obj <- gg_dta[[nm]]
-      colnames(obj)[which(colnames(obj)==nm)]  <- "value"
+      colnames(obj)[which(colnames(obj) == nm)]  <- "value"
       obj$variable <- nm
       obj
     })
@@ -192,12 +192,12 @@ plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
                        aes_string(x="value", y="yhat", color="group", shape="group"))
     }
     
-    if(sum(cls=="factor")==length(cls)){
+    if(sum(cls == "factor") == length(cls)){
       gg_plt <- gg_plt +
       geom_boxplot(...)
     }else{
       gg_plt <- gg_plt +
-      geom_point(...)+
+      geom_point(...) +
       geom_smooth(...)
     }
     return(gg_plt +
@@ -208,7 +208,7 @@ plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
     # OR a list of figures.
     gg_plt <- vector("list", length=lng)
     
-    for(ind in 1:lng){
+    for (ind in 1:lng){
       gg_plt[[ind]] <- plot.gg_partial(gg_dta[[ind]], points, ...)
     }
     

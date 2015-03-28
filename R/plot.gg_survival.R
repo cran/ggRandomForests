@@ -28,9 +28,6 @@
 #'  
 #' @return \code{ggplot} object
 #' 
-#' @export plot.gg_survival
-#' 
-#' 
 #' @examples
 #' \dontrun{
 #' ## -------- pbc data
@@ -60,14 +57,14 @@
 #'}
 #'
 #' @importFrom ggplot2 ggplot geom_ribbon aes_string geom_errorbar geom_step labs
-#' 
+#' @export
 ### Survival plots
-plot.gg_survival<- function(x, 
+plot.gg_survival <- function(x, 
                             type=c("surv", "cum_haz","hazard","density","mid_int", "life","proplife"),
                             error=c("shade","bars","lines", "none"),
                             ...){
   gg_dta <- x
-  if(inherits(gg_dta, "rfsrc")) gg_dta<-gg_survival(gg_dta)
+  if(inherits(gg_dta, "rfsrc")) gg_dta <- gg_survival(gg_dta)
   
   error <- match.arg(error)
   type <- match.arg(type)
@@ -77,15 +74,15 @@ plot.gg_survival<- function(x,
   
   
   if(is.null(gg_dta$groups)){
-    gg_plt<-ggplot(gg_dta) +
+    gg_plt <- ggplot(gg_dta) +
       geom_step(aes_string(x="time", y=type), ...)
   }else{
     gg_dta$groups <- factor(gg_dta$groups)
-    gg_plt<-ggplot(gg_dta) +
+    gg_plt <- ggplot(gg_dta) +
       geom_step(aes_string(x="time", y=type, color="groups"), ...)
   }
   # Do we want to show confidence limits?
-  if(type=="surv"){
+  if(type == "surv"){
     if(is.null(gg_dta$groups)){
       gg_plt <- switch(error,
                        # Shading the standard errors
@@ -98,12 +95,12 @@ plot.gg_survival<- function(x,
                          # requesting error bars, or this will get really messy.
                          #                     errFll <- fll
                          #                     if(!missing(errbars) )errFll <- errFll[errbars,]
-                         gg_plt+ 
+                         gg_plt + 
                            geom_errorbar(aes_string(x="time", ymax="upper", ymin="lower"))
                        },
                        lines= gg_plt + 
-                         geom_step(aes_string(x="time", y="upper"), linetype=2)+
-                         geom_step(aes(x="time", y="lower"), linetype=2), 
+                         geom_step(aes_string(x="time", y="upper"), linetype=2) +
+                         geom_step(aes_string(x="time", y="lower"), linetype=2), 
                        none=gg_plt)
     }else{
       gg_plt <- switch(error,
@@ -122,7 +119,7 @@ plot.gg_survival<- function(x,
                            geom_errorbar(aes_string(x="time", ymax="upper", ymin="lower", color="groups"))
                        },
                        lines= gg_plt + 
-                         geom_step(aes_string(x="time", y="upper", color="groups"), linetype=2)+
+                         geom_step(aes_string(x="time", y="upper", color="groups"), linetype=2) +
                          geom_step(aes_string(x="time", y="lower", color="groups"), linetype=2), 
                        none=gg_plt)
     }

@@ -19,16 +19,13 @@
 #' 
 #' @param object A \code{randomForestSRC::rfsrc} object, \code{randomForestSRC::predict}
 #'  object or the list from the \code{randomForestSRC::var.select.rfsrc} function.
-#' @param event an optional vector of logical values (event indicator) for 
-#' shaping the points in when plotting.
 #' @param ... optional arguments passed to the \code{randomForestSRC::var.select} function 
 #'  if operating on an \code{randomForestSRC::rfsrc} object. 
-#'  
+#' 
 #'  @return \code{gg_minimal_vimp} comparison object.
 #'  
 #'  @seealso \code{\link{plot.gg_minimal_vimp}} \code{randomForestSRC::var.select}
 #'  
-#'  @export gg_minimal_vimp gg_minimal_vimp.rfsrc
 #'  @aliases gg_minimal_vimp
 #'  
 #' @examples
@@ -52,6 +49,7 @@
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- air quality data
 #' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' # varsel_airq <- var.select(rfsrc_airq)
@@ -63,6 +61,7 @@
 #' 
 #' # Plot the gg_minimal_vimp object
 #' plot(gg_dta)
+#' }
 #' 
 #' ## -------- Boston data
 #' data(varsel_Boston, package="ggRandomForests")
@@ -73,6 +72,7 @@
 #' # Plot the gg_minimal_vimp object
 #' plot(gg_dta)
 #' 
+#' \dontrun{
 #' ## -------- mtcars data
 #' data(varsel_mtcars, package="ggRandomForests")
 #' 
@@ -81,10 +81,11 @@
 #' 
 #' # Plot the gg_minimal_vimp object
 #' plot(gg_dta)
-#' 
+#' }
 #' ## ------------------------------------------------------------
 #' ## Survival example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
 #' # data(veteran, package = "randomForestSRC")
@@ -95,44 +96,49 @@
 #' 
 #' gg_dta <- gg_minimal_vimp(varsel_veteran)
 #' plot(gg_dta)
-#'   
+#' }
 #' ## -------- pbc data
 #' data(varsel_pbc, package="ggRandomForests")
 #' 
 #' gg_dta <- gg_minimal_vimp(varsel_pbc)
 #' plot(gg_dta)
-
-gg_minimal_vimp.rfsrc <- function(object, event, ...){
+#' @export
+gg_minimal_vimp <- function (object, ...) {
+  UseMethod("gg_minimal_vimp", object)
+}
+#' @export
+gg_minimal_vimp.rfsrc <- function(object, ...){
   
   if (inherits(object, "rfsrc") == TRUE){
-    vSel <- var.select(object, ...)
+    vsel <- var.select(object, ...)
   }else if (!is.null(object$varselect)) {
     # Test for variable selection minimal depth object
-    vSel <- object
-  }else if(is.null(object$threshold)) {
-    # Test for max.subtree minimal depth object, convert to vSel object
-    stop("No support for max.subtree yet, use var.select instead")
+    vsel <- object
   }else{
     stop("Function works only on rfsrc or var.select objects.")
   }
   
-  rnk.md <- rnk.vm <- data.frame(cbind(names=rownames(vSel$varselect)))
+  rnk.md <- rnk.vm <- data.frame(cbind(names=rownames(vsel$varselect)))
   rnk.md$depth <- rnk.vm$vimp <- 1:dim(rnk.md)[1]
   
   # Rename the full vimp.all column to just "vimp"
-  if(is.null(vSel$varselect$vimp))
-    colnames(vSel$varselect)[which(colnames(vSel$varselect)=="vimp.all")] <- "vimp"
+  if(is.null(vsel$varselect$vimp))
+    colnames(vsel$varselect)[which(colnames(vsel$varselect) == "vimp.all")] <-
+      "vimp"
   
-  rnk.vm <- rnk.vm[order(vSel$varselect$vimp, decreasing=TRUE),]
+  rnk.vm <- rnk.vm[order(vsel$varselect$vimp, decreasing=TRUE),]
   rnk.vm$vimp <- 1:dim(rnk.vm)[1]
   
   # Default color is by negative/positive vimp
-  rnk.vm$col <- c("-", "+")[as.numeric(vSel$varselect$vimp[order(vSel$varselect$vimp, 
-                                                                 decreasing=TRUE)]>0)+1]
+  rnk.vm$col <- c("-", "+")[as.numeric(vsel$varselect$vimp[
+      order(vsel$varselect$vimp, decreasing = TRUE)] > 0)
+    + 1]
   
   gg_dta <- merge(rnk.vm, rnk.md,by="names")
   
   class(gg_dta) <- c("gg_minimal_vimp", class(gg_dta))
   invisible(gg_dta)
 }
-gg_minimal_vimp <- gg_minimal_vimp.rfsrc
+
+#' @export
+gg_minimal_vimp.default <- gg_minimal_vimp.rfsrc

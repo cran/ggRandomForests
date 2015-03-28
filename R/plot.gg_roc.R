@@ -25,8 +25,6 @@
 #' 
 #' @return \code{ggplot} object of the ROC curve
 #' 
-#' @export plot.gg_roc
-#' 
 #' @seealso \code{\link{gg_roc}} rfsrc
 #' 
 #' @references
@@ -68,8 +66,8 @@
 #' @importFrom ggplot2 ggplot aes_string geom_line geom_abline labs coord_fixed annotate
 #' @importFrom parallel mclapply
 #' 
-### error rate plot
-plot.gg_roc<- function(x, which.outcome=NULL, ...){
+#' @export
+plot.gg_roc <- function(x, which.outcome=NULL, ...){
   gg_dta <- x
   
   
@@ -84,49 +82,58 @@ plot.gg_roc<- function(x, which.outcome=NULL, ...){
         })
         
       }else{
-        if(is.null(which.outcome))which.outcome=2
-        gg_dta<- gg_roc(gg_dta, which.outcome, ...)
+        if(is.null(which.outcome))which.outcome <- 2
+        gg_dta <- gg_roc(gg_dta, which.outcome, ...)
       }
     }else{
       stop("gg_roc expects a classification randomForest.")
     }
   if(inherits(gg_dta, "gg_roc")){
     gg_dta <- gg_dta[order(gg_dta$spec),]
-    gg_dta$fpr <- 1-gg_dta$spec
+    gg_dta$fpr <- 1 - gg_dta$spec
     auc <- calc_auc(gg_dta)
     
-    gg_plt <- ggplot(data=gg_dta)+
-      geom_line(aes_string(x="fpr", y="sens"))+
-      labs(x="1 - Specificity (FPR)", y="Sensitivity (TPR)")+
+    gg_plt <- ggplot(data=gg_dta) +
+      geom_line(aes_string(x="fpr", y="sens")) +
+      labs(x="1 - Specificity (FPR)", y="Sensitivity (TPR)") +
       geom_abline(a=1, b=0, col="red", linetype=2, size=.5) +
       coord_fixed()
     
-    
-    gg_plt <- gg_plt+
-      annotate(x=.5,y=.2,geom="text", 
+    gg_plt <- gg_plt +
+      annotate(x=.5, y=.2, geom="text", 
                label=paste("AUC = ",round(auc, digits=3), sep=""), hjust=0)
     
   }else{
-    gg_dta <- mclapply(gg_dta, function(st){st[order(st$spec),]
-                                    st})
-    gg_dta <- mclapply(gg_dta, function(st){st$fpr <- 1-st$spec
-                                    st})
-    gg_dta <- mclapply(1:length(gg_dta), function(ind){ gg_dta[[ind]]$outcome <- ind
-                                                gg_dta[[ind]]})
+    gg_dta <- mclapply(gg_dta, function(st){
+      st[order(st$spec),]
+      st
+    })
+    gg_dta <- mclapply(gg_dta, function(st){
+      st$fpr <- 1 - st$spec
+      st
+    })
+    gg_dta <- mclapply(1:length(gg_dta), 
+                       function(ind){ 
+                         gg_dta[[ind]]$outcome <- ind
+                         gg_dta[[ind]]
+                       })
     
-    auc <- mclapply(gg_dta, function(st){calc_auc(st)})
+    auc <- mclapply(gg_dta, 
+                    function(st){
+                      calc_auc(st)
+                    })
     
-    oDta <- do.call(rbind, gg_dta)
-    oDta$outcome <- factor(oDta$outcome)
+    o_dta <- do.call(rbind, gg_dta)
+    o_dta$outcome <- factor(o_dta$outcome)
     
-    gg_plt <- ggplot(data=oDta)+
-      geom_line(aes_string(x="fpr", y="sens", linetype="outcome", col="outcome"))+
-      labs(x="1 - Specificity (FPR)", y="Sensitivity (TPR)")+
+    gg_plt <- ggplot(data=o_dta) +
+      geom_line(aes_string(x="fpr", y="sens", linetype="outcome", col="outcome")) +
+      labs(x="1 - Specificity (FPR)", y="Sensitivity (TPR)") +
       geom_abline(a=1, b=0, col="red", linetype=2, size=.5) +
       coord_fixed()
     
     if(crv < 2){
-      gg_plt <- gg_plt+
+      gg_plt <- gg_plt +
         annotate(x=.5,y=.2,geom="text", 
                  label=paste("AUC = ",round(auc, digits=3), sep=""), hjust=0)
     }

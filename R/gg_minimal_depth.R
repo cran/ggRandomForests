@@ -31,7 +31,6 @@
 #' @return \code{gg_minimal_depth} object, A modified list of variables from the 
 #' \code{randomForestSRC::var.select} function, ordered by minimal depth rank. 
 #' 
-#' @export gg_minimal_depth gg_minimal_depth.rfsrc 
 #' @aliases gg_minimal_depth gg_minimal_depth.rfsrc
 #' 
 #' @seealso \code{randomForestSRC::var.select} \code{\link{plot.gg_minimal_depth}}
@@ -59,6 +58,7 @@
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- air quality data
 #' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' # varsel_airq <- var.select(rfsrc_airq)
@@ -70,6 +70,7 @@
 #' 
 #' # Plot the gg_minimal_depth object
 #' plot(gg_dta)
+#' }
 #' 
 #' ## -------- Boston data
 #' data(varsel_Boston, package="ggRandomForests")
@@ -77,15 +78,18 @@
 #' # Get a data.frame containing error rates
 #' plot(gg_minimal_depth(varsel_Boston))
 #' 
+#' \dontrun{
 #' ## -------- mtcars data
 #' data(varsel_mtcars, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
 #' plot.gg_minimal_depth(varsel_mtcars)
+#' }
 #' 
 #' ## ------------------------------------------------------------
 #' ## Survival example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- veteran data
 #' ## veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
@@ -97,6 +101,7 @@
 #' 
 #' gg_dta <- gg_minimal_depth(varsel_veteran)
 #' plot(gg_dta)
+#' }
 #' 
 #' ## -------- pbc data
 #' data(varsel_pbc, package="ggRandomForests")
@@ -104,28 +109,40 @@
 #' gg_dta <- gg_minimal_depth(varsel_pbc)
 #' plot(gg_dta)
 #' 
+#' @export
+gg_minimal_depth <- function (object, ...) {
+  UseMethod("gg_minimal_depth", object)
+}
 
+#' @export
 gg_minimal_depth.rfsrc <- function (object, ...){
   
   if (inherits(object, "rfsrc") == TRUE){
-    vSel <- var.select(object, ...)
+    vsel <- var.select(object, ...)
   }else if (!is.null(object$varselect)) {
     # Test for variable selection minimal depth object
-    vSel <- object
+    vsel <- object
   }else if(is.null(object$threshold)) {
-    # Test for max.subtree minimal depth object, convert to vSel object
+    # Test for max.subtree minimal depth object, convert to vsel object
     stop("No support for max.subtree yet, use var.select instead")
   }else{
     stop("Function works only on rfsrc or var.select objects.")
   }
   
-  vSel$varselect$names <- rownames(vSel$varselect)
   
-  vSel$varselect$names <- factor(vSel$varselect$names, 
-                                 levels=unique(vSel$varselect$names))
+  # There seems to be a bug in the randomForestSRC::var.select 
+  # function that does not calculage the threshold correctly.
   
-  class(vSel) <- c("gg_minimal_depth", class(vSel))
-  invisible(vSel) 
+  
+  vsel$varselect$names <- rownames(vsel$varselect)
+  
+  vsel$varselect$names <- factor(vsel$varselect$names, 
+                                 levels=unique(vsel$varselect$names))
+  
+  class(vsel) <- c("gg_minimal_depth", class(vsel))
+  invisible(vsel) 
 }
 
-gg_minimal_depth<-gg_minimal_depth.rfsrc                     
+#' @export
+gg_minimal_depth.default <- 
+  gg_minimal_depth.rfsrc

@@ -4,12 +4,9 @@
 \name{partial_coplot_data}
 \alias{partial_coplot_Boston}
 \alias{partial_coplot_Boston2}
-\alias{partial_coplot_Boston_surf}
 \alias{partial_coplot_data}
 \alias{partial_coplot_pbc}
 \alias{partial_coplot_pbc2}
-\alias{partial_coplot_pbc_surf}
-\alias{partial_coplot_pbc_surf2}
 \title{Cached \code{randomForestSRC::plot.variable} objects for examples, diagnostics and vignettes.}
 \format{List of \code{randomForestSRC::plot.variable} objects}
 \description{
@@ -81,6 +78,16 @@ Ishwaran H., Kogalur U.B., Blackstone E.H. and Lauer M.S.
 
 Harrison, D., and D.L. Rubinfeld. 1978. "Hedonic Prices and the Demand for Clean Air."
  J. Environ. Economics and Management 5: 81-102.
+
+#---------------------
+ pbc data set
+---------------------
+
+Flemming T.R and Harrington D.P., (1991) Counting Processes and Survival Analysis.
+New York: Wiley.
+
+T Therneau and P Grambsch (2000), Modeling Survival Data: Extending the Cox Model,
+Springer-Verlag, New York. ISBN: 0-387-98784-3.
 }
 \seealso{
 \code{MASS::Boston} \code{randomForestSRC::plot.variable}

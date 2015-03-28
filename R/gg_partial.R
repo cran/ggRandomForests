@@ -27,9 +27,10 @@
 #' Partial variable dependence plots are the risk adjusted estimates of the specified 
 #' response as a function of a single covariate, possibly subsetted on other covariates.
 #' 
+#' An option \code{named} argument can name a column for merging multiple plots together
+#' 
 #' @param object the partial variable dependence data object from 
 #'   \code{randomForestSRC::plot.variable} function
-#' @param named optional column for merging multiple plots together
 #' @param ... optional arguments
 #'  
 #' @return \code{gg_partial} object. A \code{data.frame} or \code{list} of 
@@ -37,8 +38,6 @@
 #' contained within the \code{randomForestSRC::plot.variable} output. 
 #' 
 #' @seealso \code{\link{plot.gg_partial}} \code{randomForestSRC::plot.variable}
-#' 
-#' @export gg_partial.rfsrc gg_partial
 #' 
 #' @importFrom parallel mclapply
 #' 
@@ -65,6 +64,7 @@
 #' ## ------------------------------------------------------------
 #' ## regression
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- air quality data
 #' ## airquality "Wind" partial dependence plot
 #' ##
@@ -81,14 +81,15 @@
 #' 
 #' gg_dta[["Month"]] <- NULL
 #' plot(gg_dta, panel=TRUE)
+#' }
 #' 
-#' \dontrun{
 #' ## -------- Boston data
 #' data(partial_Boston, package="ggRandomForests")
 #'
 #' gg_dta <- gg_partial(partial_Boston)
 #' plot(gg_dta, panel=TRUE)
 #'
+#' \dontrun{
 #' ## -------- mtcars data
 #' data(partial_mtcars, package="ggRandomForests")
 #' gg_dta <- gg_partial(partial_mtcars)
@@ -103,9 +104,11 @@
 #' gg_dta[["gear"]] <- NULL
 #' plot(gg_dta, panel=TRUE)
 #' }
+#'
 #' ## ------------------------------------------------------------
 #' ## survival examples
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- veteran data
 #' ## survival "age" partial variable dependence plot
 #' ##
@@ -135,7 +138,6 @@
 #' plot(gg_dta[["karno"]])
 #' plot(gg_dta[["celltype"]])
 #' 
-#' \dontrun{
 #' gg_dta.cat <- gg_dta
 #' gg_dta[["celltype"]] <- gg_dta[["trt"]] <- gg_dta[["prior"]] <- NULL
 #' plot(gg_dta, panel=TRUE)
@@ -144,33 +146,73 @@
 #' plot(gg_dta.cat, panel=TRUE, notch=TRUE)
 #' }
 #' ## -------- pbc data
+#' data("partial_pbc", package = "ggRandomForests")
+#' data("varsel_pbc", package = "ggRandomForests")
+#' xvar <- varsel_pbc$topvars
 #' 
+#' # Convert all partial plots to gg_partial objects
+#' gg_dta <- lapply(partial_pbc, gg_partial)
+#'
+#' # Combine the objects to get multiple time curves 
+#' # along variables on a single figure.
+#' pbc_ggpart <- combine.gg_partial(gg_dta[[1]], gg_dta[[2]], 
+#'                               lbls = c("1 Year", "3 Years"))
+#'
+#' # Plot the highest ranked variable, by name.
+#' plot(pbc_ggpart[["bili"]], se = FALSE)
+#'      
+#'      # Create a temporary holder and remove the stage and edema data
+#' ggpart <- pbc_ggpart
+#' ggpart$edema <- NULL
+#' 
+#' # Panel plot the remainder.
+#' plot(ggpart, se = FALSE, panel = TRUE)
+#' 
+#' plot(pbc_ggpart[["edema"]], panel=TRUE,
+#'      notch = TRUE, alpha = .3, outlier.shape = NA) 
+#'   
 #' @aliases gg_partial gg_partial_list
 #' @name gg_partial
 #' @name gg_partial_list
-#' 
+#' @export
+gg_partial <- function (object, ...) {
+  UseMethod("gg_partial", object)
+}
+
+#' @export
 gg_partial.rfsrc <- function(object, 
-                             named,
                              ...){
   
   if(!inherits(object,"plot.variable")){
-    stop("gg_partial expects a plot.variable object, Run plot.variable with partial=TRUE")
+    stop(paste("gg_partial expects a plot.variable object, ",
+               "Run plot.variable with partial=TRUE"))
   }
   
   # If we pass it a plot.variable output, without setting partial=TRUE,
   # We'll want a gg_variable object.
   if(!object$partial) invisible(gg_variable(object, ...))
   
-  # How many variables
-  n.var=length(object$pData)
+  Call <- match.call(expand.dots = TRUE)
+  named <- eval.parent(Call$named)
   
+  # How many variables
+  n.var <- length(object$pData)
   
   # Create a list of data
   gg_dta <- mclapply(1:n.var, function(ind){
     
-    if(length(object$pData[[ind]]$x.uniq) == length(object$pData[[ind]]$yhat)){
-      data.frame(cbind(yhat=object$pData[[ind]]$yhat, 
-                       x=object$pData[[ind]]$x.uniq))
+    if(length(object$pData[[ind]]$x.uniq) == 
+       length(object$pData[[ind]]$yhat)){
+      if(object$family == "surv"){
+        # Survival family has weird standard errors because of non-normal transforms
+        data.frame(cbind(yhat=object$pData[[ind]]$yhat, 
+                         x=object$pData[[ind]]$x.uniq))
+      }else{
+        # We assume RC forests are "normal"
+        data.frame(cbind(yhat=object$pData[[ind]]$yhat, 
+                         x=object$pData[[ind]]$x.uniq,
+                         se=object$pData[[ind]]$yhat.se))
+      }
     }else{
       
       x <- rep(as.character(object$pData[[ind]]$x.uniq),
@@ -185,13 +227,15 @@ gg_partial.rfsrc <- function(object,
   names(gg_dta) <- object$xvar.names
   
   # name the data, so labels come out correctly.
-  for(ind in 1:n.var){
-    colnames(gg_dta[[ind]])[-1] <- object$xvar.names[ind]
-    if(!missing(named)) gg_dta[[ind]]$id=named
-    class(gg_dta[[ind]]) <- c("gg_partial", class(gg_dta[[ind]]))
+  for (ind in 1:n.var){
+    colnames(gg_dta[[ind]])[which(colnames(gg_dta[[ind]]) == "x")] <- 
+      object$xvar.names[ind]
+    if(!missing(named)) gg_dta[[ind]]$id <- named
+    class(gg_dta[[ind]]) <- c("gg_partial", class(gg_dta[[ind]]), 
+                              object$family)
   }
   
-  if(n.var ==1 ){
+  if (n.var == 1 ){
     # If there is only one, no need for a list
     invisible(gg_dta[[1]])
   }else{
@@ -201,5 +245,3 @@ gg_partial.rfsrc <- function(object,
   }
   
 }
-
-gg_partial <- gg_partial.rfsrc

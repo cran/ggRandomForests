@@ -46,31 +46,35 @@
 #' data(rfsrc_iris, package="ggRandomForests")
 #' gg_dta<- gg_rfsrc(rfsrc_iris)
 #' 
-#' plot.gg_rfsrc(gg_dta)
+#' plot(gg_dta)
 #' 
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- air quality data
 #' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' data(rfsrc_airq, package="ggRandomForests")
 #' gg_dta<- gg_rfsrc(rfsrc_airq)
 #' 
-#' plot.gg_rfsrc(gg_dta)
+#' plot(gg_dta)
+#' }
 #' 
 #' ## -------- Boston data
 #' data(rfsrc_Boston, package="ggRandomForests")
-#' plot.gg_rfsrc(rfsrc_Boston) 
+#' plot(rfsrc_Boston) 
 #' 
+#' \dontrun{
 #' ## -------- mtcars data
 #' data(rfsrc_mtcars, package="ggRandomForests")
 #' gg_dta<- gg_rfsrc(rfsrc_mtcars)
 #' 
-#' plot.gg_rfsrc(gg_dta)
-#' 
+#' plot(gg_dta)
+#' }
 #' ## ------------------------------------------------------------
 #' ## Survival example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
 #' # data(veteran, package = "randomForestSRC")
@@ -84,24 +88,27 @@
 #' 
 #' gg_dta <- gg_rfsrc(rfsrc_veteran, by="trt")
 #' plot(gg_dta)
+#' }
 #' 
-#' \dontrun{
 #' ## -------- pbc data
 #' ## We don't run this because of bootstrap confidence limits
 #' data(rfsrc_pbc, package = "ggRandomForests")
+#' 
+#' \dontrun{
 #' gg_dta <- gg_rfsrc(rfsrc_pbc)
 #' plot(gg_dta)
 #' 
 #' gg_dta <- gg_rfsrc(rfsrc_pbc, conf.int=.95)
 #' plot(gg_dta)
+#' }
 #' 
 #' gg_dta <- gg_rfsrc(rfsrc_pbc, by="treatment")
 #' plot(gg_dta)
-#'}
+#'
 #' 
 #' @aliases gg_rfsrc gg_rfsrc.rfsrc
-#' @export gg_rfsrc gg_rfsrc.rfsrc 
-#'
+
+#' @export 
 gg_rfsrc.rfsrc <- function(object, 
                            oob=TRUE, 
                            by, 
@@ -109,10 +116,12 @@ gg_rfsrc.rfsrc <- function(object,
   
   ## Check that the input obect is of the correct type.
   if (inherits(object, "rfsrc") == FALSE){
-    stop("This function only works for Forests grown with the randomForestSRC package.")
+    stop(paste("This function only works for Forests grown with the", 
+               "randomForestSRC package."))
   }
   if (is.null(object$forest)) {
-    stop("The function requires the \"forest = TRUE\" attribute when growing the randomForest")
+    stop(paste("The function requires the \"forest = TRUE\"",
+               "attribute when growing the randomForest"))
   }
   
   # get optional arguments
@@ -138,7 +147,8 @@ gg_rfsrc.rfsrc <- function(object,
         stop(paste("By argument does not have the correct dimension ", 
                    nrow(object$xvar)))
     }else{
-      stop(paste("By argument should be either a vector, or colname of training data", 
+      stop(paste("By argument should be either a vector, or colname",
+                 "of training data", 
                  nrow(object$xvar)))
     }
     grp <- factor(grp, levels=unique(grp))
@@ -166,12 +176,12 @@ gg_rfsrc.rfsrc <- function(object,
     
     # Switch between logical or categorical outcome
     if(ncol(gg_dta) == 1){
-      colnames(gg_dta)<- object$yvar.names
+      colnames(gg_dta) <- object$yvar.names
       # Force this to logical return value... 
       #
       # This may be a bug in rfsrc, as it converts all classification models
       # into factors.
-      gg_dta$y = as.logical(as.numeric(object$yvar)-1)
+      gg_dta$y <- as.logical(as.numeric(object$yvar) - 1)
     }else{
       colnames(gg_dta) <- levels(object$yvar)
       gg_dta$y <- object$yvar
@@ -186,21 +196,21 @@ gg_rfsrc.rfsrc <- function(object,
     ### Survival models
     surv_type <- "surv"
     
-    if(!is.null(arg_list$surv_type)) surv_type = arg_list$surv_type
+    if(!is.null(arg_list$surv_type)) surv_type <- arg_list$surv_type
     
     if(oob){
-      rng<-switch(surv_type,
-                  surv=data.frame(object$survival.oob),
-                  chf=data.frame(object$chf.oob),
-                  mortality =data.frame(1-object$survival.oob),
-                  stop(paste(surv_type, " not implemented at this time"))
+      rng <- switch(surv_type,
+                    surv=data.frame(object$survival.oob),
+                    chf=data.frame(object$chf.oob),
+                    mortality =data.frame(1 - object$survival.oob),
+                    stop(paste(surv_type, " not implemented at this time"))
       )
     }else{
-      rng<-switch(surv_type,
-                  surv=data.frame(object$survival),
-                  chf=data.frame(object$chf),
-                  mortality =data.frame(1-object$survival),
-                  stop(paste(surv_type, " not implemented at this time"))
+      rng <- switch(surv_type,
+                    surv=data.frame(object$survival),
+                    chf=data.frame(object$chf),
+                    mortality =data.frame(1 - object$survival),
+                    stop(paste(surv_type, " not implemented at this time"))
       )
     }
     
@@ -226,11 +236,11 @@ gg_rfsrc.rfsrc <- function(object,
       else arg_list$conf.int
       
       # If we have one value, then it's two sided.
-      if(length(level) ==1 ){
-        if(level > 1)
-          level <- level/100
+      if(length(level) == 1 ){
+        if (level > 1)
+          level <- level / 100
         
-        level.set <- c((1- level)/2, 1-(1-level)/2)
+        level.set <- c( (1 - level) / 2, 1 - (1 - level) / 2)
         level.set <- sort(level.set) 
       }else{
         level.set <- sort(level) 
@@ -239,7 +249,7 @@ gg_rfsrc.rfsrc <- function(object,
       if(is.null(arg_list$bs.sample))
         bs.samples <- nrow(gg_dta)
       else{
-        bs.samples <-arg_list$bs.sample 
+        bs.samples <- arg_list$bs.sample 
       }
       
       
@@ -248,12 +258,13 @@ gg_rfsrc.rfsrc <- function(object,
         #####
         grp_dta <- lapply(levels(grp), function(st){
           if(is.null(arg_list$bs.sample))
-            bs.samples <- nrow(gg_dta[which(as.character(gg_dta$group)==st),])
+            bs.samples <- nrow(gg_dta[which(as.character(gg_dta$group) == st),])
           
-          obj <- bootstrap_survival(gg_dta[which(as.character(gg_dta$group)==st),], 
+          obj <- bootstrap_survival(gg_dta[which(as.character(gg_dta$group) == st),], 
                                     bs.samples, level.set)
           obj$group <- st
-          obj})
+          obj
+        })
         gg_grp <- do.call(rbind, grp_dta)
         gg_grp$group <- factor(gg_grp$group,
                                levels=unique(gg_grp$group))
@@ -292,13 +303,18 @@ bootstrap_survival <- function(gg_dta, bs.samples, level.set){
   gg.t <- gg_dta[, -which(colnames(gg_dta) %in% c("ptid","cens", "group"))]
   mn.bs <- t(sapply(1:bs.samples, 
                     function(pat){
-                      st <- sample(1:nrow(gg.t), size=nrow(gg.t), replace=T)
-                      colMeans(gg.t[st,])}))
+                      st <- sample(1:nrow(gg.t), size = nrow(gg.t), replace=T)
+                      colMeans(gg.t[st,])
+                    }))
   
   ## now get the confidence interval of the mean, and the median (.5)
-  rng <-sapply(1:ncol(mn.bs), 
-               function(tPt){quantile(mn.bs[,tPt], probs=c(level.set, .5) )})
-  mn <- sapply(1:ncol(rng), function(tPt){mean(rng[,tPt])})
+  rng <- sapply(1:ncol(mn.bs), 
+                function(t_pt){
+                  quantile(mn.bs[,t_pt], probs=c(level.set, .5) )
+                })
+  mn <- sapply(1:ncol(rng), function(t_pt){
+    mean(rng[,t_pt])
+  })
   
   time.interest <- as.numeric(colnames(gg.t))
   
@@ -314,4 +330,8 @@ bootstrap_survival <- function(gg_dta, bs.samples, level.set){
   dta
 }
 
+#' @export
+# gg_rfsrc <- function (object, ...) {
+#   UseMethod("gg_rfsrc", object)
+# }
 gg_rfsrc <- gg_rfsrc.rfsrc

@@ -2,17 +2,14 @@
 % Please edit documentation in R/gg_partial.R
 \name{gg_partial}
 \alias{gg_partial}
-\alias{gg_partial.rfsrc}
 \alias{gg_partial_list}
 \title{Partial variable dependence object}
 \usage{
-gg_partial.rfsrc(object, named, ...)
+gg_partial(object, ...)
 }
 \arguments{
 \item{object}{the partial variable dependence data object from
 \code{randomForestSRC::plot.variable} function}
-
-\item{named}{optional column for merging multiple plots together}
 
 \item{...}{optional arguments}
 }
@@ -31,6 +28,8 @@ partial dependence plots using the \code{\link{plot.gg_partial}} function.
 
 Partial variable dependence plots are the risk adjusted estimates of the specified
 response as a function of a single covariate, possibly subsetted on other covariates.
+
+An option \code{named} argument can name a column for merging multiple plots together
 }
 \examples{
 ## ------------------------------------------------------------
@@ -51,6 +50,7 @@ plot(gg_dta)
 ## ------------------------------------------------------------
 ## regression
 ## ------------------------------------------------------------
+\dontrun{
 ## -------- air quality data
 ## airquality "Wind" partial dependence plot
 ##
@@ -67,14 +67,15 @@ plot(gg_dta.m, notch=TRUE)
 
 gg_dta[["Month"]] <- NULL
 plot(gg_dta, panel=TRUE)
+}
 
-\dontrun{
 ## -------- Boston data
 data(partial_Boston, package="ggRandomForests")
 
 gg_dta <- gg_partial(partial_Boston)
 plot(gg_dta, panel=TRUE)
 
+\dontrun{
 ## -------- mtcars data
 data(partial_mtcars, package="ggRandomForests")
 gg_dta <- gg_partial(partial_mtcars)
@@ -89,9 +90,11 @@ gg_dta[["cyl"]] <- gg_dta[["vs"]] <- gg_dta[["am"]] <- NULL
 gg_dta[["gear"]] <- NULL
 plot(gg_dta, panel=TRUE)
 }
+
 ## ------------------------------------------------------------
 ## survival examples
 ## ------------------------------------------------------------
+\dontrun{
 ## -------- veteran data
 ## survival "age" partial variable dependence plot
 ##
@@ -121,7 +124,6 @@ gg_dta <- combine.gg_partial(gg_dta[[1]], gg_dta[[2]] )
 plot(gg_dta[["karno"]])
 plot(gg_dta[["celltype"]])
 
-\dontrun{
 gg_dta.cat <- gg_dta
 gg_dta[["celltype"]] <- gg_dta[["trt"]] <- gg_dta[["prior"]] <- NULL
 plot(gg_dta, panel=TRUE)
@@ -130,6 +132,30 @@ gg_dta.cat[["karno"]] <- gg_dta.cat[["diagtime"]] <- gg_dta.cat[["age"]] <- NULL
 plot(gg_dta.cat, panel=TRUE, notch=TRUE)
 }
 ## -------- pbc data
+data("partial_pbc", package = "ggRandomForests")
+data("varsel_pbc", package = "ggRandomForests")
+xvar <- varsel_pbc$topvars
+
+# Convert all partial plots to gg_partial objects
+gg_dta <- lapply(partial_pbc, gg_partial)
+
+# Combine the objects to get multiple time curves
+# along variables on a single figure.
+pbc_ggpart <- combine.gg_partial(gg_dta[[1]], gg_dta[[2]],
+                              lbls = c("1 Year", "3 Years"))
+
+# Plot the highest ranked variable, by name.
+plot(pbc_ggpart[["bili"]], se = FALSE)
+
+     # Create a temporary holder and remove the stage and edema data
+ggpart <- pbc_ggpart
+ggpart$edema <- NULL
+
+# Panel plot the remainder.
+plot(ggpart, se = FALSE, panel = TRUE)
+
+plot(pbc_ggpart[["edema"]], panel=TRUE,
+     notch = TRUE, alpha = .3, outlier.shape = NA)
 }
 \references{
 Friedman, Jerome H. 2000. "Greedy Function Approximation: A Gradient Boosting

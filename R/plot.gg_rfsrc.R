@@ -26,8 +26,6 @@
 #' 
 #' @return \code{ggplot} object
 #' 
-#' @export plot.gg_rfsrc
-#' 
 #' @seealso \code{\link{gg_rfsrc}} \code{randomForestSRC::rfsrc}
 #' 
 #' @references
@@ -103,33 +101,34 @@
 #' }
 #' @importFrom ggplot2 ggplot aes_string geom_step geom_ribbon labs geom_point geom_smooth geom_jitter geom_boxplot theme element_blank
 #' @importFrom reshape2 melt
-### error rate plot
-plot.gg_rfsrc<- function(x,
-                         ...){
+#' 
+#' @export
+plot.gg_rfsrc <- function(x,
+                          ...){
   gg_dta <- x
   
   # Unpack argument list
   arg_set <- list(...)
   
   ## rfsrc places the class in position 1.
-  if(inherits(gg_dta, "rfsrc")) gg_dta<- gg_rfsrc(gg_dta, ...)
+  if(inherits(gg_dta, "rfsrc")) gg_dta <- gg_rfsrc(gg_dta, ...)
   
   ## Classification forest?
   if(inherits(gg_dta, "class")){
     
     if(ncol(gg_dta) < 3){
       
-      gg_plt <- ggplot(gg_dta)+
-      geom_jitter(aes_string(x=1, y=colnames(gg_dta)[1],
-                             color=colnames(gg_dta)[2],
-                             shape=colnames(gg_dta)[2]), ...)+
-      geom_boxplot(aes_string(x=1, y=colnames(gg_dta)[1]),
-                   outlier.colour = "transparent", fill="transparent", notch = TRUE, ...)+
-      theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+      gg_plt <- ggplot(gg_dta) +
+        geom_jitter(aes_string(x=1, y=colnames(gg_dta)[1],
+                               color=colnames(gg_dta)[2],
+                               shape=colnames(gg_dta)[2]), ...) +
+        geom_boxplot(aes_string(x=1, y=colnames(gg_dta)[1]),
+                     outlier.colour = "transparent", fill="transparent", notch = TRUE, ...) +
+        theme(axis.ticks = element_blank(), axis.text.x = element_blank())
     }else{
       gg_dta.mlt <- melt(gg_dta, id.vars="y")
-      gg_plt <- ggplot(gg_dta.mlt, aes_string(x="variable",y="value"))+
-      geom_jitter(aes_string(color="y",shape="y"), alpha=.5)
+      gg_plt <- ggplot(gg_dta.mlt, aes_string(x="variable",y="value")) +
+        geom_jitter(aes_string(color="y",shape="y"), alpha=.5)
     }
     gg_plt <- gg_plt + labs(y="Predicted (%)", x="")
     
@@ -139,32 +138,33 @@ plot.gg_rfsrc<- function(x,
     # Check for conf.int calculations
     if("lower" %in% colnames(gg_dta)){
       if(is.null(arg_set$alpha)){
-        alph=.3
+        alph <- .3
       }else{
-        alph = arg_set$alpha*.5
+        alph <- arg_set$alpha * .5
         arg_set$alpha <- NULL
       }
       
       if("group" %in% colnames(gg_dta)){
-        gg_plt <- ggplot(gg_dta)+
-        geom_ribbon(aes_string(x="time", ymin="lower", ymax="upper", fill="group"),
-                    alpha=alph,...)+
-        geom_step(aes_string(x="time", y="median", color="group"), ...)
+        gg_plt <- ggplot(gg_dta) +
+          geom_ribbon(aes_string(x="time", ymin="lower", ymax="upper", fill="group"),
+                      alpha=alph,...) +
+          geom_step(aes_string(x="time", y="median", color="group"), ...)
       }else{
-        gg_plt <- ggplot(gg_dta)+
-        geom_ribbon(aes_string(x="time", ymin="lower", ymax="upper"),alpha=alph)+
-        geom_step(aes_string(x="time", y="median"), ...)
+        gg_plt <- ggplot(gg_dta) +
+          geom_ribbon(aes_string(x="time", ymin="lower", ymax="upper"),alpha=alph) +
+          geom_step(aes_string(x="time", y="median"), ...)
       }
     }else{
       
       # Lines by observation
       gg_plt <- ggplot(gg_dta,
-                       aes_string(x="variable", y="value", col="cens", by="ptid"))+
-      geom_step(...)
+                       aes_string(x="variable", y="value", col="cens", 
+                                  by="ptid")) +
+        geom_step(...)
     }
     
-    gg_plt<-gg_plt  +
-    labs(x="time (years)", y="Survival (%)")
+    gg_plt <- gg_plt  +
+      labs(x="time (years)", y="Survival (%)")
     
     
   }else if(inherits(gg_dta, "regr")){
@@ -174,14 +174,13 @@ plot.gg_rfsrc<- function(x,
       gg_plt <- ggplot(gg_dta, aes_string(x=1, y="yhat"))
     }
     
-    gg_plt <- gg_plt+
-    geom_jitter(, ...)+
-    geom_boxplot(outlier.colour = "transparent", fill="transparent", notch = TRUE, ...)+
-    labs(y="Predicted Value", x=colnames(gg_dta)[2])+
-    theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+    gg_plt <- gg_plt +
+      geom_jitter(, ...) +
+      geom_boxplot(outlier.colour = "transparent", fill="transparent", notch = TRUE, ...) +
+      labs(y="Predicted Value", x=colnames(gg_dta)[2]) +
+      theme(axis.ticks = element_blank(), axis.text.x = element_blank())
   }else{
     stop(paste("Plotting for ", class(gg_dta)[2], " randomForestSRC is not yet implemented."))
   }
-  
   return(gg_plt)
 }

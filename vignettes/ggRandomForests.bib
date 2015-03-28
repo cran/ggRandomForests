@@ -54,21 +54,20 @@ year = {2007}
  pages="25--31"
  }
 
-
-  @Manual{rcore:2012,
+@Manual{rcore,
     title = {R: A Language and Environment for Statistical Computing},
     author = {{R Core Team}},
     organization = {R Foundation for Statistical Computing},
     address = {Vienna, Austria},
-    year = {2012},
-    note = {{ISBN} 3-900051-07-0},
+    year = {2014},
     url = {http://www.R-project.org/},
   }
+
   
 %doi = "http://doi.ieeecomputersociety.org/10.1109/ICIS.2009.148",
 
 @Article{ ehrlinger:2012a,
-   AUTHOR = {Ehrlinger, John and Ishwaran, Hemant},
+   AUTHOR = {\myname{Ehrlinger, John} and Ishwaran, Hemant},
      TITLE = {Characterizing {$L_2$}Boosting},
    JOURNAL = {Ann. Statist.},
   FJOURNAL = {Annals of Statistics},
@@ -85,7 +84,7 @@ year = {2007}
 @Article{ ehrlinger:2012b,
 title = "{Prediction Error Bagging Enhancements.}",
 journal="In preparation",
-author = {Ehrlinger, John and Ishwaran, Hemant}
+author = {\myname{Ehrlinger, John} and Ishwaran, Hemant}
 }
 @book{cart:1984,
 address = {Monterey, CA},
@@ -168,26 +167,39 @@ journal={Statist. Anal. Data Mining},
 volume={4},
 pages={115--132}
 }
-
-@Manual{R:3.0.2,
-    title = {R: A Language and Environment for Statistical Computing},
-    author = {{R Core Team}},
-    organization = {R Foundation for Statistical Computing},
-    address = {Vienna, Austria},
-    year = {2013},
-    url = {http://www.R-project.org/},
-  }
-
 @misc{Ishwaran:RFSRC:2014,
-  title = {{Random Forests for Survival, Regression and Classification (RF-SRC), R package version 1.5.5.}},
+  title = {{Random Forests for Survival, Regression and Classification (RF-SRC), R package version 1.6.}},
   author = {Ishwaran, Hemant and Kogalur, Udaya B.},
-  year = {2014}
+  year = {2014},
+    url = {http://CRAN.R-project.org/package=randomForestSRC}
+}
+@Manual{Xie:2015,
+  title = {knitr: A General-Purpose Package for Dynamic Report Generation in R},
+  author = {Yihui Xie},
+  year = {2015},
+  note = {R package version 1.9},
+  url = {http://yihui.name/knitr/}
 }
 
-@misc{xie:knitr2013,
-author={Yihui Xie},
-year={2013},
-title={{knitr: A general-purpose package for dynamic report generation in R. R package version 1.4.1.}}
+@Book{Xie:2013,
+  title = {Dynamic Documents with {R} and knitr},
+  author = {Yihui Xie},
+  publisher = {Chapman and Hall/CRC},
+  address = {Boca Raton, Florida},
+  year = {2013},
+  note = {ISBN 978-1482203530},
+  url = {http://yihui.name/knitr/},
+}
+
+@InCollection{Xie:2014,
+  booktitle = {Implementing Reproducible Computational Research},
+  editor = {Victoria Stodden and Friedrich Leisch and Roger D. Peng},
+  title = {knitr: A Comprehensive Tool for Reproducible Research in {R}},
+  author = {Yihui Xie},
+  publisher = {Chapman and Hall/CRC},
+  year = {2014},
+  note = {ISBN 978-1466561595},
+  url = {http://www.crcpress.com/product/isbn/9781466561595},
 }
 
 @Book{xie:2013a,
@@ -206,6 +218,7 @@ editors={Victoria Stodden, Friedrich Leisch and Roger D. Peng},
 booktitle={Implementing Reproducible Computational Research.},
 publisher={Chapman and Hall/CRC},
 isbn={978-1466561595}
+
 }
 
 @Article{ Breiman:1998,
@@ -351,11 +364,73 @@ year="1980",
 title="Regression Diagnostics. Identifying Influential Data and Sources of Collinearity.",
 publisher="New York: Wiley"
 }
+
 @article{Rubin:1976,
 author={Rubin, D.B.},
-year=1976,
+journal={Biometrika},
+year={1976},
 title={Inference and missing data.},
-journal=Biometrika},
-volume=63, 
-pages=581-592
+volume={63}, 
+pages={581-592}
 }
+
+@Manual{Soetaert:2014,
+    title = {plot3D: Plotting multi-dimensional data.},
+    author = {Karline Soetaert},
+    year = {2014},
+    note = {R package version 1.0-2},
+    url = {http://CRAN.R-project.org/package=plot3D},
+  }
+
+  @Manual{Neuwirth:2014,
+    title = {RColorBrewer: ColorBrewer Palettes},
+    author = {Erich Neuwirth},
+    year = {2014},
+    note = {R package version 1.1-2},
+    url = {http://CRAN.R-project.org/package=RColorBrewer},
+  }
+
+@Book{mass:2002,
+    title = {Modern Applied Statistics with S},
+    author = {W. N. Venables and B. D. Ripley},
+    publisher = {Springer},
+    edition = {Fourth},
+    address = {New York},
+    year = {2002},
+    note = {ISBN 0-387-95457-0},
+    url = {http://www.stats.ox.ac.uk/pub/MASS4},
+  }
+  
+  @Manual{shiny:2015,
+    title = {shiny: Web Application Framework for R},
+    author = {Winston Chang and Joe Cheng and JJ Allaire and Yihui Xie and Jonathan McPherson},
+    year = {2015},
+    note = {R package version 0.11.1},
+    url = {http://CRAN.R-project.org/package=shiny},
+  }
+  
+  @Manual{rcolorbrewer:2014,
+    title = {RColorBrewer: ColorBrewer Palettes},
+    author = {Erich Neuwirth},
+    year = {2014},
+    note = {R package version 1.1-2},
+    url = {http://CRAN.R-project.org/package=RColorBrewer},
+  }
+   @Manual{plot3D:2014,
+    title = {plot3D: Plotting multi-dimensional data.},
+    author = {Karline Soetaert},
+    year = {2014},
+    note = {R package version 1.0-2},
+    url = {http://CRAN.R-project.org/package=plot3D},
+  }
+  
+  
+@article{blackstone:1986,
+	Author = {Blackstone, Eugene H. and Naftel, David C. and Turner, Malcolm E.},
+	Journal = {Journal of the American Statistical Association},
+	Number = {395},
+	Pages = {615-624},
+	Title = {The Decomposition of Time-Varying Hazard into Phases, Each Incorporating a Separate Stream of Concomitant Information},
+	Volume = {81},
+	Year = {1986}
+	}

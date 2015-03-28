@@ -31,8 +31,6 @@
 #' @return \code{gg_error} \code{data.frame} with one column indicating the tree number, 
 #' and the remaining columns from the \code{randomForestSRC::rfsrc$err.rate} return value. 
 #' 
-#' @export gg_error.rfsrc gg_error
-#' 
 #' @seealso \code{\link{plot.gg_error}} \code{rfsrc} \code{plot.rfsrc}
 #' 
 #' @references
@@ -65,16 +63,16 @@
 #' ## ------------------------------------------------------------
 #' ## Regression example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## ------------- airq data
-#' # rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
-#' # ... or load a cached randomForestSRC object
-#' data(rfsrc_airq, package="ggRandomForests")
+#' rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
 #' 
 #' # Get a data.frame containing error rates
 #' gg_dta<- gg_error(rfsrc_airq)
 #' 
 #' # Plot the gg_error object
 #' plot(gg_dta)
+#' }
 #' 
 #' ## ------------- Boston data
 #' data(rfsrc_Boston, package="ggRandomForests")
@@ -85,28 +83,28 @@
 #' # Plot the gg_error object
 #' plot(gg_dta)
 #' 
+#' \dontrun{
 #' ## ------------- mtcars data
-#' data(rfsrc_mtcars, package="ggRandomForests")
 #' 
 #' # Get a data.frame containing error rates
 #' gg_dta<- gg_error(rfsrc_mtcars)
 #' 
 #' # Plot the gg_error object
 #' plot(gg_dta)
+#' }
 #' 
 #' ## ------------------------------------------------------------
 #' ## Survival example
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## ------------- veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
-#' # data(veteran, package = "randomForestSRC")
-#' # rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
-#' 
-#' # Load a cached randomForestSRC object
-#' data(rfsrc_veteran, package="ggRandomForests")
+#' data(veteran, package = "randomForestSRC")
+#' rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = dta$veteran, ...)
 #' 
 #' gg_dta <- gg_error(rfsrc_veteran)
 #' plot(gg_dta)
+#' }
 #' 
 #' ## ------------- pbc data
 #' # Load a cached randomForestSRC object
@@ -115,33 +113,33 @@
 #' gg_dta <- gg_error(rfsrc_pbc)
 #' plot(gg_dta)
 #' 
+#' @export 
 gg_error <- function (object, ...) {
   UseMethod("gg_error", object)
 }
-
+#' @export 
 gg_error.rfsrc <- function(object, ...) {
   ## Check that the input obect is of the correct type.
-  if (inherits(object, "rfsrc") == FALSE){
-    stop("This function only works for Forests grown with the randomForestSRC package.")
+  if (!inherits(object, "rfsrc")){
+    stop(paste("This function only works for Forests grown",
+               "with the randomForestSRC package."))
   }
   if (is.null(object$err.rate)) {
     stop("Performance values are not available for this forest.")
   }
-  
+
   gg_dta <- data.frame(object$err.rate)
-  if(is.null(dim(gg_dta))){
-    gg_dta<- data.frame(error=cbind(gg_dta))
-  }
-  
+
+  # If there is only one column in the error rate... name it reasonably.
   if("object.err.rate" %in% colnames(gg_dta))
-    colnames(gg_dta)[which(colnames(gg_dta)=="object.err.rate")] <- "error"
-  
+    colnames(gg_dta)[which(colnames(gg_dta) == "object.err.rate")] <- "error"
+
   gg_dta$ntree <- 1:dim(gg_dta)[1]
   
   class(gg_dta) <- c("gg_error",class(gg_dta))
   invisible(gg_dta)
 }
-
-gg_error.randomForest <- function(object, ...) {
-  stop("Unimplemented function.") 
-}
+# 
+# gg_error.randomForest <- function(object, ...) {
+#   stop("Unimplemented function.") 
+# }

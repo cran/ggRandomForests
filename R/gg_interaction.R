@@ -36,7 +36,6 @@
 #' \code{randomForestSRC::vimp}
 #' \code{\link{plot.gg_interaction}} 
 #' 
-#' @export gg_interaction gg_interaction.rfsrc 
 #' @aliases gg_interaction
 #' 
 #' @importFrom randomForestSRC find.interaction
@@ -71,6 +70,7 @@
 #' ## ------------------------------------------------------------
 #' ## find interactions, regression setting
 #' ## ------------------------------------------------------------
+#' \dontrun{
 #' ## -------- air quality data
 #' ## airq.obj <- rfsrc(Ozone ~ ., data = airquality)
 #' ##
@@ -80,11 +80,11 @@
 #' data(interaction_airq, package="ggRandomForests")
 #' gg_dta <- gg_interaction(interaction_airq)
 #' 
-#' \dontrun{
 #' plot(gg_dta, xvar="Temp")
 #' plot(gg_dta, xvar="Solar.R")
-#' }
+#' 
 #' plot(gg_dta, panel=TRUE)
+#' }
 #' 
 #' ## -------- Boston data
 #' data(interaction_Boston, package="ggRandomForests")
@@ -113,22 +113,25 @@
 #' plot(gg_dta, xvar="bili")
 #' plot(gg_dta, panel=TRUE)
 #' 
+#' \dontrun{
 #' ## -------- veteran data
 #' data(interaction_veteran, package="ggRandomForests")
 #' gg_dta <- gg_interaction(interaction_veteran)
 #' 
 #' plot(gg_dta, panel=TRUE)
+#' }
 #' 
-#' 
-
-# gg_interaction <- function (object, ...) {
-#   UseMethod("gg_interaction", object)
-# }
-
+#' @export 
+gg_interaction <- function (object, ...) {
+  UseMethod("gg_interaction", object)
+}
+#' @export
 gg_interaction.rfsrc <- function(object, ...){
   if (inherits(object, "rfsrc")) {
     # If we called this with a rfsrc object, we need to run find.interaction.
-    warning("Forest object means we assume max.subtree method for finding interactions.\nThis may take some time.")
+    warning(paste("Forest object means we assume max.subtree", 
+                  "method for finding interactions.",
+                  "\nThis may take some time."))
     
     object <- find.interaction(object,...)
   }
@@ -140,11 +143,13 @@ gg_interaction.rfsrc <- function(object, ...){
   gg_dta <- data.frame(object)
   
   # Check to make sure it's the right type of structre...
-  if(nrow(gg_dta)!= ncol(gg_dta)){
+  if(nrow(gg_dta) != ncol(gg_dta)){
     stop("gg_interaction expects a find.interaction object.")
   }
   class(gg_dta) <- c("gg_interaction",  class(gg_dta))
   
   invisible(gg_dta)
 }
-gg_interaction <- gg_interaction.rfsrc
+# 
+#' @export
+gg_interaction.default <- gg_interaction.rfsrc
