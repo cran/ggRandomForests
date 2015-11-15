@@ -18,10 +18,10 @@
 #'
 #' Predicted response data object
 #' 
-#' Extracts the predicted response values from the \code{randomForestSRC::rfsrc} object, 
-#' and formats data for plotting the response using \code{\link{plot.gg_rfsrc}}.
+#' Extracts the predicted response values from the \code{\link[randomForestSRC]{rfsrc}}
+#'  object, and formats data for plotting the response using \code{\link{plot.gg_rfsrc}}.
 #' 
-#' @param object \code{randomForestSRC::rfsrc} object
+#' @param object \code{\link[randomForestSRC]{rfsrc}} object
 #' @param by stratifying variable in the training dataset, defaults to NULL
 #' @param oob boolean, should we return the oob prediction , or the full
 #' forest prediction.
@@ -35,8 +35,10 @@
 #'    \code{oob} boolean, should we return the oob prediction , or the full
 #' forest prediction.
 #' 
-#' @seealso \code{\link{plot.gg_rfsrc}} \code{rfsrc} \code{plot.rfsrc} \code{\link{gg_survival}}
+#' @seealso \code{\link{plot.gg_rfsrc}} \code{rfsrc} \code{plot.rfsrc} 
+#' \code{\link{gg_survival}}
 #' 
+#' @importFrom tidyr gather_
 #' @examples
 #' ## ------------------------------------------------------------
 #' ## classification example
@@ -224,7 +226,8 @@ gg_rfsrc.rfsrc <- function(object,
     # If we don't specify either a conf band or group by variable... 
     # Then we want to plot a curve for each observation.
     if(is.null(arg_list$conf.int) & missing(by)){
-      gg_dta.mlt <- melt(gg_dta, id.vars=c("ptid","cens"))
+      gathercols <- colnames(gg_dta)[-which(colnames(gg_dta) %in% c("ptid", "cens"))]
+      gg_dta.mlt <- tidyr::gather_(gg_dta, "variable", "value", gathercols)
       gg_dta.mlt$variable <- as.numeric(as.character(gg_dta.mlt$variable))
       gg_dta.mlt$ptid <- factor(gg_dta.mlt$ptid)
       

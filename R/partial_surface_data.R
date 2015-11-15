@@ -1,7 +1,7 @@
-#' Cached \code{randomForestSRC::plot.variable} objects for examples, 
+#' Cached \code{\link[randomForestSRC]{plot.variable}} objects for examples, 
 #' diagnostics and vignettes.
 #'  
-#' Data sets storing \code{randomForestSRC::plot.variable} objects corresponding to 
+#' Data sets storing \code{\link[randomForestSRC]{plot.variable}} objects corresponding to 
 #' training data according to the following naming convention: 
 #'\itemize{
 #' \item \code{partial_Boston_surf} - from a randomForestS[R]C for the \code{Boston} housing 
@@ -14,13 +14,13 @@
 #'   
 #' @details 
 #' Constructing partial plot data with the randomForestsSRC::plot.variable function are 
-#' computationally expensive. We cache \code{randomForestSRC::plot.variable} objects
+#' computationally expensive. We cache \code{\link[randomForestSRC]{plot.variable}} objects
 #' to improve the \code{ggRandomForests} examples, diagnostics and vignettes run times. 
 #' (see \code{\link{rfsrc_cache_datasets}} to rebuild a complete set of these data sets.)
 #' 
-#' For each data set listed, we build a \code{randomForestSRC::rfsrc} 
+#' For each data set listed, we build a \code{\link[randomForestSRC]{rfsrc}} 
 #' (see \code{\link{rfsrc_data}}), then calculate the partial plot data with 
-#' \code{randomForestSRC::plot.variable} function, setting \code{partial=TRUE}. Each data set is 
+#' \code{\link[randomForestSRC]{plot.variable}} function, setting \code{partial=TRUE}. Each data set is 
 #' built with the \code{\link{rfsrc_cache_datasets}} with the \code{randomForestSRC} version 
 #' listed in the \code{ggRandomForests} DESCRIPTION file.
 #' 
@@ -38,9 +38,9 @@
 #' 312 observations (remaining 106 observations are held out).
 #' }
 #' 
-#' @seealso \\code{MASS::Boston}
-#' \code{randomForestSRC::pbc} 
-#' \code{randomForestSRC::plot.variable}
+#' @seealso \code{\link[MASS]{Boston}}
+#' \code{\link[randomForestSRC]{pbc}}
+#' \code{\link[randomForestSRC]{plot.variable}}
 #' \code{\link{rfsrc_data}}
 #'  \code{\link{rfsrc_cache_datasets}} 
 #'  \code{\link{gg_partial}} 
@@ -85,9 +85,9 @@
 #' # 2561.313   81.446 2641.707 
 #' 
 #' # Find the quantile points to create 50 cut points
-#' alb_partial_pts <-quantile_pts(ggvar$albumin, groups = 50)
+#' alb_partial_pts <-quantile_pts(rfsrc_pbc$xvar$albumin, groups = 50)
 #' 
-#' system.time(partial_pbc_surf <- lapply(albumin_cts, function(ct){
+#' system.time(partial_pbc_surf <- lapply(alb_partial_pts, function(ct){
 #'   rfsrc_pbc$xvar$albumin <- ct
 #'   plot.variable(rfsrc_pbc, xvar = "bili", time = 1,
 #'                 npts = 50, show.plots = FALSE, 
@@ -137,7 +137,7 @@
 #' @aliases partial_surface_data partial_Boston_surf partial_pbc_surf partial_pbc_time
 #' @docType data
 #' @keywords datasets
-#' @format list of \code{randomForestSRC::plot.variable} objects
+#' @format list of \code{\link[randomForestSRC]{plot.variable}} objects
 #' @name partial_surface_data
 #' @name partial_Boston_surf
 #' @name partial_pbc_surf

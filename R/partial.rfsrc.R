@@ -127,7 +127,7 @@
 #'
 #' 
 #' @importFrom randomForestSRC predict.rfsrc 
-#'
+#' @importFrom stats na.omit
 #'
 #' @export
 partial.rfsrc <- function (x, 
@@ -323,9 +323,9 @@ partial.rfsrc <- function (x,
       newdata.x[, object$xvar.names == xvar.names[k]] <- rep(x.uniq[l], n)
       
       # Pull out the nomogram data for this x_v
-      yhat[[l]] <- extract.pred(predict.rfsrc(object, 
-                                              newdata.x, 
-                                              importance = "none"), 
+      yhat[[l]] <- extract.pred(randomForestSRC::predict.rfsrc(object, 
+                                                               newdata.x, 
+                                                               importance = "none"), 
                                 pred.type, 
                                 1:n, which.outcome)
     }

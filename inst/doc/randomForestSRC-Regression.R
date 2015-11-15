@@ -22,14 +22,13 @@ options(object.size = Inf, expressions = 100000, memory = Inf,
         replace.assign = TRUE, width = 90, prompt = "R> ")
 options(mc.cores = 1, rf.cores = 0)
 
-library(reshape2)
-
 ## ----libraries, echo=TRUE---------------------------------------------------------------
 ################## Load packages ##################
 library("ggplot2")         # Graphics engine
 library("RColorBrewer")    # Nice color palettes
 library("plot3D")          # for 3d surfaces. 
 library("dplyr")           # Better data manipulations
+library("tidyr")           # gather variables into long format
 library("parallel")        # mclapply for multicore processing
 
 # Analysis packages.
@@ -104,13 +103,13 @@ kable(dta.labs,
       booktabs = FALSE)
 
 ## ----eda, fig.cap="EDA variable plots. Points indicate variable value against the median home value variable. Points are colored according to the chas variable.", fig.width=7, fig.height=5----
-# Use reshape2::melt to transform the data into long format.
-dta <- melt(Boston, id.vars=c("medv","chas"))
+# Use tidyr::gather to transform the data into long format.
+dta <- gather(Boston, variable, value, -medv, -chas)
 
 # plot panels for each covariate colored by the logical chas variable.
-ggplot(dta, aes(x=medv, y=value, color=chas))+
-  geom_point(alpha=.4)+
-  geom_rug(data=dta %>% filter(is.na(value)))+
+ggplot(dta)+
+  geom_point(alpha=0.4, aes(x=medv, y=value, color=chas))+
+  geom_smooth(aes(x=medv, y=value), se=FALSE)+ 
   labs(y="", x=st.labs["medv"]) +
   scale_color_brewer(palette="Set2")+
   facet_wrap(~variable, scales="free_y", ncol=3)
@@ -162,14 +161,14 @@ gg_v <- gg_variable(rfsrc_Boston)
 xvar <- gg_md$topvars
 
 # plot the variable list in a single panel plot
-plot(gg_v, xvar=xvar, panel=TRUE, 
-     se=.95, span=1.2, alpha=.4)+
-  labs(y=st.labs["medv"], x="")
+plot(gg_v, xvar=xvar, panel=TRUE)+
+  labs(y=st.labs["medv"], x="") 
 
 ## ----chas, fig.cap="Variable dependence for Charles River logical variable."------------
-plot(gg_v, xvar="chas", points=FALSE,
-     se=FALSE, notch=TRUE, alpha=.4)+
+plot(gg_v, xvar="chas", alpha=.4)+
   labs(y=st.labs["medv"])
+
+# , points=FALSE, se=FALSE, notch=TRUE
 
 ## ----partial, fig.cap="Partial dependence panels. Risk adjusted variable dependence for variables in minimal depth rank order.", fig.width=7, fig.height=5----
 # Load the data, from the call:
@@ -183,8 +182,9 @@ data(partial_Boston)
 gg_p <- gg_partial(partial_Boston)
 
 # plot the variable list in a single panel plot
-plot(gg_p, xvar=xvar, panel=TRUE, se=FALSE) +
-  labs(y=st.labs["medv"], x="")
+plot(gg_p, panel=TRUE) +  #xvar=xvar, se=FALSE
+  labs(y=st.labs["medv"], x="") +
+  geom_smooth(se=FALSE)
 
 ## ----interactions, fig.cap="Minimal depth variable interactions. Reference variables are marked with red cross in each panel. Higher values indicate lower interactivity with reference variable.", fig.width=7, fig.height=5----
 # Load the data, from the call:
@@ -198,7 +198,8 @@ plot(gg_interaction(interaction_Boston),
 ## ----coplots, fig.cap="Variable Coplots. Predicted median home values as a function of percentage of lower status population, stratified by average number of rooms groups.", fig.width=7, fig.height=5----
 # Find the rm variable points to create 6 intervals of roughly 
 # equal size population
-rm_pts <- quantile_pts(rfsrc_Boston$xvar$rm, groups=6, intervals=TRUE)
+rm_pts <- quantile_pts(rfsrc_Boston$xvar$rm, groups=6, 
+                       intervals=TRUE)
 
 # Pass these variable points to create the 6 (factor) intervals
 rm_grp <- cut(rfsrc_Boston$xvar$rm, breaks=rm_pts)
@@ -207,14 +208,17 @@ rm_grp <- cut(rfsrc_Boston$xvar$rm, breaks=rm_pts)
 gg_v$rm_grp <- rm_grp
 
 # Modify the labels for descriptive panel titles 
-levels(gg_v$rm_grp) <- paste("rm in ", levels(gg_v$rm_grp), sep="")
+levels(gg_v$rm_grp) <- paste("rm in ", 
+                             levels(gg_v$rm_grp), sep="")
 
-# Create a variable dependence (co)plot, faceted on group membership.
-plot(gg_v, xvar = "lstat", smooth = TRUE, 
-     method = "loess", span=1.5, alpha = .5, se = FALSE) + 
+# Create a variable dependence (co)plot, 
+# faceted on group membership.
+plot(gg_v, xvar = "lstat", alpha = .5)+
+  #   method = "loess", span=1.5, se = FALSE) + 
   labs(y = st.labs["medv"], x=st.labs["lstat"]) + 
   theme(legend.position = "none") + 
   scale_color_brewer(palette = "Set3") + 
+  geom_smooth(se=FALSE) +
   facet_wrap(~rm_grp)
 
 ## ----coplots2, fig.cap="Variable Coplots. Predicted median home value as a function of average number of rooms, stratified by percentage of lower status groups.", fig.width=7, fig.height=5----
@@ -232,11 +236,12 @@ gg_v$lstat_grp <- lstat_grp
 levels(gg_v$lstat_grp) <- paste("lstat in ", levels(gg_v$lstat_grp), " (%)",sep="")
 
 # Create a variable dependence (co)plot, faceted on group membership.
-plot(gg_v, xvar = "rm", smooth = TRUE, 
-     method = "loess", span=1.5, alpha = .5, se = FALSE) + 
+plot(gg_v, xvar = "rm", alpha = .5)+
+     #method = "loess", span=1.5, , se = FALSE) + 
   labs(y = st.labs["medv"], x=st.labs["rm"]) + 
   theme(legend.position = "none") + 
   scale_color_brewer(palette = "Set3") + 
+  geom_smooth() +
   #scale_shape_manual(values = event.marks, labels = event.labels)+ 
   facet_wrap(~lstat_grp)
 
@@ -249,9 +254,12 @@ plot(gg_v, xvar = "rm", smooth = TRUE,
 # Load the stored partial coplot data.
 data(partial_coplot_Boston)
 
-# Partial coplot
-plot(partial_coplot_Boston, se=FALSE)+
-  labs(x=st.labs["lstat"], y=st.labs["medv"], 
+# # Partial coplot
+# plot(partial_coplot_Boston) + ## Looks like a dangling or missing '+' characer in the plot.gg_partial_coplot
+ggplot(partial_coplot_Boston, aes(x=lstat, y=yhat, col=group, shape=group))+
+  geom_point()+
+  geom_smooth(se=FALSE, alpha=.25)+
+  labs(x=st.labs["lstat"], y=st.labs["medv"],
        color="Room", shape="Room")+
   scale_color_brewer(palette="Set1")
 
@@ -265,16 +273,19 @@ plot(partial_coplot_Boston, se=FALSE)+
 data(partial_coplot_Boston2)
 
 # Partial coplot
-plot(partial_coplot_Boston2, se=FALSE)+
+#plot(partial_coplot_Boston2)+ ## again plot.gg_partial_coplot
+ggplot(partial_coplot_Boston, aes(x=lstat, y=yhat, col=group, shape=group))+
+  geom_point()+
+  geom_smooth(se=FALSE)+
   labs(x=st.labs["rm"], y=st.labs["medv"], 
        color="Lower Status", shape="Lower Status")+
   scale_color_brewer(palette="Set1")
 
-## ----def-pts----------------------------------------------------------------------------
+## ----def-pts-----------------------------------------------------------------
 # Find the quantile points to create 50 cut points
 rm_pts <- quantile_pts(rfsrc_Boston$xvar$rm, groups=50)
 
-## ----prtl-surface, eval=FALSE-----------------------------------------------------------
+## ----prtl-surface, eval=FALSE------------------------------------------------
 #  # Generate the gg_partial_coplot data object
 #  system.time(partial_Boston_surf <- lapply(rm_pts, function(ct){
 #    rfsrc_Boston$xvar$rm <- ct
@@ -308,13 +319,15 @@ ggplot(partial_surf, aes(x=lstat, y=rm, z=yhat))+
        color="Median Home Values")+
   scale_colour_gradientn(colours=topo.colors(10))
 
-## ----surface3d, fig.cap="Partial plot surface.", fig.width=7, fig.height=5--------------
+## ----surface3d, fig.cap="Partial plot surface.", fig.width=7, fig.height=5----
 # Modify the figure margins to make the figure larger
 par(mai = c(0,0,0,0))
 
 # Transform the gg_partial_coplot object into a list of three named matrices
 # for surface plotting with plot3D::surf3D
-srf <- surface_matrix(partial_surf, c("lstat", "rm", "yhat"))
+suppressWarnings(
+  srf <- surface_matrix(partial_surf, c("lstat", "rm", "yhat"))
+)
 
 # Generate the figure.
 surf3D(x=srf$x, y=srf$y, z=srf$z, col=topo.colors(10),

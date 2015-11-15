@@ -21,16 +21,17 @@
 #' A plot of the cumulative OOB error rates of the random forest as a 
 #' function of number of trees.
 #' 
-#' @param x gg_error object created from a \code{randomForestSRC::rfsrc} object
+#' @param x gg_error object created from a \code{\link[randomForestSRC]{rfsrc}} object
 #' @param ... extra arguments passed to \code{ggplot} functions
 #' 
 #' @return \code{ggplot} object
 #' 
 #' @details The gg_error plot is used to track the convergence of the 
 #' randomForest. This figure is a reproduction of the error plot
-#' from the \code{randomForestSRC::plot.rfsrc} function.
+#' from the \code{\link[randomForestSRC]{plot.rfsrc}} function.
 #' 
-#' @seealso \code{\link{gg_error}} \code{randomForestSRC::rfsrc} \code{randomForestSRC::plot.rfsrc}
+#' @seealso \code{\link{gg_error}} \code{\link[randomForestSRC]{rfsrc}}
+#'  \code{\link[randomForestSRC]{plot.rfsrc}}
 #' 
 #' @references
 #' Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
@@ -113,7 +114,7 @@
 #' plot(gg_dta)
 #'}
 #' @importFrom ggplot2 ggplot geom_line theme aes_string labs 
-#' @importFrom reshape2 melt
+#' @importFrom tidyr gather_
 #' @export
 plot.gg_error <- function(x, ...){
   gg_dta <- x
@@ -123,7 +124,8 @@ plot.gg_error <- function(x, ...){
   if(!inherits(gg_dta, "gg_error")) stop("Incorrect object type: Expects a gg_error object")
   
   if(dim(gg_dta)[2] > 2){
-    gg_dta <- melt(gg_dta, id.vars="ntree")
+    gathercol <- colnames(gg_dta)[-which(colnames(gg_dta)=="ntree")]
+    gg_dta <- gather_(gg_dta, "variable", "value", gathercol)
     gg_plt <- ggplot(gg_dta, aes_string(x="ntree", y="value", col="variable"))
   }else{
     # We expect the object to have the following columns

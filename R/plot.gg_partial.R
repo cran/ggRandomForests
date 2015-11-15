@@ -20,19 +20,18 @@
 #' Partial variable dependence plot, operates on a \code{\link{gg_partial}} object.
 #' 
 #' @description Generate a risk adjusted (partial) variable dependence plot. 
-#' The function plots the \code{randomForestSRC::rfsrc} response variable (y-axis) against
+#' The function plots the \code{\link[randomForestSRC]{rfsrc}} response variable (y-axis) against
 #' the covariate of interest (specified when creating the
 #'  \code{\link{gg_partial}} object).
 #' 
-#' @param x \code{\link{gg_partial}} object created from a \code{randomForestSRC::rfsrc} forest object
-#' @param points plot points (boolean)
-#' @param smooth use smooth curve (by type)
+#' @param x \code{\link{gg_partial}} object created from a \code{\link[randomForestSRC]{rfsrc}} forest object
+#' @param points plot points (boolean) or a smooth line.
 #' @param error "shade", "bars", "lines" or "none"
-#' @param ... extra arguments passed to \code{ggplot2} functions
+#' @param ... extra arguments passed to \code{ggplot2} functions.  
 #' 
 #' @return \code{ggplot} object
 #' 
-#' @seealso \code{randomForestSRC::plot.variable} \code{\link{gg_partial}} 
+#' @seealso \code{\link[randomForestSRC]{plot.variable}} \code{\link{gg_partial}} 
 #' \code{\link{plot.gg_partial_list}} \code{\link{gg_variable}} 
 #' \code{\link{plot.gg_variable}} 
 #' 
@@ -149,9 +148,10 @@
 #' plot(gg_dta.cat, panel=TRUE, notch=TRUE)
 #' 
 #' ## -------- pbc data
-#'  }
-#'  @export
-plot.gg_partial <- function(x, points=TRUE, smooth="loess",
+#' }
+#'  
+#' @export
+plot.gg_partial <- function(x, points=TRUE,
                             error=c("none", "shade","bars","lines"),
                             ...){
   
@@ -202,7 +202,7 @@ plot.gg_partial <- function(x, points=TRUE, smooth="loess",
                      # Shading the standard errors
                      shade = gg_plt + 
                        geom_ribbon(aes_string(x="x", ymax="upper", ymin="lower"),
-                                   alpha=.3, data=gg_dta, ...),
+                                   alpha=.3, data=gg_dta),
                      # Or showing error bars
                      bars = {
                        # Need to figure out how to remove some of these points when 
@@ -211,28 +211,24 @@ plot.gg_partial <- function(x, points=TRUE, smooth="loess",
                        #                     if(!missing(errbars) )errFll <- errFll[errbars,]
                        gg_plt + 
                          geom_errorbar(aes_string(x="x", ymax="upper", ymin="lower"), 
-                                       data=gg_dta, ...)
+                                       data=gg_dta)
                      },
                      lines= gg_plt + 
                        geom_smooth(aes_string(x="x", y="upper"), 
-                                   linetype=2, data=gg_dta, se=FALSE, ...) +
+                                   linetype=2, data=gg_dta, se=FALSE) +
                        geom_smooth(aes_string(x="x", y="lower"), 
-                                   linetype=2, data=gg_dta, se=FALSE, ...), 
+                                   linetype=2, data=gg_dta, se=FALSE), 
                      none=gg_plt)
   }
   gg_plt <- gg_plt +
     labs(x=h_name, y="predicted")
   if(!is.factor(gg_dta$x)){
-    if(points)  
+    if(points){  
       gg_plt <- gg_plt + geom_point( ...)
-    if(!is.null(smooth)){
-      if(!is.null(arg_list$se))
-        if(arg_list$se != FALSE)
-          gg_plt <- gg_plt + geom_smooth(method=smooth, ...)
-      else
-        gg_plt <- gg_plt + geom_smooth(method=smooth,se=FALSE, ...)
-      
+    }else{
+      gg_plt <- gg_plt + geom_smooth( ...)
     }
+    
   }else{
     gg_plt <- gg_plt + geom_boxplot(...)
   }

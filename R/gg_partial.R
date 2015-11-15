@@ -17,10 +17,10 @@
 ####**********************************************************************
 #' Partial variable dependence object 
 #' 
-#' @description The \code{randomForestSRC::plot.variable} function returns a 
+#' @description The \code{\link[randomForestSRC]{plot.variable}} function returns a 
 #' list of either marginal variable dependance or partial variable dependence
-#' data from a \code{randomForestSRC::rfsrc} object. 
-#' The \code{gg_partial} function formulates the \code{randomForestSRC::plot.variable} output
+#' data from a \code{\link[randomForestSRC]{rfsrc}} object. 
+#' The \code{gg_partial} function formulates the \code{\link[randomForestSRC]{plot.variable}} output
 #' for partial plots  (where \code{partial=TRUE}) into a data object for creation of 
 #' partial dependence plots using the \code{\link{plot.gg_partial}} function. 
 #' 
@@ -30,14 +30,14 @@
 #' An option \code{named} argument can name a column for merging multiple plots together
 #' 
 #' @param object the partial variable dependence data object from 
-#'   \code{randomForestSRC::plot.variable} function
+#'   \code{\link[randomForestSRC]{plot.variable}} function
 #' @param ... optional arguments
 #'  
 #' @return \code{gg_partial} object. A \code{data.frame} or \code{list} of 
 #' \code{data.frames} corresponding the variables 
-#' contained within the \code{randomForestSRC::plot.variable} output. 
+#' contained within the \code{\link[randomForestSRC]{plot.variable}} output. 
 #' 
-#' @seealso \code{\link{plot.gg_partial}} \code{randomForestSRC::plot.variable}
+#' @seealso \code{\link{plot.gg_partial}} \code{\link[randomForestSRC]{plot.variable}}
 #' 
 #' @importFrom parallel mclapply
 #' 
@@ -156,20 +156,23 @@
 #' # Combine the objects to get multiple time curves 
 #' # along variables on a single figure.
 #' pbc_ggpart <- combine.gg_partial(gg_dta[[1]], gg_dta[[2]], 
-#'                               lbls = c("1 Year", "3 Years"))
+#'                                  lbls = c("1 Year", "3 Years"))
 #'
+#' summary(pbc_ggpart)
+#' class(pbc_ggpart[["bili"]])
+#' 
 #' # Plot the highest ranked variable, by name.
-#' plot(pbc_ggpart[["bili"]], se = FALSE)
+#' #plot(pbc_ggpart[["bili"]])
 #'      
-#'      # Create a temporary holder and remove the stage and edema data
+#' # Create a temporary holder and remove the stage and edema data
 #' ggpart <- pbc_ggpart
 #' ggpart$edema <- NULL
 #' 
 #' # Panel plot the remainder.
-#' plot(ggpart, se = FALSE, panel = TRUE)
+#' plot(ggpart, panel = TRUE)
 #' 
-#' plot(pbc_ggpart[["edema"]], panel=TRUE,
-#'      notch = TRUE, alpha = .3, outlier.shape = NA) 
+#' #plot(pbc_ggpart[["edema"]], panel=TRUE) #,
+#'      # notch = TRUE, alpha = .3, outlier.shape = NA) 
 #'   
 #' @aliases gg_partial gg_partial_list
 #' @name gg_partial
@@ -199,7 +202,7 @@ gg_partial.rfsrc <- function(object,
   n.var <- length(object$pData)
   
   # Create a list of data
-  gg_dta <- mclapply(1:n.var, function(ind){
+  gg_dta <- parallel::mclapply(1:n.var, function(ind){
     
     if(length(object$pData[[ind]]$x.uniq) == 
        length(object$pData[[ind]]$yhat)){

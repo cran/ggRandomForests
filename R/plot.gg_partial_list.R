@@ -20,19 +20,19 @@
 #' Partial variable dependence plot, operates on a \code{gg_partial_list} object.
 #' 
 #' @description Generate a risk adjusted (partial) variable dependence plot. 
-#' The function plots the \code{randomForestSRC::rfsrc} response variable (y-axis) against
+#' The function plots the \code{\link[randomForestSRC]{rfsrc}} response variable (y-axis) against
 #' the covariate of interest (specified when creating the
 #'  \code{gg_partial_list} object).
 #' 
 #' @param x \code{gg_partial_list} object created from a \code{\link{gg_partial}} 
 #' forest object
-#' @param points plot points (boolean)
+#' @param points plot points (boolean) or a smooth line.
 #' @param panel should the entire list be plotted together?
 #' @param ... extra arguments
 #' 
 #' @return list of \code{ggplot} objects, or a single faceted \code{ggplot} object
 #' 
-#' @seealso \code{randomForestSRC::plot.variable} \code{\link{gg_partial}} 
+#' @seealso \code{\link[randomForestSRC]{plot.variable}} \code{\link{gg_partial}} 
 #' \code{\link{plot.gg_partial}} \code{\link{gg_variable}} 
 #' \code{\link{plot.gg_variable}} 
 #' 
@@ -169,7 +169,7 @@ plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
     
     cls <- sapply(nms, function(nm){
       class(gg_dta[[nm]][,nm])
-      })
+    })
     
     gg_dta <- mclapply(nms, function(nm){
       obj <- gg_dta[[nm]]
@@ -194,15 +194,19 @@ plot.gg_partial_list <- function(x, points=TRUE, panel=FALSE, ...){
     
     if(sum(cls == "factor") == length(cls)){
       gg_plt <- gg_plt +
-      geom_boxplot(...)
+        geom_boxplot(...)
     }else{
-      gg_plt <- gg_plt +
-      geom_point(...) +
-      geom_smooth(...)
+      if(points){
+        gg_plt <- gg_plt +
+          geom_point(...) 
+      }else{
+        gg_plt <- gg_plt +
+          geom_smooth(...) 
+      }
     }
     return(gg_plt +
-           facet_wrap(~variable,
-                      scales="free_x")
+             facet_wrap(~variable,
+                        scales="free_x")
     )
   }else{
     # OR a list of figures.

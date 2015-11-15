@@ -20,17 +20,17 @@
 #' plot.gg_interaction
 #' Plot a \code{\link{gg_interaction}} object, 
 #' 
-#' @param x gg_interaction object created from a \code{randomForestSRC::rfsrc} object
+#' @param x gg_interaction object created from a \code{\link[randomForestSRC]{rfsrc}} object
 #' @param xvar variable (or list of variables) of interest.
 #' @param lbls A vector of alternative variable names.
 #' @param ... arguments passed to the \code{\link{gg_interaction}} function.
 #' 
 #' @return \code{ggplot} object
 #' 
-#' @seealso \code{randomForestSRC::rfsrc} 
-#' \code{randomForestSRC::find.interaction} 
-#' \code{randomForestSRC::max.subtree} \code{randomForestSRC::var.select} 
-#' \code{randomForestSRC::vimp}
+#' @seealso \code{\link[randomForestSRC]{rfsrc}}
+#' \code{\link[randomForestSRC]{find.interaction}}
+#' \code{\link[randomForestSRC]{max.subtree}} \code{\link[randomForestSRC]{var.select}} 
+#' \code{\link[randomForestSRC]{vimp}}
 #' \code{\link{plot.gg_interaction}} 
 #' 
 #' @references
@@ -43,7 +43,7 @@
 #' Regression and Classification (RF-SRC), R package version 1.4.
 #' 
 #' @importFrom ggplot2 ggplot aes_string geom_point geom_smooth labs element_text
-#' @importFrom reshape2 melt
+#' @importFrom tidyr gather_
 #' 
 #' @examples
 #' \dontrun{
@@ -139,8 +139,8 @@ plot.gg_interaction <- function(x, xvar, lbls, ...){
     gg_dta$names <- rownames(object)
     gg_dta$rank <- 1:dim(gg_dta)[1]
     
-    gg_dta <- melt(gg_dta, 
-                   id.vars=c("rank", "names"))
+    gathercols <- colnames(gg_dta)[-which(colnames(gg_dta) %in% c("rank", "names"))]
+    gg_dta <- tidyr::gather_(gg_dta, "variable", "value", gathercols)
     
     gg_dta$value <- as.numeric(gg_dta$value)
     gg_dta$names <- factor(gg_dta$names,

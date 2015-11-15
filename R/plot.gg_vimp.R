@@ -17,11 +17,13 @@
 ####**********************************************************************
 ####**********************************************************************
 #' Plot a \code{\link{gg_vimp}} object, extracted variable importance of a 
-#' \code{randomForestSRC::rfsrc} object
+#' \code{\link[randomForestSRC]{rfsrc}} object
 #' 
-#' @param x \code{\link{gg_vimp}} object created from a \code{randomForestSRC::rfsrc} object
+#' @param x \code{\link{gg_vimp}} object created from a 
+#' \code{\link[randomForestSRC]{rfsrc}} object
 #' @param relative should we plot vimp or relative vimp. Defaults to vimp.
-#' @param lbls A vector of alternative variable names.
+#' @param lbls A vector of alternative variable labels. Item names should be 
+#' the same as the variable names. 
 #' @param ... optional arguments passed to gg_vimp if necessary
 #' 
 #' @return \code{ggplot} object
@@ -87,6 +89,18 @@
 plot.gg_vimp <- function(x, relative, lbls, ...){
   gg_dta  <- x
   if(!inherits(gg_dta, "gg_vimp")) gg_dta <- gg_vimp(gg_dta, ...)
+
+    # Classification...
+  arg_set <- as.list(substitute(list(...)))[-1L]
+  
+  nvar <- nrow(gg_dta)
+  if(!is.null(arg_set$nvar)){
+    if(is.numeric(arg_set$nvar) & arg_set$nvar > 1){
+      if(arg_set$nvar < nrow(gg_dta)){
+        nvar <- arg_set$nvar 
+        gg_dta <- gg_dta[1:nvar,]
+      }
+  }}
   
   gg_plt <- ggplot(gg_dta)
   
@@ -118,6 +132,8 @@ plot.gg_vimp <- function(x, relative, lbls, ...){
   #   }
   #  
   if(!missing(lbls) ){
+    # Print a warning if the lbls is not a named vector.
+    
     if(length(lbls) >= length(gg_dta$vars)){
       st.lbls <- lbls[as.character(gg_dta$vars)]
       names(st.lbls) <- as.character(gg_dta$vars)
