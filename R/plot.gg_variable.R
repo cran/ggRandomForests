@@ -26,7 +26,8 @@
 #' @param time_labels string labels for times
 #' @param panel Should plots be facetted along multiple xvar?
 #' @param oob oob estimates (boolean)
-#' @param points plot with points or a smooth curve
+#' @param points plot the raw data points (boolean)
+#' @param smooth include a smooth curve (boolean)
 #' @param ... arguments passed to the \code{ggplot2} functions.
 #'   
 #' @return A single \code{ggplot} object, or list of \code{ggplot} objects
@@ -142,11 +143,12 @@
 plot.gg_variable <- function(x, xvar, 
                              time, time_labels, 
                              panel=FALSE,
-                             oob=TRUE, points=TRUE, ...){
+                             oob=TRUE, points=TRUE, smooth=TRUE, ...){
   gg_dta <- x 
   
   # Get the extra arguments for handling specifics
   arg_list <- list(...)
+  #print(arg_list)
   
   # I don't think this will work with latest S3 models. 
   if(inherits(x, "rfsrc")) gg_dta <- gg_variable(x, ...)
@@ -156,6 +158,8 @@ plot.gg_variable <- function(x, xvar,
   if(inherits(gg_dta, "surv")){
     family <- "surv"
   }else if(inherits(gg_dta, "regr")){
+    family <- "regr"
+  }else if(inherits(gg_dta, "regression")){
     family <- "regr"
   }
   
@@ -220,10 +224,10 @@ plot.gg_variable <- function(x, xvar,
         }
       }
     }
-    if(!is.logical(gg_dta[, ind]) & 
-       length(unique(gg_dta[which(!is.na(gg_dta[, ind])), ind])) <= 10) {
-      gg_dta[, ind] <- factor(gg_dta[, ind])
-    }
+    # if(!is.logical(gg_dta[, ind]) & 
+    #    length(unique(gg_dta[which(!is.na(gg_dta[, ind])), ind])) <= 10) {
+    #   gg_dta[, ind] <- factor(gg_dta[, ind])
+    # }
   }
   
   # Check for categorical X values...
@@ -245,8 +249,8 @@ plot.gg_variable <- function(x, xvar,
       
       gg_dta.mlt$variable <- factor(gg_dta.mlt$variable, levels=xvar)
       if(points){
-      gg_plt <- ggplot(gg_dta.mlt, 
-                       aes_string(x="value", y="yhat", color="cens", shape="cens"))
+        gg_plt <- ggplot(gg_dta.mlt, 
+                         aes_string(x="value", y="yhat", color="cens", shape="cens"))
       }else{
         gg_plt <- ggplot(gg_dta.mlt, 
                          aes_string(x="value", y="yhat")) 
@@ -256,14 +260,16 @@ plot.gg_variable <- function(x, xvar,
         gg_plt <- gg_plt +
           labs(y= "Survival")
         if(points){
-          
           gg_plt <- gg_plt +
             geom_point(...)
         }else{
           gg_plt <- gg_plt +
             geom_smooth(...)
         }
-        
+        if(smooth){
+          gg_plt <- gg_plt +
+            geom_smooth(...)
+        }
       }else{
         # Check if there are numeric variables here...
         if(sum(ccls[wch_x_var] == "numeric") > 0)
@@ -294,12 +300,11 @@ plot.gg_variable <- function(x, xvar,
       ## Create a panel plot
       wch_y_var <- which(colnames(gg_dta) %in% c("yhat"))
       
-      if(family=="class"){
+      if(family == "class"){
         wch_y_var <- c(wch_y_var, which(colnames(gg_dta)=="yvar"))
         tmp_dta <- gg_dta[,c(wch_y_var, wch_x_var)]
         gathercols <- colnames(tmp_dta)[-which(colnames(tmp_dta) %in% c("yvar", "yhat"))]
         gg_dta.mlt <- tidyr::gather_(tmp_dta, "variable", "value", gathercols)
-        
         
       }else{
         wch_y_var <- c(wch_y_var, which(colnames(gg_dta)=="yvar"))
@@ -309,15 +314,16 @@ plot.gg_variable <- function(x, xvar,
       }
       gg_dta.mlt$variable <- factor(gg_dta.mlt$variable, levels=xvar)
       
-      gg_plt <- ggplot(gg_dta.mlt)
       # If these are all continuous...
       if(sum(ccls[wch_x_var] == "numeric") == length(wch_x_var)){
+        
+        # cat("1")
         if(family=="class"){
-          gg_plt <- gg_plt +
-            geom_point(aes_string(x="value", y="yhat", color="yvar", shape="yvar"), ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat", color="yvar", shape="yvar"))+
+            geom_point( ...)
         }else{
-          gg_plt <- gg_plt +
-            geom_point(aes_string(x="value", y="yhat"), ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat"))+
+            geom_point( ...)
         }
       }else{
         
@@ -326,21 +332,24 @@ plot.gg_variable <- function(x, xvar,
           warning("Mismatched variable types... assuming these are all factor variables.")
         
         if(family=="class"){
-          gg_plt <- gg_plt +
-            geom_boxplot(aes_string(x="value", y="yhat", color="yvar"), ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat", color="yvar")) +
+            geom_boxplot( ...)
         }else{
-          gg_plt <- gg_plt +
-            geom_boxplot(aes_string(x="value", y="yhat"), ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat")) +
+            geom_boxplot(...)
         }
       }
       if(family!="class"){
         if(points){
-          gg_plt <- gg_plt +
-            geom_point(aes_string(x="value", y="yhat"), ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat")) +
+            geom_point(...)
         }else{
-        gg_plt <- gg_plt +
-          geom_smooth(aes_string(x="value", y="yhat"), color="black", linetype=2, ...)
+          gg_plt <- ggplot(gg_dta.mlt,aes_string(x="value", y="yhat")) +
+            geom_smooth(...)
         }
+        if(smooth)
+          gg_plt <- gg_plt +
+            geom_smooth(...)
       }
       
       gg_plt <- gg_plt +
@@ -360,7 +369,7 @@ plot.gg_variable <- function(x, xvar,
       ccls <- class(gg_dta[,"var"])
       ccls[which(ccls == "integer")] <- "numeric"
       
-      #cat(ind, "\t", h_name, "\t", ccls, "\n")
+      ## cat(ind, "\t", h_name, "\t", ccls, "\n")
       
       gg_plt[[ind]] <- ggplot(gg_dta)
       
@@ -370,6 +379,7 @@ plot.gg_variable <- function(x, xvar,
         
         if(ccls=="numeric"){
           
+          # cat("2")
           if(points){
             gg_plt[[ind]] <- gg_plt[[ind]] +
               geom_point(aes_string(x="var", y="yhat", color="cens", shape="cens"), 
@@ -378,8 +388,13 @@ plot.gg_variable <- function(x, xvar,
             gg_plt[[ind]] <- gg_plt[[ind]] +
               geom_smooth(aes_string(x="var", y="yhat"),  ...)
           }
-          
+          if(smooth){
+            gg_plt[[ind]] <- gg_plt[[ind]] +
+              geom_smooth(...)
+          }
         }else{
+          
+          # cat("3")
           gg_plt[[ind]] <- gg_plt[[ind]] +
             geom_boxplot(aes_string(x="var", y="yhat"), color="black",
                          ..., outlier.shape = NA)+
@@ -399,6 +414,8 @@ plot.gg_variable <- function(x, xvar,
         
         if(sum(colnames(gg_dta) == "outcome") ==0){ 
           if(ccls=="numeric"){
+            
+            # cat("5")
             if(points){
               gg_plt[[ind]] <- gg_plt[[ind]] +
                 geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
@@ -407,7 +424,13 @@ plot.gg_variable <- function(x, xvar,
               gg_plt[[ind]] <- gg_plt[[ind]] +
                 geom_smooth(aes_string(x="var", y="yhat"), color="black", linetype=2, ...)
             }
+            if(smooth){
+              gg_plt[[ind]] <- gg_plt[[ind]] +
+                geom_smooth(...)
+              }
           }else{
+            
+            # cat("6")
             gg_plt[[ind]] <- gg_plt[[ind]] +
               geom_jitter(aes_string(x="var", y="yhat", color="yvar", shape="yvar"), 
                           ...) +
@@ -417,6 +440,7 @@ plot.gg_variable <- function(x, xvar,
           }
         }else{
           
+          # cat("7")
           if(ccls=="numeric"){
             gg_plt[[ind]] <- gg_plt[[ind]] +
               geom_point(aes_string(x="var", y="yhat", color="yvar", shape="yvar"),
@@ -443,9 +467,11 @@ plot.gg_variable <- function(x, xvar,
               geom_point(aes_string(x="var", y="yhat"), ...)
           }else{
             gg_plt[[ind]] <- gg_plt[[ind]] +
-              geom_smooth(aes_string(x="var", y="yhat"), color="black", linetype=2, ...)
-            
+              geom_smooth(aes_string(x="var", y="yhat"), ...)
           }
+          if(smooth)
+            gg_plt[[ind]]  <- gg_plt[[ind]]  +
+              geom_smooth(aes_string(x="var", y="yhat"),...)
         }else{
           gg_plt[[ind]] <- gg_plt[[ind]] +
             geom_boxplot(aes_string(x="var", y="yhat"), color="grey", 

@@ -13,13 +13,17 @@ opts_chunk$set(fig.path = 'fig-rfs/rfs-',
                prompt = TRUE, 
                highlight = FALSE, 
                comment = NA, 
-               echo = FALSE, results = FALSE, message = FALSE, warning = FALSE, 
-               error = FALSE, dev = 'pdf', prompt = TRUE)
+               echo = FALSE, # Change this to TRUE if you want to see all the code examples
+               results = FALSE, 
+               message = FALSE, 
+               warning = FALSE, 
+               error = FALSE, 
+               dev = 'pdf', prompt = TRUE)
 
 # Setup the R environment
 options(object.size = Inf, expressions = 100000, memory = Inf, 
         replace.assign = TRUE, width = 90, prompt = "R> ")
-options(mc.cores = 1, rf.cores = 0)
+options(mc.cores = 1, rf.cores = 0, stringsAsFactors = FALSE)
 
 ## ----libraries--------------------------------------------------------------------------
 ################## Load packages ##################
@@ -51,7 +55,6 @@ data("pbc", package = "randomForestSRC")
 library("tidyr")        # Transforming wide data into long data (gather)
 
 ## Not displayed ##
-
 ## Set modes correctly. For binary variables: transform to logical
 ## Check for range of 0, 1
 ## There is probably a better way to do this.
@@ -130,9 +133,9 @@ kable(tmp,
 ## Not displayed ##
 # Use tidyr::gather to transform the data into long format.
 cnt <- c(which(cls == "numeric" ), which(cls == "integer"))
-fct <- setdiff(1:ncol(pbc), cnt)
+fct <- setdiff(1:ncol(pbc), cnt) # The complement of numeric/integers.
 fct <- c(fct, which(colnames(pbc) == "years"))
-dta <- gather(pbc[,fct], variable, value, -years)
+dta <- suppressWarnings(gather(pbc[,fct], variable, value, -years))
 
 # plot panels for each covariate colored by the logical chas variable.
 ggplot(dta, aes(x = years, fill = value)) +
@@ -144,13 +147,13 @@ ggplot(dta, aes(x = years, fill = value)) +
 
 ## ----continuousEDA, fig.cap="EDA plots for continuous variables. Symbols indicate observations with variable value on Y-axis against follow up time in years. Symbols are colored and shaped according to the death event  (\\code{status} variable). Missing values are indicated by rug marks along the X-axis", fig.width=7, fig.height=4----
 ## Not displayed ##
-
 # Use tidyr::gather to transform the data into long format.
 cnt <- c(cnt, which(colnames(pbc) == "status"))
 dta <- gather(pbc[,cnt], variable, value, -years, -status)
 
 # plot panels for each covariate colored by the logical chas variable.
-ggplot(dta, aes(x = years, y = value, color = status, shape = status)) +
+ggplot(dta %>% filter(!is.na(value)), 
+       aes(x = years, y = value, color = status, shape = status)) +
   geom_point(alpha = 0.4) +
   geom_rug(data = dta[which(is.na(dta$value)),], color = "grey50") +
   labs(y = "", x = st.labs["years"], color = "Death", shape = "Death") +
@@ -175,7 +178,7 @@ kable(st,
       digits = 3,
       booktabs=TRUE)
 
-## ----gg_survival------------------------------------------------------------------------
+## ----gg_survival, echo=TRUE-------------------------------------------------------------
 # Create the trial and test data sets.
 pbc.trial <- pbc %>% filter(!is.na(treatment))
 pbc.test <- pbc %>% filter(is.na(treatment))
@@ -279,7 +282,8 @@ plot(gg_rfsrc(rfsrc_pbc_test), alpha=.2) +
 
 ## ----rf-vimp, echo=TRUE, fig.cap="Random forest Variable Importance (VIMP). Blue bars indicates positive VIMP, red indicates negative VIMP. Importance is relative to positive length of bars.", fig.width=5----
 plot(gg_vimp(rfsrc_pbc), lbls = st.labs) + 
-  theme(legend.position = c(0.8, 0.2)) + labs(fill = "VIMP > 0")
+  theme(legend.position = c(0.8, 0.2)) + 
+  labs(fill = "VIMP > 0")
 
 ## ----nms--------------------------------------------------------------------------------
 ## calculate for document
@@ -316,8 +320,8 @@ rownames(gg_v) <- gg_v$vars
 md <- data.frame(cbind(names=gg_md$topvars))
 md$rank <- 1:nrow(md)
 rownames(md) <- gg_md$topvars
-
 md$vimp <- gg_v[rownames(md),]$rank
+
 md <- left_join(md, fh.model, by = "names")
 md <- md[,c(1, 4, 2,3)]
 colnames(md) <- c("Variable", "FH","Min depth", "VIMP" )
@@ -349,7 +353,7 @@ plot(gg_v, xvar = "bili", alpha = 0.4) + #, se=FALSE
 xvar <- c("bili", "albumin", "copper", "prothrombin", "age")
 xvar.cat <- c("edema")
 
-plot(gg_v, xvar = xvar[-1], panel = TRUE, alpha = 0.4) + #se = FALSE, , span=1
+plot(gg_v, xvar = xvar[-1], panel = TRUE, alpha = 0.4) + #se = FALSE, span=1
   labs(y = "Survival") + 
   theme(legend.position = "none") + 
   scale_color_manual(values = strCol, labels = event.labels) + 
@@ -602,7 +606,7 @@ st <- lapply(indx, function(ind){
 #  
 #  # Find the 50 points in time, evenly space along the distribution of
 #  # event times for a series of partial dependence curves
-#  time_cts <-quantile_pts(time_pts, groups = 50)
+#  time_cts <-quantile_pts(time_pts, groups = 50, intervals = TRUE)
 #  
 #  # Load stored data from the package.
 #  # See ?partial_pbc_time for how this data was generated.
