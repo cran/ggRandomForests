@@ -34,7 +34,7 @@
 #' Ishwaran H. (2007). Variable importance in binary regression trees and forests, 
 #' \emph{Electronic J. Statist.}, 1:519-537.
 #' 
-#' @importFrom tidyr gather_
+#' @importFrom tidyr gather
 #' @importFrom randomForestSRC vimp
 #' 
 #' @examples
@@ -42,8 +42,8 @@
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-#' #data(rfsrc_iris, package="ggRandomForests")
+#' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
 #' gg_dta <- gg_vimp(rfsrc_iris)
 #' plot(gg_dta)
 #'  
@@ -57,12 +57,12 @@
 #' gg_dta <- gg_vimp(rfsrc_airq)
 #' plot(gg_dta)
 #' }
-#' \dontrun{
+#' 
 #' ## -------- Boston data
 #' data(rfsrc_Boston, package="ggRandomForests")
 #' gg_dta <- gg_vimp(rfsrc_Boston)
 #' plot(gg_dta)
-#' }
+#' 
 #' \dontrun{
 #' ## -------- mtcars data
 #' data(rfsrc_mtcars, package="ggRandomForests")
@@ -77,8 +77,8 @@
 #' data(rfsrc_veteran, package="ggRandomForests")
 #' gg_dta <- gg_vimp(rfsrc_veteran)
 #' plot(gg_dta)
-#' }
-#' \dontrun{
+#' 
+#' 
 #' ## -------- pbc data
 #' data(rfsrc_pbc, package="ggRandomForests")
 #' gg_dta <- gg_vimp(rfsrc_pbc)
@@ -161,7 +161,7 @@ gg_vimp.rfsrc <- function(object, nvar, ...){
     #clnms <- colnames(gg_dta)[-which(colnames(gg_dta)=="vars")]
     gg_dta <- gg_dta[1:nvar,]
     gathercols <- colnames(gg_dta)[-which(colnames(gg_dta) == "vars")]
-    gg_dta <- gather_(gg_dta, "set", "vimp", gathercols)
+    gg_dta <- tidyr::gather(gg_dta, "set", "vimp", gathercols)
     gg_dta <- gg_dta[order(gg_dta$vimp, decreasing=TRUE),]
     gg_dta$vars <- factor(gg_dta$vars)
   }else{
@@ -253,7 +253,7 @@ gg_vimp.randomForest <- function (object, nvar, ...) {
   #   #clnms <- colnames(gg_dta)[-which(colnames(gg_dta)=="vars")]
   #  
   #   gathercols <- colnames(gg_dta)[-which(colnames(gg_dta) == "vars")]
-  #   gg_dta <- gather_(gg_dta, "set", "vimp", gathercols)
+  #   gg_dta <- tidyr::gather(gg_dta, "set", "vimp", gathercols)
   #   gg_dta <- gg_dta[order(gg_dta$vimp, decreasing=TRUE),]
   #   gg_dta$vars <- factor(gg_dta$vars)
   # }else{

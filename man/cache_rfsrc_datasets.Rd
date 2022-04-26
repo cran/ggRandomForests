@@ -25,11 +25,26 @@ Constructing random forests are computationally expensive, and the
 We cache computationally intensive \code{randomForestSRC} objects to improve 
 the \code{ggRandomForests} examples, diagnostics and vignettes run times. The
 set of precompiled \code{randomForestSRC} objects are stored in the package
-data subfolder, however version changes in the dependant packages may break
+data subfolder, however version changes in the dependent packages may break
 some functionality. This function was created to help the package developer 
-deal with thoses changes. We make the function available to end users to
+deal with those changes. We make the function available to end users to
 create objects for further experimentation.
 
+There are five cached data set types:
+'\itemize{
+\item \code{\link{rfsrc_data}} - \code{\link[randomForestSRC]{rfsrc}} objects. 
+\item \code{\link{varsel_data}} - \code{\link[randomForestSRC]{var.select}} 
+minimal depth variable selection objects.
+\item \code{\link{interaction_data}} - 
+\code{\link[randomForestSRC]{find.interaction}} minimal depth, 
+pairwise variable interaction matrices.
+\item \code{\link{partial_data}} - \code{\link[randomForestSRC]{plot.variable}} 
+objects 
+(\code{partial=TRUE}) for partial variable dependence. 
+\item \code{\link{partial_coplot_data}} - 
+\code{\link[randomForestSRC]{plot.variable}} objects 
+(\code{partial=TRUE}) for partial variable dependence. 
+}
 
 For the following data sets:
 #'\itemize{
@@ -44,6 +59,10 @@ For the following data sets:
 \seealso{
 \code{iris} \code{airq} \code{mtcars} \code{\link[MASS]{Boston}} 
 \code{\link[randomForestSRC]{pbc}}
-\code{\link[randomForestSRC]{veteran}}
+\code{\link[randomForestSRC]{veteran}} 
+\code{\link{rfsrc_data}} 
+\code{\link{varsel_data}}
+\code{\link{interaction_data}}
+\code{\link{partial_data}} 
+\code{\link{partial_coplot_data}}
 }
-

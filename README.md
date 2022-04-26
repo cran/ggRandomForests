@@ -1,16 +1,16 @@
 ggRandomForests: Visually Exploring Random Forests
 ========================================================
-[![DOI](https://zenodo.org/badge/5745/ehrlinger/ggRandomForests.png)](https://dx.doi.org/10.5281/zenodo.11526)
-[![CRAN version](https://www.r-pkg.org/badges/version/ggRandomForests)](https://cran.r-project.org/package=ggRandomForests)
-![cranlogs](https://cranlogs.r-pkg.org./badges/ggRandomForests)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11526.svg)](https://doi.org/10.5281/zenodo.11526)
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/ggRandomForests)](https://cran.r-project.org/package=ggRandomForests)
+![cranlogs](http://cranlogs.r-pkg.org/badges/ggRandomForests)
 
-![active](https://www.repostatus.org/badges/latest/active.svg)
+![active](http://www.repostatus.org/badges/latest/active.svg)
 [![Build Status](https://travis-ci.org/ehrlinger/ggRandomForests.svg?branch=master)](https://travis-ci.org/ehrlinger/ggRandomForests)
 [![Coverage Status](https://coveralls.io/repos/ehrlinger/ggRandomForests/badge.svg?branch=master&service=github)](https://coveralls.io/github/ehrlinger/ggRandomForests?branch=master)
 
-[ggRandomForests](https://cran.r-project.org/package=ggRandomForests)  will help uncover variable associations in the random forests models. The package is designed for use with the [randomForest](https://cran.r-project.org/package=randomForest) package (A. Liaw and M. Wiener 2002)  or the [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) package (Iswaran et.al. 2014, 2008, 2007) for survival, regression and classification random forests and uses the [ggplot2](https://cran.r-project.org/package=ggplot2) package (Wickham 2009) for plotting diagnostic and variable association results. [ggRandomForests](https://cran.r-project.org/package=ggRandomForests) is  structured to extract data objects from [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) or [randomForest](https://cran.r-project.org/package=randomForest) objects and provides S3 functions for printing and plotting these objects.
+[ggRandomForests](https://cran.r-project.org/package=ggRandomForests)  will help uncover variable associations in the random forests models. The package is designed for use with the [randomForest](https://cran.r-project.org/package=randomForest) package (A. Liaw and M. Wiener 2002)  or the [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) package (Ishwaran et.al. 2014, 2008, 2007) for survival, regression and classification random forests and uses the [ggplot2](https://cran.r-project.org/package=ggplot2) package (Wickham 2009) for plotting diagnostic and variable association results. [ggRandomForests](https://cran.r-project.org/package=ggRandomForests) is  structured to extract data objects from [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) or [randomForest](https://cran.r-project.org/package=randomForest) objects and provides S3 functions for printing and plotting these objects.
  
-The [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) package provides a unified treatment of Breiman's (2001) random forests for a variety of data settings. Regression and classification forests are grown when the response is numeric or categorical (factor) while survival and competing risk forests (Ishwaran et al. 2008, 2012) are grown for right-censored survival data. Recently, suppport for the [randomForest](https://cran.r-project.org/package=randomForest) package (A. Liaw and M. Wiener 2002) for regression and classification forests has also been added.
+The [randomForestSRC](https://cran.r-project.org/package=randomForestSRC) package provides a unified treatment of Breiman's (2001) random forests for a variety of data settings. Regression and classification forests are grown when the response is numeric or categorical (factor) while survival and competing risk forests (Ishwaran et al. 2008, 2012) are grown for right-censored survival data. Recently, support for the [randomForest](https://cran.r-project.org/package=randomForest) package (A. Liaw and M. Wiener 2002) for regression and classification forests has also been added.
 
 Many of the figures created by the `ggRandomForests` package are also available directly from within the `randomForestSRC` or `randomForest` package. However, `ggRandomForests` offers the following advantages:
 

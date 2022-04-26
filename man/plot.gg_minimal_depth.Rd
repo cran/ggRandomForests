@@ -4,8 +4,7 @@
 \alias{plot.gg_minimal_depth}
 \title{Plot a \code{\link{gg_minimal_depth}} object for random forest variable ranking.}
 \usage{
-\method{plot}{gg_minimal_depth}(x, selection = FALSE, type = c("named",
-  "rank"), lbls, ...)
+\method{plot}{gg_minimal_depth}(x, selection = FALSE, type = c("named", "rank"), lbls, ...)
 }
 \arguments{
 \item{x}{\code{\link{gg_minimal_depth}} object created from a 
@@ -108,4 +107,3 @@ Regression and Classification (RF-SRC), R package version 1.5.
 \seealso{
 \code{\link[randomForestSRC]{var.select}} \code{\link{gg_minimal_depth}}
 }
-

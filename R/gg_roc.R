@@ -18,7 +18,7 @@
 #'
 #' ROC (Receiver operator curve) data from a classification random forest.
 #' 
-#' The sensitivity and specificity of a randomForests classification object. 
+#' The sensitivity and specificity of a randomForest classification object. 
 #' 
 #' @param object an \code{\link[randomForestSRC]{rfsrc}} classification object
 #' @param which.outcome select the classification outcome of interest.
@@ -34,8 +34,8 @@
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-#' #data(rfsrc_iris, package="ggRandomForests")
+#' #rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
 #'
 #' # ROC for setosa
 #' gg_dta <- gg_roc(rfsrc_iris, which.outcome=1)

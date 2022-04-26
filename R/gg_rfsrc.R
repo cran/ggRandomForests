@@ -38,14 +38,14 @@
 #' @seealso \code{\link{plot.gg_rfsrc}} \code{rfsrc} \code{plot.rfsrc} 
 #' \code{\link{gg_survival}}
 #' 
-#' @importFrom tidyr gather_
+#' @importFrom tidyr gather
 #' @examples
 #' ## ------------------------------------------------------------
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-#' #data(rfsrc_iris, package="ggRandomForests")
+#' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
 #' gg_dta<- gg_rfsrc(rfsrc_iris)
 #' 
 #' plot(gg_dta)
@@ -61,11 +61,11 @@
 #' 
 #' plot(gg_dta)
 #' }
-#' \dontrun{
+#' 
 #' ## -------- Boston data
 #' data(rfsrc_Boston, package="ggRandomForests")
-#' plot(rfsrc_Boston) 
-#' }
+#' plot(gg_rfsrc(rfsrc_Boston)) 
+#' 
 #' \dontrun{
 #' ## -------- mtcars data
 #' data(rfsrc_mtcars, package="ggRandomForests")
@@ -90,23 +90,23 @@
 #' 
 #' gg_dta <- gg_rfsrc(rfsrc_veteran, by="trt")
 #' plot(gg_dta)
-#' }
-#' \dontrun{
+#' 
+#' 
 #' ## -------- pbc data
 #' ## We don't run this because of bootstrap confidence limits
 #' data(rfsrc_pbc, package = "ggRandomForests")
-#' }
-#' \dontrun{
+#' 
+#
 #' gg_dta <- gg_rfsrc(rfsrc_pbc)
 #' plot(gg_dta)
 #' 
 #' gg_dta <- gg_rfsrc(rfsrc_pbc, conf.int=.95)
 #' plot(gg_dta)
-#' }
-#' \dontrun{
+#' 
+#' 
 #' gg_dta <- gg_rfsrc(rfsrc_pbc, by="treatment")
 #' plot(gg_dta)
-#'}
+#' }
 #' 
 #' @aliases gg_rfsrc gg_rfsrc.rfsrc
 
@@ -231,7 +231,7 @@ gg_rfsrc.rfsrc <- function(object,
     # Then we want to plot a curve for each observation.
     if(is.null(arg_list$conf.int) & missing(by)){
       gathercols <- colnames(gg_dta)[-which(colnames(gg_dta) %in% c("obs_id", "event"))]
-      gg_dta.mlt <- tidyr::gather_(gg_dta, "variable", "value", gathercols)
+      gg_dta.mlt <- tidyr::gather(gg_dta, "variable", "value", gathercols)
       gg_dta.mlt$variable <- as.numeric(as.character(gg_dta.mlt$variable))
       gg_dta.mlt$obs_id <- factor(gg_dta.mlt$obs_id)
       
@@ -299,7 +299,7 @@ gg_rfsrc.rfsrc <- function(object,
     stop(paste("Plotting for ", object$family, " randomForestSRC is not yet implemented.", sep=""))
   }
   
-  class(gg_dta) <- c("gg_rfsrc", class(gg_dta), object$family)
+  class(gg_dta) <- c("gg_rfsrc", object$family, class(gg_dta))
   invisible(gg_dta)
 }
 
@@ -444,7 +444,7 @@ gg_rfsrc.randomForest <- function(object,
     stop(paste("Plotting for ", object$family, " randomForest is not yet implemented.", sep=""))
   }
   
-  class(gg_dta) <- c("gg_rfsrc", class(gg_dta), object$type)
+  class(gg_dta) <- c("gg_rfsrc", object$type, class(gg_dta))
   invisible(gg_dta)
 }
 

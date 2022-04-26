@@ -4,8 +4,17 @@
 \alias{plot.gg_variable}
 \title{Plot a \code{\link{gg_variable}} object,}
 \usage{
-\method{plot}{gg_variable}(x, xvar, time, time_labels, panel = FALSE,
-  oob = TRUE, points = TRUE, smooth = TRUE, ...)
+\method{plot}{gg_variable}(
+  x,
+  xvar,
+  time,
+  time_labels,
+  panel = FALSE,
+  oob = TRUE,
+  points = TRUE,
+  smooth = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{\code{\link{gg_variable}} object created from a 
@@ -17,7 +26,7 @@
 
 \item{time_labels}{string labels for times}
 
-\item{panel}{Should plots be facetted along multiple xvar?}
+\item{panel}{Should plots be faceted along multiple xvar?}
 
 \item{oob}{oob estimates (boolean)}
 
@@ -137,4 +146,3 @@ Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, Rnews,
 Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival, Regression
 and Classification (RF-SRC), R package version 1.4.
 }
-

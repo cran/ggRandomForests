@@ -4,7 +4,7 @@
 \alias{gg_minimal_vimp}
 \alias{gg_minimal_vimp.randomForest}
 \alias{gg_minimal_vimp.rfsrc}
-\title{Minimal depth vs VIMP camparison by variable rankings.}
+\title{Minimal depth vs VIMP comparison by variable rankings.}
 \usage{
 gg_minimal_vimp(object, ...)
 }
@@ -23,14 +23,13 @@ gg_minimal_vimp(object, ...)
  @aliases gg_minimal_vimp}
 }
 \description{
-Minimal depth vs VIMP camparison by variable rankings.
+Minimal depth vs VIMP comparison by variable rankings.
 }
 \examples{
 ## Examples from RFSRC package... 
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
-\dontrun{
 ## -------- iris data
 ## You can build a randomForest
 # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
@@ -43,7 +42,7 @@ gg_dta<- gg_minimal_vimp(varsel_iris)
 
 # Plot the gg_minimal_depth object
 plot(gg_dta)
-}
+
 ## ------------------------------------------------------------
 ## Regression example
 ## ------------------------------------------------------------
@@ -60,7 +59,7 @@ gg_dta<- gg_minimal_vimp(varsel_airq)
 # Plot the gg_minimal_vimp object
 plot(gg_dta)
 }
-\dontrun{
+
 ## -------- Boston data
 data(varsel_Boston, package="ggRandomForests")
 
@@ -69,7 +68,7 @@ gg_dta<- gg_minimal_vimp(varsel_Boston)
 
 # Plot the gg_minimal_vimp object
 plot(gg_dta)
-}
+
 \dontrun{
 ## -------- mtcars data
 data(varsel_mtcars, package="ggRandomForests")
@@ -94,8 +93,7 @@ data(varsel_veteran, package="ggRandomForests")
 
 gg_dta <- gg_minimal_vimp(varsel_veteran)
 plot(gg_dta)
-}
-\dontrun{
+
 ## -------- pbc data
 data(varsel_pbc, package="ggRandomForests")
 
@@ -103,4 +101,3 @@ gg_dta <- gg_minimal_vimp(varsel_pbc)
 plot(gg_dta)
 }
 }
-

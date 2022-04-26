@@ -14,16 +14,16 @@
 ####
 ####**********************************************************************
 ####**********************************************************************
-#' Marginal variable depedance data object.
+#' Marginal variable dependance data object.
 #' 
 #' @details The marginal variable dependence is determined by comparing relation
-#' between the predicted response from the randomforest and a covariate of interest.
+#' between the predicted response from the randomForest and a covariate of interest.
 #' 
 #' The \code{gg_variable} function operates on a \code{\link[randomForestSRC]{rfsrc}} object, 
 #' or the output from the \code{\link[randomForestSRC]{plot.variable}} function.
 #' 
 #' @description \code{\link[randomForestSRC]{plot.variable}} generates a \code{data.frame}
-#'  containing the marginal variable dependance or the partial variable dependence. 
+#'  containing the marginal variable dependence or the partial variable dependence. 
 #'  The \code{gg_variable} function creates a \code{data.frame} of containing the 
 #'  full set of covariate data (predictor variables) and the predicted response for 
 #'  each observation. Marginal dependence figures are created using the 
@@ -49,8 +49,8 @@
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
 #' ## iris
-#'  rfsrc_iris <- rfsrc(Species ~., data = iris)
-#' #data(rfsrc_iris, package="ggRandomForests")
+#' #rfsrc_iris <- rfsrc(Species ~., data = iris)
+#' data(rfsrc_iris, package="ggRandomForests")
 #' 
 #' gg_dta <- gg_variable(rfsrc_iris)
 #' plot(gg_dta, xvar="Sepal.Width")
@@ -120,7 +120,7 @@
 #' # get the 1 year survival time.
 #' gg_dta <- gg_variable(rfsrc_veteran, time=90)
 #' 
-#' # Generate variable dependance plots for age and diagtime
+#' # Generate variable dependence plots for age and diagtime
 #' plot(gg_dta, xvar = "age")
 #' plot(gg_dta, xvar = "diagtime", )
 #' 
@@ -131,10 +131,11 @@
 #' # and 1 year
 #' gg_dta <- gg_variable(rfsrc_veteran, time=c(30, 90, 365))
 #' 
-#' # Generate variable dependance plots for age and diagtime
+#' # Generate variable dependence plots for age and diagtime
 #' plot(gg_dta, xvar = "age")
 #' }
 #' ## -------- pbc data
+#' 
 #' @aliases gg_variable gg_variable.rfsrc gg_variable.randomForest gg_variable.random
 #' @importFrom stats median
 #' 
