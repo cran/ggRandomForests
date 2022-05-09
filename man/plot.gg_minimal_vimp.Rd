@@ -2,13 +2,13 @@
 % Please edit documentation in R/plot.gg_minimal_vimp.R
 \name{plot.gg_minimal_vimp}
 \alias{plot.gg_minimal_vimp}
-\title{Plot a \code{\link{gg_minimal_vimp}} object for comparing the Minimal 
+\title{Plot a \code{\link{gg_minimal_vimp}} object for comparing the Minimal
 Depth and VIMP variable rankings.}
 \usage{
 \method{plot}{gg_minimal_vimp}(x, nvar, lbls, ...)
 }
 \arguments{
-\item{x}{\code{\link{gg_minimal_depth}} object created from a 
+\item{x}{\code{\link{gg_minimal_depth}} object created from a
 \code{\link[randomForestSRC]{var.select}}
 object}
 
@@ -22,12 +22,12 @@ object}
 \code{ggplot} object
 }
 \description{
-Plot a \code{\link{gg_minimal_vimp}} object for comparing the Minimal 
+Plot a \code{\link{gg_minimal_vimp}} object for comparing the Minimal
 Depth and VIMP variable rankings.
 }
 \examples{
 \dontrun{
-## Examples from RFSRC package... 
+## Examples from RFSRC package...
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
@@ -58,10 +58,10 @@ gg_dta<- gg_minimal_vimp(varsel_airq)
 plot(gg_dta)
 
 ## -------- Boston data
-data(varsel_Boston, package="ggRandomForests")
+data(varsel_boston, package="ggRandomForests")
 
 # Get a data.frame containing error rates
-gg_dta<- gg_minimal_vimp(varsel_Boston)
+gg_dta<- gg_minimal_vimp(varsel_boston)
 
 # Plot the gg_minimal_vimp object
 plot(gg_dta)
@@ -88,15 +88,16 @@ data(varsel_veteran, package="ggRandomForests")
 
 gg_dta <- gg_minimal_vimp(varsel_veteran)
 plot(gg_dta)
-  
+
 ## -------- pbc data
 data(varsel_pbc, package="ggRandomForests")
 
 gg_dta <- gg_minimal_vimp(varsel_pbc)
 plot(gg_dta)
-} 
+}
 
 }
 \seealso{
-\code{\link{gg_minimal_vimp}} \code{\link[randomForestSRC]{var.select}}
+\code{\link{gg_minimal_vimp}}
+\code{\link[randomForestSRC]{var.select}}
 }

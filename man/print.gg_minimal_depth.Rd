@@ -39,18 +39,18 @@ data(varsel_airq, package="ggRandomForests")
 gg_dta<- gg_minimal_depth(varsel_airq)
 print(gg_dta)
 
-# To nicely print a rfsrc::var.select output... 
+# To nicely print a rfsrc::var.select output...
 print(varsel_airq)
 }
 
 # ... or load a cached randomForestSRC object
-data(varsel_Boston, package="ggRandomForests")
+data(varsel_boston, package="ggRandomForests")
 
 # Get a data.frame containing minimaldepth measures
-gg_dta<- gg_minimal_depth(varsel_Boston)
+gg_dta<- gg_minimal_depth(varsel_boston)
 print(gg_dta)
 
-# To nicely print a rfsrc::var.select output... 
-print(varsel_Boston)
+# To nicely print a rfsrc::var.select output...
+print(varsel_boston)
 
 }

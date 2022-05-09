@@ -1,10 +1,24 @@
-#' Cached \code{\link[randomForestSRC]{rfsrc}} objects for examples, diagnostics and vignettes.
+####**********************************************************************
+####**********************************************************************
+####
+####  ----------------------------------------------------------------
+####  Written by:
+####    John Ehrlinger, Ph.D.
+####
+####    email:  john.ehrlinger@gmail.com
+####    URL:    https://github.com/ehrlinger/ggRandomForests
+####  ----------------------------------------------------------------
+####
+####**********************************************************************
+####**********************************************************************
+#' Cached \code{\link[randomForestSRC]{rfsrc}} objects for examples, diagnostics
+#' and vignettes.
 #'
-#' Data sets storing \code{\link[randomForestSRC]{rfsrc}} objects corresponding to
-#' training data according to the following naming convention:
+#' Data sets storing \code{\link[randomForestSRC]{rfsrc}} objects corresponding 
+#' to training data according to the following naming convention:
 #'\itemize{
 #' \item \code{rfsrc_iris} - randomForestSR[C] for the \code{iris} data set.
-#' \item \code{rfsrc_Boston} - randomForestS[R]C for the \code{Boston} housing
+#' \item \code{rfsrc_boston} - randomForestS[R]C for the \code{Boston} housing
 #' data set (\code{MASS} package).
 #' \item \code{rfsrc_pbc} - randomForest[S]RC for the \code{pbc} data set
 #'  (\code{randomForestSRC} package)
@@ -12,33 +26,37 @@
 #'
 #' @details
 #' Constructing random forests are computationally expensive.
-#' We cache \code{\link[randomForestSRC]{rfsrc}} objects to improve the \code{ggRandomForests}
-#' examples, diagnostics and vignettes run times.
-#' (see \code{\link{cache_rfsrc_datasets}} to rebuild a complete set of these data sets.)
+#' We cache \code{\link[randomForestSRC]{rfsrc}} objects to improve the 
+#' \code{ggRandomForests} examples, diagnostics and vignettes run times.
+#' (see \code{\link{cache_rfsrc_datasets}} to rebuild a complete set of these 
+#' data sets.)
 #'
-#' For each data set listed, we build a \code{\link[randomForestSRC]{rfsrc}}. Tuning parameters used
-#' in each case are documented in the examples. Each data set is built with the
-#' \code{\link{cache_rfsrc_datasets}} with the \code{randomForestSRC} version listed
-#' in the \code{ggRandomForests} DESCRIPTION file.
+#' For each data set listed, we build a \code{\link[randomForestSRC]{rfsrc}}. 
+#' Tuning parameters used in each case are documented in the examples. Each 
+#' data set is built with the \code{\link{cache_rfsrc_datasets}} with the 
+#' \code{randomForestSRC} version listed in the \code{ggRandomForests} 
+#' DESCRIPTION file.
 #'
 #' \itemize{
-#' \item \code{rfsrc_iris} - The famous (Fisher's or Anderson's) \code{iris} data set gives
-#' the measurements in centimeters of the variables sepal length and width and
-#' petal length and width, respectively, for 50 flowers from each of 3 species
-#' of iris. Build a classification random forest for predicting the species (setosa,
-#' versicolor, and virginica) on 5 variables (columns) and 150 observations (rows).
+#' \item \code{rfsrc_iris} - The famous (Fisher's or Anderson's) \code{iris} 
+#' data set gives the measurements in centimeters of the variables sepal length
+#' and width and petal length and width, respectively, for 50 flowers from each 
+#' of 3 species of iris. Build a classification random forest for predicting the
+#' species (setosa, versicolor, and virginica) on 5 variables (columns) and 150 
+#' observations (rows).
 #'
-#' \item \code{rfsrc_Boston} - The \code{Boston} housing values in suburbs of Boston from the
-#' \code{MASS} package. Build a regression random forest for predicting medv (median home
-#' values) on 13 covariates and 506 observations.
+#' \item \code{rfsrc_boston} - The \code{Boston} housing values in suburbs of 
+#' Boston from the \code{MASS} package. Build a regression random forest for 
+#' predicting medv (median home values) on 13 covariates and 506 observations.
 #'
-#' \item \code{rfsrc_pbc} - The \code{pbc} data from the Mayo Clinic trial in primary biliary
-#' cirrhosis (PBC) of the liver conducted between 1974 and 1984. A total of 424 PBC patients,
-#' referred to Mayo Clinic during that ten-year interval, met eligibility criteria for the
-#' randomized placebo controlled trial of the drug D-penicillamine. 312 cases participated in
-#' the randomized trial and contain largely complete data. Data from the \code{randomForestSRC}
-#' package. Build a survival random forest for time-to-event death data with 17 covariates and
-#' 312 observations (remaining 106 observations are held out).
+#' \item \code{rfsrc_pbc} - The \code{pbc} data from the Mayo Clinic trial in 
+#' primary biliary cirrhosis (PBC) of the liver conducted between 1974 and 1984.
+#' A total of 424 PBC patients, referred to Mayo Clinic during that ten-year 
+#' interval, met eligibility criteria for the randomized placebo controlled 
+#' trial of the drug D-penicillamine. 312 cases participated in the randomized 
+#' trial and contain largely complete data. Data from the \code{randomForestSRC}
+#' package. Build a survival random forest for time-to-event death data with 17 
+#' covariates and 312 observations (remaining 106 observations are held out).
 #' }
 #'
 #' @seealso \code{iris} \code{\link[MASS]{Boston}}
@@ -74,14 +92,14 @@
 #' Boston$chas <- as.logical(Boston$chas)
 #'
 #' # rfsrc grow call
-#' rfsrc_Boston <- rfsrc(medv~., data=Boston)
+#' rfsrc_boston <- rfsrc(medv~., data=Boston)
 #'
 #' # plot the forest generalization error convergence
-#' gg_dta <- gg_error(rfsrc_Boston)
+#' gg_dta <- gg_error(rfsrc_boston)
 #' plot(gg_dta)
 #'
 #' # Plot the forest predictions
-#' gg_dta <- gg_rfsrc(rfsrc_Boston)
+#' gg_dta <- gg_rfsrc(rfsrc_boston)
 #' plot(gg_dta)
 #'
 #' #---------------------------------------------------------------------
@@ -129,12 +147,12 @@
 #'  Boston data set
 #' ---------------------
 #'
-#'  Belsley, D.A., E. Kuh, and R.E. Welsch. 1980. Regression Diagnostics. Identifying
-#'  Influential Data and Sources of Collinearity. New York: Wiley.
+#'  Belsley, D.A., E. Kuh, and R.E. Welsch. 1980. Regression Diagnostics. 
+#'  Identifying Influential Data and Sources of Collinearity. New York: Wiley.
 #'
-#' Harrison, D., and D.L. Rubinfeld. 1978. "Hedonic Prices and the Demand for Clean Air."
-#'  J. Environ. Economics and Management 5: 81-102.
-#'
+#' Harrison, D., and D.L. Rubinfeld. 1978. "Hedonic Prices and the Demand for 
+#' Clean Air." J. Environ. Economics and Management 5: 81-102.
+#
 #' #---------------------
 #'  Iris data set
 #' ---------------------
@@ -152,16 +170,16 @@
 #'  pbc data set
 #' ---------------------
 #'
-#' Flemming T.R and Harrington D.P., (1991) Counting Processes and Survival Analysis.
-#' New York: Wiley.
+#' Fleming T.R and Harrington D.P., (1991) Counting Processes and Survival 
+#' Analysis. New York: Wiley.
 #'
-#' T Therneau and P Grambsch (2000), Modeling Survival Data: Extending the Cox Model,
-#' Springer-Verlag, New York. ISBN: 0-387-98784-3.
+#' T Therneau and P Grambsch (2000), Modeling Survival Data: Extending the Cox 
+#' Model, Springer-Verlag, New York. ISBN: 0-387-98784-3.
 #'
-#' @aliases rfsrc_data rfsrc_iris rfsrc_Boston rfsrc_pbc rfsrc_pbc_test
+#' @aliases rfsrc_data rfsrc_iris rfsrc_boston rfsrc_pbc rfsrc_pbc_test
 #' @docType data
 #' @keywords datasets
 #' @format \code{\link[randomForestSRC]{rfsrc}} object
 #' @name rfsrc_data
-#' @aliases rfsrc_iris, rfsrc_Boston, rfsrc_pbc, rfsrc_pbc_test
+#' @aliases rfsrc_iris, rfsrc_boston, rfsrc_pbc, rfsrc_pbc_test
 NULL
