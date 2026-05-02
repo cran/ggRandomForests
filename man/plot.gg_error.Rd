@@ -7,13 +7,20 @@
 \method{plot}{gg_error}(x, ...)
 }
 \arguments{
-\item{x}{gg_error object created from a \code{\link[randomForestSRC]{rfsrc}}
-object}
+\item{x}{A \code{\link{gg_error}} object created from either a
+\code{\link[randomForestSRC]{rfsrc}} or a
+\code{\link[randomForest]{randomForest}} object.  A raw forest object
+may also be supplied and will be passed through \code{\link{gg_error}}
+automatically before plotting.}
 
-\item{...}{extra arguments passed to \code{ggplot} functions}
+\item{...}{Extra arguments forwarded to the underlying \code{ggplot2}
+geometry calls (e.g. \code{size}, \code{linetype}).}
 }
 \value{
-\code{ggplot} object
+A \code{ggplot} object with \code{ntree} on the x-axis and
+  OOB error rate on the y-axis.  Single-outcome forests (regression,
+  survival) produce a single line; multi-outcome forests (classification)
+  produce one coloured line per class.
 }
 \description{
 A plot of the cumulative OOB error rates of the random forest as a
@@ -25,14 +32,17 @@ randomForest. This figure is a reproduction of the error plot
 from the \code{\link[randomForestSRC]{plot.rfsrc}} function.
 }
 \examples{
-\dontrun{
- ## Examples from RFSRC package...
+## Examples from RFSRC package...
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
 ## ------------- iris data
 ## You can build a randomForest
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, tree.err = TRUE)
+rfsrc_iris <- rfsrc(Species ~ ., data = iris,
+  forest = TRUE,
+  importance = TRUE,
+  tree.err = TRUE,
+  save.memory = TRUE)
 
 # Get a data.frame containing error rates
 gg_dta <- gg_error(rfsrc_iris)
@@ -41,19 +51,30 @@ gg_dta <- gg_error(rfsrc_iris)
 plot(gg_dta)
 
 ## RandomForest example
-rf_iris <- randomForest::randomForest(Species ~ ., data = iris, 
-                                      tree.err = TRUE, )
+rf_iris <- randomForest::randomForest(Species ~ .,
+  data = iris,
+  forest = TRUE,
+  importance = TRUE,
+  tree.err = TRUE,
+  save.memory = TRUE
+)
 gg_dta <- gg_error(rf_iris)
 plot(gg_dta)
 
-gg_dta <- gg_error(rf_iris, training=TRUE)
+gg_dta <- gg_error(rf_iris, training = TRUE)
 plot(gg_dta)
 ## ------------------------------------------------------------
 ## Regression example
 ## ------------------------------------------------------------
 ## ------------- airq data
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, 
-    na.action = "na.impute", tree.err = TRUE, )
+rfsrc_airq <- rfsrc(Ozone ~ .,
+  data = airquality,
+  na.action = "na.impute",
+  forest = TRUE,
+  importance = TRUE,
+  tree.err = TRUE,
+  save.memory = TRUE
+)
 
 # Get a data.frame containing error rates
 gg_dta <- gg_error(rfsrc_airq)
@@ -66,20 +87,26 @@ plot(gg_dta)
 data(Boston, package = "MASS")
 Boston$chas <- as.logical(Boston$chas)
 rfsrc_boston <- rfsrc(medv ~ .,
-   data = Boston,
-   forest = TRUE,
-   importance = TRUE,
-   tree.err = TRUE,
-   save.memory = TRUE)
+  data = Boston,
+  forest = TRUE,
+  importance = TRUE,
+  tree.err = TRUE,
+  save.memory = TRUE
+)
 
 # Get a data.frame containing error rates
-gg_dta<- gg_error(rfsrc_boston)
+gg_dta <- gg_error(rfsrc_boston)
 
 # Plot the gg_error object
 plot(gg_dta)
 
 ## ------------- mtcars data
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, tree.err = TRUE)
+rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars,
+  importance = TRUE,
+  save.memory = TRUE,
+  forest = TRUE,
+  tree.err = TRUE)
+
 # Get a data.frame containing error rates
 gg_dta<- gg_error(rfsrc_mtcars)
 
@@ -102,7 +129,7 @@ plot(gg_dta)
 ## ------------- pbc data
 # Load a cached randomForestSRC object
 # We need to create this dataset
-data(pbc, package = "randomForestSRC",) 
+data(pbc, package = "randomForestSRC",)
 # For whatever reason, the age variable is in days... makes no sense to me
 for (ind in seq_len(dim(pbc)[2])) {
  if (!is.factor(pbc[, ind])) {
@@ -146,7 +173,7 @@ rfsrc_pbc <- randomForestSRC::rfsrc(
  dta_train,
  nsplit = 10,
  na.action = "na.impute",
- tree.err = TRUE, 
+ tree.err = TRUE,
  forest = TRUE,
  importance = TRUE,
  save.memory = TRUE
@@ -157,15 +184,15 @@ gg_dta <- gg_error(rfsrc_pbc)
 plot(gg_dta)
 
 }
-}
 \references{
 Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 
 Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, Rnews,
 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival, Regression
-and Classification (RF-SRC), R package version 1.4.
+Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
+Regression and Classification. R package version >= 3.4.0.
+\url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{
 \code{\link{gg_error}} \code{\link[randomForestSRC]{rfsrc}}

@@ -23,48 +23,56 @@
 #' @param label Modify the legend label when gg_survival has stratified samples
 #' @param ... not used
 #'
-#' @return \code{ggplot} object
+#' @return A \code{ggplot} object. The y-axis shows the chosen \code{type}
+#'   (e.g. survival probability for \code{"surv"}) and the x-axis shows time.
+#'   Confidence shading, bars, or lines are added when the input object carries
+#'   confidence-interval columns.
+#'
+#' @seealso \code{\link{gg_survival}}, \code{\link{kaplan}},
+#'   \code{\link{nelson}}, \code{\link{gg_rfsrc}}
 #'
 #' @examples
-#' \dontrun{
 #' ## -------- pbc data
-#' data(pbc, package="randomForestSRC")
-#' pbc$time <- pbc$days/364.25
+#' data(pbc, package = "randomForestSRC")
+#' pbc$time <- pbc$days / 364.25
 #'
 #' # This is the same as kaplan
-#' gg_dta <- gg_survival(interval="time", censor="status",
-#'                      data=pbc)
+#' gg_dta <- gg_survival(
+#'   interval = "time", censor = "status",
+#'   data = pbc
+#' )
 #'
-#' plot(gg_dta, error="none")
+#' plot(gg_dta, error = "none")
 #' plot(gg_dta)
 #'
 #' # Stratified on treatment variable.
-#' gg_dta <- gg_survival(interval="time", censor="status",
-#'                      data=pbc, by="treatment")
+#' gg_dta <- gg_survival(
+#'   interval = "time", censor = "status",
+#'   data = pbc, by = "treatment"
+#' )
 #'
-#' plot(gg_dta, error="none")
+#' plot(gg_dta, error = "none")
 #' plot(gg_dta)
-#' plot(gg_dta, label="treatment")
+#' plot(gg_dta, label = "treatment")
 #'
 #' # ...with smaller confidence limits.
-#' gg_dta <- gg_survival(interval="time", censor="status",
-#'                      data=pbc, by="treatment", conf.int=.68)
+#' gg_dta <- gg_survival(
+#'   interval = "time", censor = "status",
+#'   data = pbc, by = "treatment", conf.int = .68
+#' )
 #'
-#' plot(gg_dta, error="lines")
-#' plot(gg_dta, label="treatment", error="lines")
+#' plot(gg_dta, error = "lines")
+#' plot(gg_dta, label = "treatment", error = "lines")
 #'
 #' # ...with smaller confidence limits.
-#' gg_dta <- gg_survival(interval="time", censor="status",
-#'                      data=pbc, by="sex", conf.int=.68)
+#' gg_dta <- gg_survival(
+#'   interval = "time", censor = "status",
+#'   data = pbc, by = "sex", conf.int = .68
+#' )
 #'
-#' plot(gg_dta, error="lines")
-#' plot(gg_dta, label="sex", error="lines")
+#' plot(gg_dta, error = "lines")
+#' plot(gg_dta, label = "sex", error = "lines")
 #'
-#'
-#'}
-#'
-#' @importFrom ggplot2 ggplot geom_ribbon aes_string geom_errorbar geom_step 
-#' @importFrom ggplot2 labs
 #' @export
 ### Survival plots
 plot.gg_survival <- function(x,
@@ -78,26 +86,30 @@ plot.gg_survival <- function(x,
                              error = c("shade", "bars", "lines", "none"),
                              label = NULL,
                              ...) {
-  gg_dta <- x
-  if (inherits(gg_dta, "rfsrc"))
-    gg_dta <- gg_survival(gg_dta)
-  
+  # Auto-coerce raw rfsrc objects so plot(rfsrc_obj) works directly.
+  # gg_survival.rfsrc extracts yvar and computes Kaplan-Meier estimates.
+  gg_dta <- if (inherits(x, "rfsrc")) gg_survival(x) else x
+
   error <- match.arg(error)
   type <- match.arg(type)
-  
+
   # Now order matters, so we want to place the forest predictions on the bottom
   # Create the figure skeleton,
   if (is.null(gg_dta$groups)) {
-    gg_plt <- ggplot(gg_dta) +
-      geom_step(aes_string(x = "time", y = type), ...)
+    gg_plt <- ggplot2::ggplot(gg_dta) +
+      ggplot2::geom_step(ggplot2::aes(x = .data$time, y = .data[[type]]), ...)
   } else {
     gg_dta$groups <- factor(gg_dta$groups)
-    gg_plt <- ggplot(gg_dta) +
-      geom_step(aes_string(x = "time", y = type, color = "groups"),
-                ...)
-    if (!is.null(label) ) {
-      gg_plt <- gg_plt + 
-        labs(color = label, fill = label)
+    gg_plt <- ggplot2::ggplot(gg_dta) +
+      ggplot2::geom_step(ggplot2::aes(
+        x = .data$time,
+        y = .data[[type]],
+        color = .data$groups
+      ),
+      ...)
+    if (!is.null(label)) {
+      gg_plt <- gg_plt +
+        ggplot2::labs(color = label, fill = label)
     }
   }
   # Do we want to show confidence limits?
@@ -107,11 +119,11 @@ plot.gg_survival <- function(x,
         error,
         # Shading the standard errors
         shade = gg_plt +
-          geom_ribbon(
-            aes_string(
-              x = "time",
-              ymax = "upper",
-              ymin = "lower"
+          ggplot2::geom_ribbon(
+            ggplot2::aes(
+              x = .data$time,
+              ymax = .data$upper,
+              ymin = .data$lower
             ),
             alpha = .3
           ),
@@ -120,17 +132,19 @@ plot.gg_survival <- function(x,
           # Need to figure out how to remove some of these points when
           # requesting error bars, or this will get really messy.
           gg_plt +
-            geom_errorbar(aes_string(
-              x = "time",
-              ymax = "upper",
-              ymin = "lower"
+            ggplot2::geom_errorbar(ggplot2::aes(
+              x = .data$time,
+              ymax = .data$upper,
+              ymin = .data$lower
             ))
         },
         lines = gg_plt +
-          geom_step(aes_string(x = "time", y = "upper"), linetype =
-                      2) +
-          geom_step(aes_string(x = "time", y = "lower"), linetype =
-                      2),
+          ggplot2::geom_step(ggplot2::aes(
+            x = .data$time, y = .data$upper
+          ), linetype = 2) +
+          ggplot2::geom_step(ggplot2::aes(
+            x = .data$time, y = .data$lower
+          ), linetype = 2),
         none = gg_plt
       )
     } else {
@@ -138,13 +152,13 @@ plot.gg_survival <- function(x,
         error,
         # Shading the standard errors
         shade = gg_plt +
-          geom_ribbon(
-            aes_string(
-              x = "time",
-              ymax = "upper",
-              ymin = "lower",
-              fill = "groups",
-              color = "groups"
+          ggplot2::geom_ribbon(
+            ggplot2::aes(
+              x = .data$time,
+              ymax = .data$upper,
+              ymin = .data$lower,
+              fill = .data$groups,
+              color = .data$groups
             ),
             alpha = .3
           ),
@@ -153,20 +167,30 @@ plot.gg_survival <- function(x,
           # Need to figure out how to remove some of these points when
           # requesting error bars, or this will get really messy.
           gg_plt +
-            geom_errorbar(aes_string(
-              x = "time",
-              ymax = "upper",
-              ymin = "lower",
-              color = "groups"
-            ))
+            ggplot2::geom_errorbar(
+              ggplot2::aes(
+                x = .data$time,
+                ymax = .data$upper,
+                ymin = .data$lower,
+                color = .data$groups
+              )
+            )
         },
         lines = gg_plt +
-          geom_step(
-            aes_string(x = "time", y = "upper", color = "groups"),
+          ggplot2::geom_step(
+            ggplot2::aes(
+              x = .data$time,
+              y = .data$upper,
+              color = .data$groups
+            ),
             linetype = 2
           ) +
-          geom_step(
-            aes_string(x = "time", y = "lower", color = "groups"),
+          ggplot2::geom_step(
+            ggplot2::aes(
+              x = .data$time,
+              y = .data$lower,
+              color = .data$groups
+            ),
             linetype = 2
           ),
         none = gg_plt

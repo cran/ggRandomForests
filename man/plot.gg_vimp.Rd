@@ -26,13 +26,11 @@ Plot a \code{\link{gg_vimp}} object, extracted variable importance of a
 \code{\link[randomForestSRC]{rfsrc}} object
 }
 \examples{
-\dontrun{
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
 ## -------- iris data
-# rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-data(rfsrc_iris, package="ggRandomForests")
+rfsrc_iris <- rfsrc(Species ~ ., data = iris)
 gg_dta <- gg_vimp(rfsrc_iris)
 plot(gg_dta)
 
@@ -40,35 +38,10 @@ plot(gg_dta)
 ## regression example
 ## ------------------------------------------------------------
 ## -------- air quality data
-# rfsrc_airq <- rfsrc(Ozone ~ ., airquality)
-data(rfsrc_airq, package="ggRandomForests")
+rfsrc_airq <- rfsrc(Ozone ~ ., airquality)
 gg_dta <- gg_vimp(rfsrc_airq)
 plot(gg_dta)
 
-## -------- Boston data
-data(rfsrc_boston, package="ggRandomForests")
-gg_dta <- gg_vimp(rfsrc_boston)
-plot(gg_dta)
-
-## -------- mtcars data
-data(rfsrc_mtcars, package="ggRandomForests")
-gg_dta <- gg_vimp(rfsrc_mtcars)
-plot(gg_dta)
-
-## ------------------------------------------------------------
-## survival example
-## ------------------------------------------------------------
-## -------- veteran data
-data(rfsrc_veteran, package="ggRandomForests")
-gg_dta <- gg_vimp(rfsrc_veteran)
-plot(gg_dta)
-
-## -------- pbc data
-data(rfsrc_pbc, package="ggRandomForests")
-gg_dta <- gg_vimp(rfsrc_pbc)
-plot(gg_dta)
-
-}
 
 }
 \references{
@@ -77,8 +50,9 @@ Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 Ishwaran H. and Kogalur U.B. (2007). Random survival forests for
 R, Rnews, 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival,
-Regression and Classification (RF-SRC), R package version 1.4.
+Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
+Regression and Classification. R package version >= 3.4.0.
+\url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{
 \code{\link{gg_vimp}}

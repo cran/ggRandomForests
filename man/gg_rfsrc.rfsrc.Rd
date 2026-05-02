@@ -8,17 +8,51 @@
 \method{gg_rfsrc}{rfsrc}(object, oob = TRUE, by, ...)
 }
 \arguments{
-\item{object}{\code{\link[randomForestSRC]{rfsrc}} object}
+\item{object}{A fitted \code{\link[randomForestSRC]{rfsrc}} or
+\code{\link[randomForest]{randomForest}} object.}
 
-\item{oob}{boolean, should we return the oob prediction , or the full
-forest prediction.}
+\item{oob}{Logical; if \code{TRUE} (default) return out-of-bag predictions.
+Set to \code{FALSE} to use full in-bag (training) predictions. Forced to
+\code{FALSE} automatically for \code{predict.rfsrc} objects, which carry
+no OOB estimates.}
 
-\item{by}{stratifying variable in the training dataset, defaults to NULL}
+\item{by}{Optional stratifying variable. Either a character column name
+present in the training data, or a vector/factor of the same length as
+the training set. When supplied, a \code{group} column is added to the
+returned data and bootstrap CI bands (survival) are computed per group.
+Omit or leave missing to return an unstratified result.}
 
-\item{...}{extra arguments}
+\item{...}{Additional arguments controlling output for specific forest
+families:
+\describe{
+  \item{surv_type}{Character; one of \code{"surv"} (default),
+    \code{"chf"}, or \code{"mortality"} for survival forests.}
+  \item{conf.int}{Numeric coverage probability (e.g. \code{0.95}) to
+    request bootstrap pointwise confidence bands for survival forests.
+    Triggers wide-format output with \code{lower}, \code{upper},
+    \code{median}, and \code{mean} columns.}
+  \item{bs.sample}{Integer; number of bootstrap resamples when
+    \code{conf.int} is set. Defaults to the number of observations.}
+}}
 }
 \value{
-\code{gg_rfsrc} object
+A \code{gg_rfsrc} object (a classed \code{data.frame}) whose
+  structure depends on the forest family:
+  \describe{
+    \item{regression}{Columns \code{yhat} and the response name; optionally
+      a \code{group} column when \code{by} is supplied.}
+    \item{classification}{One column per class with predicted probabilities;
+      a \code{y} column with observed class labels; optionally \code{group}.}
+    \item{survival (no CI / grouping)}{Long-format with columns
+      \code{variable} (event time), \code{value} (survival probability),
+      \code{obs_id}, and \code{event}.}
+    \item{survival (with \code{conf.int} or \code{by})}{Wide-format with
+      pointwise bootstrap CI columns (\code{lower}, \code{upper},
+      \code{median}, \code{mean}) per time point; a \code{group} column
+      when \code{by} is supplied.}
+  }
+  The object carries class attributes for the forest family so that
+  \code{\link{plot.gg_rfsrc}} dispatches correctly.
 }
 \description{
 Extracts the predicted response values from the
@@ -26,140 +60,65 @@ Extracts the predicted response values from the
 the response using \code{\link{plot.gg_rfsrc}}.
 }
 \details{
-\code{surv_type} ("surv", "chf", "mortality", "hazard") for survival
-   forests
-
-   \code{oob} boolean, should we return the oob prediction , or the full
-forest prediction.
+For survival forests, use the \code{surv_type} argument
+  (\code{"surv"}, \code{"chf"}, or \code{"mortality"}) to select the
+  predicted quantity. Bootstrap confidence bands are requested by passing
+  \code{conf.int} (e.g. \code{conf.int = 0.95}); the number of resamples
+  is controlled by \code{bs.sample}.
 }
 \examples{
 ## ------------------------------------------------------------
-## classification example
+## classification example (small, runs on CRAN)
 ## ------------------------------------------------------------
 ## -------- iris data
-rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-gg_dta<- gg_rfsrc(rfsrc_iris)
-
+set.seed(42)
+rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+gg_dta <- gg_rfsrc(rfsrc_iris)
 plot(gg_dta)
 
+\donttest{
 ## ------------------------------------------------------------
-## Regression example
+## Additional regression / survival examples are guarded with
+## \donttest because the cumulative example time exceeds the
+## 10-second CRAN budget. Run locally with `R CMD check --run-donttest`
+## (or `devtools::check(run_dont_test = TRUE)`) to exercise them.
 ## ------------------------------------------------------------
-\dontrun{
-## -------- air quality data
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
-gg_dta<- gg_rfsrc(rfsrc_airq)
 
-plot(gg_dta)
+## -------- air quality data (regression)
+rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+                    na.action = "na.impute", ntree = 50)
+plot(gg_rfsrc(rfsrc_airq))
+
+## -------- Boston data (rfsrc + randomForest)
+if (requireNamespace("MASS", quietly = TRUE)) {
+  data(Boston, package = "MASS")
+  Boston$chas <- as.logical(Boston$chas)
+  rfsrc_boston <- rfsrc(medv ~ ., data = Boston, ntree = 50,
+                        forest = TRUE, importance = TRUE,
+                        tree.err = TRUE, save.memory = TRUE)
+  plot(gg_rfsrc(rfsrc_boston))
+
+  rf_boston <- randomForest::randomForest(medv ~ ., data = Boston,
+                                          ntree = 50)
+  plot(gg_rfsrc(rf_boston))
 }
 
-## -------- Boston data
-data(Boston, package = "MASS")
-Boston$chas <- as.logical(Boston$chas)
-rfsrc_boston <- rfsrc(medv ~ .,
-   data = Boston,
-   forest = TRUE,
-   importance = TRUE,
-   tree.err = TRUE,
-   save.memory = TRUE)
-
-plot(gg_rfsrc(rfsrc_boston))
-
-### randomForest example
-data(Boston, package="MASS")
-rf_boston <- randomForest::randomForest(medv ~ ., data = Boston)
-plot(gg_rfsrc(rf_boston))
-
-\dontrun{
 ## -------- mtcars data
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars)
-gg_dta<- gg_rfsrc(rfsrc_mtcars)
+rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+plot(gg_rfsrc(rfsrc_mtcars))
 
-plot(gg_dta)
-}
-## ------------------------------------------------------------
-## Survival example
-## ------------------------------------------------------------
-\dontrun{
-## -------- veteran data
-## randomized trial of two treatment regimens for lung cancer
+## -------- veteran data (survival; with CI and group-by)
 data(veteran, package = "randomForestSRC")
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
-
-gg_dta <- gg_rfsrc(rfsrc_veteran)
-plot(gg_dta)
-
-gg_dta <- gg_rfsrc(rfsrc_veteran, conf.int=.95)
-plot(gg_dta)
-
-gg_dta <- gg_rfsrc(rfsrc_veteran, by="trt")
-plot(gg_dta)
-
-
-## -------- pbc data
-## We don't run this because of bootstrap confidence limits
-# We need to create this dataset
-data(pbc, package = "randomForestSRC",) 
-# For whatever reason, the age variable is in days... makes no sense to me
-for (ind in seq_len(dim(pbc)[2])) {
- if (!is.factor(pbc[, ind])) {
-   if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
-     if (sum(range(pbc[, ind], na.rm = TRUE) == c(0, 1)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-   }
- } else {
-   if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
-     if (sum(sort(unique(pbc[, ind])) == c(0, 1)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-     if (sum(sort(unique(pbc[, ind])) == c(FALSE, TRUE)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-   }
- }
- if (!is.logical(pbc[, ind]) &
-     length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 5) {
-   pbc[, ind] <- factor(pbc[, ind])
- }
-}
-#Convert age to years
-pbc$age <- pbc$age / 364.24
-
-pbc$years <- pbc$days / 364.24
-pbc <- pbc[, -which(colnames(pbc) == "days")]
-pbc$treatment <- as.numeric(pbc$treatment)
-pbc$treatment[which(pbc$treatment == 1)] <- "DPCA"
-pbc$treatment[which(pbc$treatment == 2)] <- "placebo"
-pbc$treatment <- factor(pbc$treatment)
-dta_train <- pbc[-which(is.na(pbc$treatment)), ]
-# Create a test set from the remaining patients
- pbc_test <- pbc[which(is.na(pbc$treatment)), ]
-
-#========
-# build the forest:
-rfsrc_pbc <- randomForestSRC::rfsrc(
-  Surv(years, status) ~ .,
- dta_train,
- nsplit = 10,
- na.action = "na.impute",
- forest = TRUE,
- importance = TRUE,
- save.memory = TRUE
-)
-gg_dta <- gg_rfsrc(rfsrc_pbc)
-plot(gg_dta)
-
-gg_dta <- gg_rfsrc(rfsrc_pbc, conf.int=.95)
-plot(gg_dta)
-
-
-gg_dta <- gg_rfsrc(rfsrc_pbc, by="treatment")
-plot(gg_dta)
+rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran,
+                       ntree = 50)
+plot(gg_rfsrc(rfsrc_veteran))
+plot(gg_rfsrc(rfsrc_veteran, conf.int = .95))
+plot(gg_rfsrc(rfsrc_veteran, by = "trt"))
 }
 
 }
 \seealso{
-\code{\link{plot.gg_rfsrc}} \code{rfsrc} \code{plot.rfsrc}
-\code{\link{gg_survival}}
+\code{\link{plot.gg_rfsrc}},
+  \code{\link[randomForestSRC]{rfsrc}},
+  \code{\link{gg_survival}}
 }

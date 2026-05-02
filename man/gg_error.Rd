@@ -5,29 +5,39 @@
 \alias{gg_error.rfsrc}
 \alias{gg_error.randomForest}
 \alias{gg_error.randomForest.formula}
-\title{randomForest error rate data object}
+\title{Random forest error trajectory data object}
 \usage{
 gg_error(object, ...)
 }
 \arguments{
-\item{object}{\code{\link[randomForestSRC]{rfsrc}} object.}
+\item{object}{A fitted \code{\link[randomForestSRC]{rfsrc}} or
+\code{\link[randomForest]{randomForest}} object.}
 
-\item{...}{optional arguments (not used).}
+\item{...}{Optional arguments passed to the methods. Set
+\code{training = TRUE} to append the in-bag error trajectory when
+supported.}
 }
 \value{
-\code{gg_error} \code{data.frame} with one column indicating 
-the tree number, and the remaining columns from the 
-\code{\link[randomForestSRC]{rfsrc}$err.rate} return value.
+A \code{gg_error} \code{data.frame} containing at least the
+  cumulative OOB error columns and an \code{ntree} counter. When
+  \code{training = TRUE} is honored an additional \code{train} column is
+  included.
 }
 \description{
-Extract the cumulative (OOB) \code{randomForestSRC} error rate as a 
-function of number of trees.
+Extract the cumulative out-of-bag (OOB) or in-bag training error rate from
+\code{randomForestSRC} and \code{randomForest} fits as a function of the
+number of grown trees.
 }
 \details{
-The \code{gg_error} function simply returns the
-\code{\link[randomForestSRC]{rfsrc}$err.rate} object as a data.frame, 
-and assigns the class for connecting to the S3 
-\code{\link{plot.gg_error}} function.
+For \code{randomForestSRC} objects the function reshapes the
+\code{\link[randomForestSRC]{rfsrc}$err.rate} matrix and annotates it with
+the tree index required by \code{\link{plot.gg_error}}. When supplied a
+\code{\link[randomForest]{randomForest}} object, the method inspects either
+the \code{$mse} or \code{$err.rate} component and, when
+\code{training = TRUE} is requested, reconstructs the original training set
+via the model call to compute an in-bag error curve using per-tree
+predictions. Training curves are only available when the forest was stored
+(\code{keep.forest = TRUE}) and the original data can be recovered.
 }
 \examples{
 ## Examples from RFSRC package...
@@ -45,58 +55,63 @@ gg_dta <- gg_error(rfsrc_iris)
 plot(gg_dta)
 
 ## RandomForest example
-rf_iris <- randomForest::randomForest(Species ~ ., data = iris, 
-                                      tree.err = TRUE, )
+rf_iris <- randomForest::randomForest(Species ~ .,
+  data = iris,
+  tree.err = TRUE,
+)
 gg_dta <- gg_error(rf_iris)
 plot(gg_dta)
 
-gg_dta <- gg_error(rf_iris, training=TRUE)
+gg_dta <- gg_error(rf_iris, training = TRUE)
 plot(gg_dta)
 ## ------------------------------------------------------------
 ## Regression example
 ## ------------------------------------------------------------
-\dontrun{
+
 ## ------------- airq data
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, 
-    na.action = "na.impute", tree.err = TRUE, )
+rfsrc_airq <- rfsrc(Ozone ~ .,
+  data = airquality,
+  na.action = "na.impute", tree.err = TRUE,
+)
 
 # Get a data.frame containing error rates
 gg_dta <- gg_error(rfsrc_airq)
 
 # Plot the gg_error object
 plot(gg_dta)
-}
+
 
 ## ------------- Boston data
 data(Boston, package = "MASS")
 Boston$chas <- as.logical(Boston$chas)
 rfsrc_boston <- rfsrc(medv ~ .,
-   data = Boston,
-   forest = TRUE,
-   importance = TRUE,
-   tree.err = TRUE,
-   save.memory = TRUE)
+  data = Boston,
+  forest = TRUE,
+  importance = TRUE,
+  tree.err = TRUE,
+  save.memory = TRUE
+)
 
 # Get a data.frame containing error rates
-gg_dta<- gg_error(rfsrc_boston)
+gg_dta <- gg_error(rfsrc_boston)
 
 # Plot the gg_error object
 plot(gg_dta)
 
-\dontrun{
+
 ## ------------- mtcars data
 rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, tree.err = TRUE)
+
 # Get a data.frame containing error rates
 gg_dta<- gg_error(rfsrc_mtcars)
 
 # Plot the gg_error object
 plot(gg_dta)
-}
+
 
 ## ------------------------------------------------------------
 ## Survival example
 ## ------------------------------------------------------------
-\dontrun{
 ## ------------- veteran data
 ## randomized trial of two treatment regimens for lung cancer
 data(veteran, package = "randomForestSRC")
@@ -109,7 +124,7 @@ plot(gg_dta)
 ## ------------- pbc data
 # Load a cached randomForestSRC object
 # We need to create this dataset
-data(pbc, package = "randomForestSRC",) 
+data(pbc, package = "randomForestSRC",)
 # For whatever reason, the age variable is in days... makes no sense to me
 for (ind in seq_len(dim(pbc)[2])) {
  if (!is.factor(pbc[, ind])) {
@@ -153,7 +168,7 @@ rfsrc_pbc <- randomForestSRC::rfsrc(
  dta_train,
  nsplit = 10,
  na.action = "na.impute",
- tree.err = TRUE, 
+ tree.err = TRUE,
  forest = TRUE,
  importance = TRUE,
  save.memory = TRUE
@@ -162,18 +177,22 @@ rfsrc_pbc <- randomForestSRC::rfsrc(
 
 gg_dta <- gg_error(rfsrc_pbc)
 plot(gg_dta)
-}
 
 }
 \references{
 Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 
-Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, 
+Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R,
 Rnews, 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival, Regression
-and Classification (RF-SRC), R package version 1.4.
+Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
+Regression and Classification. R package version >= 3.4.0.
+\url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{
-\code{\link{plot.gg_error}} \code{rfsrc} \code{plot.rfsrc}
+\code{\link{plot.gg_error}}, \code{\link{gg_vimp}},
+  \code{\link{gg_variable}},
+  \code{\link[randomForestSRC]{rfsrc}},
+  \code{\link[randomForest]{randomForest}},
+  \code{\link[randomForestSRC]{plot.rfsrc}}
 }

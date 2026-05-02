@@ -2,68 +2,101 @@
 % Please edit documentation in R/gg_survival.R
 \name{gg_survival}
 \alias{gg_survival}
+\alias{gg_survival.rfsrc}
+\alias{gg_survival.default}
 \title{Nonparametric survival estimates.}
 \usage{
 gg_survival(
+  object = NULL,
   interval = NULL,
   censor = NULL,
   by = NULL,
-  data,
+  data = NULL,
+  type = c("kaplan", "nelson"),
+  ...
+)
+
+\method{gg_survival}{rfsrc}(
+  object,
+  interval = NULL,
+  censor = NULL,
+  by = NULL,
+  data = NULL,
+  type = c("kaplan", "nelson"),
+  ...
+)
+
+\method{gg_survival}{default}(
+  object = NULL,
+  interval = NULL,
+  censor = NULL,
+  by = NULL,
+  data = NULL,
   type = c("kaplan", "nelson"),
   ...
 )
 }
 \arguments{
-\item{interval}{name of the interval variable in the training dataset.}
+\item{object}{For the \code{rfsrc} method: a fitted
+\code{\link[randomForestSRC]{rfsrc}} survival forest.  For the default
+method: pass \code{NULL} (or omit) and supply \code{interval},
+\code{censor}, and \code{data} instead.}
 
-\item{censor}{name of the censoring variable in the training dataset.}
+\item{interval}{Character; name of the time-to-event column in \code{data}
+(default method only).}
 
-\item{by}{stratifying variable in the training dataset, defaults to NULL}
+\item{censor}{Character; name of the event-indicator column in \code{data}
+(1 = event, 0 = censored; default method only).}
 
-\item{data}{name of the training data.frame}
+\item{by}{Optional character; name of a grouping column for stratified
+estimates.  For the \code{rfsrc} method, \code{by} must be a column in
+\code{object$xvar}.}
 
-\item{type}{one of ("kaplan","nelson"), defaults to Kaplan-Meier}
+\item{data}{A \code{data.frame} containing survival data (default method
+only).}
 
-\item{...}{extra arguments passed to Kaplan or Nelson functions.}
+\item{type}{One of \code{"kaplan"} (Kaplan-Meier, default) or
+\code{"nelson"} (Nelson-Aalen cumulative hazard).  Default method only.}
+
+\item{...}{Additional arguments passed to \code{\link{kaplan}} or
+\code{\link{nelson}}.}
 }
 \value{
-A \code{gg_survival} object created using the non-parametric 
-Kaplan-Meier or Nelson-Aalen estimators.
+A \code{gg_survival} \code{data.frame} with columns \code{time},
+  \code{surv}, \code{cum_haz}, \code{lower}, \code{upper}, \code{n.risk},
+  and optionally \code{groups} when \code{by} is supplied.
 }
 \description{
 Nonparametric survival estimates.
 }
 \details{
-\code{gg_survival} is a wrapper function for generating 
-nonparametric survival estimates using either \code{\link{nelson}}-Aalen 
-or \code{\link{kaplan}}-Meier estimates.
+\code{gg_survival} is an S3 generic for generating nonparametric
+survival estimates.  It dispatches on the class of its first argument:
+
+\describe{
+  \item{\code{rfsrc}}{Extracts the response data from the fitted forest and
+    delegates to \code{\link{kaplan}}.  Use the \code{by} argument to
+    stratify on a predictor stored in the model's \code{xvar} slot.}
+  \item{default}{Accepts raw survival data columns via the \code{interval},
+    \code{censor}, \code{by}, and \code{data} arguments, delegating to
+    either \code{\link{kaplan}} (default) or \code{\link{nelson}}.}
+}
 }
 \examples{
-\dontrun{
-## -------- pbc data
-data(pbc, package="randomForestSRC")
-pbc$time <- pbc$days/364.25
+## -------- pbc data (default method — raw data columns)
+data(pbc, package = "randomForestSRC")
+pbc$time <- pbc$days / 364.25
 
-# This is the same as kaplan
-gg_dta <- gg_survival(interval="time", censor="status",
-                     data=pbc)
+gg_dta <- gg_survival(interval = "time", censor = "status", data = pbc)
+plot(gg_dta, error = "none")
 
-plot(gg_dta, error="none")
+# Stratified
+gg_dta <- gg_survival(
+  interval = "time", censor = "status",
+  data = pbc, by = "treatment"
+)
 plot(gg_dta)
 
-# Stratified on treatment variable.
-gg_dta <- gg_survival(interval="time", censor="status",
-                     data=pbc, by="treatment")
-
-plot(gg_dta, error="none")
-plot(gg_dta)
-
-# ...with smaller confidence limits.
-gg_dta <- gg_survival(interval="time", censor="status",
-                     data=pbc, by="treatment", conf.int=.68)
-
-plot(gg_dta, error="lines")
-}
 }
 \seealso{
 \code{\link{kaplan}} \code{\link{nelson}}

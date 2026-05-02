@@ -1,5 +1,180 @@
 Package: ggRandomForests
-Version: 2.2.1
+Version: 2.7.2
+
+ggRandomForests v2.7.2
+=====================
+* Address CRAN reviewer (Benjamin Altmann) feedback on the v2.7.1
+  resubmission:
+  - Add methods references to `DESCRIPTION` (Breiman 2001 and
+    Ishwaran et al. 2008, with `<doi:...>` auto-links) per CRAN
+    cookbook.
+  - Drop the `man/shift.Rd` Rd file: `shift()` is an internal utility
+    and the example used `ggRandomForests:::shift(...)`. Marked the
+    function `@noRd` so it no longer generates a help page.
+  - Replace `cat()` in `surv_partial.rfsrc()` with `message()` so
+    progress output is suppressible (`suppressMessages()`) and plays
+    nicely inside notebooks / Shiny / quarto.
+  - Restore the user's `par()` settings in the
+    `surv_partial.rfsrc()` example via
+    `oldpar <- par(no.readonly = TRUE); on.exit(par(oldpar))`.
+
+ggRandomForests v2.7.1
+=====================
+* Fix `gg_partial_rfsrc()` for survival forests: `partial.rfsrc()` was being
+  called without `partial.type`, causing a zero-length comparison
+  (`if (partial.type == "rel.freq") ...`) inside the C-level prediction
+  routine and aborting the call. Survival forests now pass
+  `partial.type = "surv"` (default; configurable via the new `partial.type`
+  argument accepting `"surv"`, `"chf"`, or `"mort"`). This unblocks the
+  `partial-dep` chunk in the survival vignette.
+* Fix `gg_partial_rfsrc()` for survival forests with multiple
+  `partial.time` values: `get.partial.plot.data()` returns yhat as an
+  `[length(partial.values) x length(partial.time)]` matrix, but the previous
+  code assumed a vector and crashed on column-mismatch when assigning
+  `time`. The result is now reshaped to long form so each `(x, time)` pair
+  is a single row.
+* Improve `plot.gg_partial_rfsrc()` survival layout: predictor value is now
+  on the x-axis with one curve per (rounded) time point coloured by `Time`,
+  faceted by variable name. The previous default put time on the x-axis
+  and one curve per predictor value, producing a saturated legend with
+  dozens of nearly-identical lines.
+* Add `tests/testthat/test_plot_layer_data.R`: regression suite that uses
+  `ggplot2::layer_data()` to verify each `plot.gg_*()` method renders
+  non-empty layers for every supported forest family. Catches the
+  empty-figure class of bug (transform/plot column-name mismatch) without
+  requiring visual inspection.
+* `ggrandomforests.news()` now reads `NEWS.md` (the canonical change log
+  R also surfaces via `utils::news()`). The legacy hand-maintained
+  `inst/NEWS` has been removed — it had silently drifted to v2.4.0
+  (June 2025) across three releases, so users running the helper saw
+  stale version info. One source of truth, no more drift window.
+* Fix `plot.gg_vimp()` legend duplication: the bar geom mapped both
+  `fill` and `color` to the `positive` column, but only the fill legend
+  was titled "VIMP > 0", leaving a redundant second legend titled
+  "positive". Both aesthetics now share the "VIMP > 0" title so ggplot
+  merges them into a single legend by default.
+* Fix `plot.gg_vimp()` for forests with all-positive VIMP: the bar geom
+  previously mapped only `color` (no `fill`), producing hollow / outline-
+  only bars and an "Ignoring unknown labels: fill" warning whenever
+  `labs(fill = ...)` was applied. Both `fill` and `color` are now mapped
+  unconditionally, so bars render filled in every case.
+* Add `@examples` blocks to `plot.gg_partial_rfsrc()` and
+  `plot.gg_partialpro()`. The latter uses a self-contained mock of the
+  `varpro::partialpro()` output structure so the example runs without
+  pulling in `varpro` as a dependency.
+
+ggRandomForests v2.7.0
+=====================
+* S3 design overhaul: `gg_partial()`, `gg_partialpro()`, and
+  `gg_partial_rfsrc()` now stamp their return values with S3 classes
+  (`gg_partial`, `gg_partialpro`, `gg_partial_rfsrc` respectively), enabling
+  `plot()` dispatch without any boilerplate.
+* Add `plot.gg_partial()`, `plot.gg_partial_rfsrc()`, and
+  `plot.gg_partialpro()` S3 methods; continuous predictors render as line
+  plots, categorical as bar charts, faceted by variable name.  Survival
+  forests produce curves over time; two-variable surface plots group by
+  `xvar2.name`.
+* Convert `gg_survival()` to an S3 generic dispatching on the class of its
+  first argument.  New `gg_survival.rfsrc()` method extracts the survival
+  response directly from the fitted forest (no separate data argument
+  needed); `gg_survival.default()` preserves the existing interface.
+* Fix `plot.gg_survival()` auto-coercion: previously called
+  `gg_survival(rfsrc_obj)` treating the forest as the `interval` string
+  argument, causing a latent crash; replaced with `inherits()` guard.
+* Deprecate `surv_partial.rfsrc()` via `.Deprecated()` with a pointer to
+  `gg_partial_rfsrc()`; all package tests updated to suppress the warning.
+* Fix `gg_partial_rfsrc()` — `make_eval_grid()` used `unlist(dplyr::select())`
+  which coerced factor columns to integer codes; now uses `newx[[xname]]` to
+  preserve column class.  Categorical detection extended to cover
+  `is.factor()` and `is.character()` in addition to the cardinality check.
+* Add guards to `gg_partial_rfsrc()`: all-NA `xval` after NA removal now
+  emits a warning and skips the variable; all-NA grouping variable (`xvar2`)
+  calls `stop()`; `n_eval` and `cat_limit` are validated as single integers
+  >= 2 near function entry.
+* Fix cyclomatic complexity across `gg_partial_rfsrc.R`: refactored into
+  eight top-level unexported helpers (`validate_scalar_int`,
+  `validate_partial_args`, `snap_partial_time`, `make_eval_grid`,
+  `call_partial_rfsrc`, `partial_one_var`, `partial_no_group`,
+  `partial_with_group`, `split_partial_result`); all functions now score
+  below the `cyclocomp_linter` limit of 20.
+* Fix `@param partial.time` documentation: "see the section above" corrected
+  to "see the section below".
+* Replace deprecated `tidyr::gather()` with `tidyr::pivot_longer()` in
+  `plot.gg_vimp()` and `plot.gg_partialpro()`.
+* Add `gg_survival.rfsrc`, `gg_survival.default`, `plot.gg_partial`,
+  `plot.gg_partial_rfsrc`, and `plot.gg_partialpro` to `NAMESPACE`; add
+  corresponding `@rdname` / `@export` roxygen tags.
+* Update tests: add `expect_s3_class()` checks for all new classes; add
+  `plot()` smoke tests for `gg_partial`, `gg_partial_rfsrc`, `gg_partialpro`;
+  add `gg_survival.rfsrc` tests for KM extraction, `by` stratification, and
+  error on non-survival forest.
+* Add `plot.gg_partial`, `plot.gg_partial_rfsrc`, and `plot.gg_partialpro`
+  to `_pkgdown.yml` reference index.
+
+ggRandomForests v2.7.0
+=====================
+* Fix critical visual bug in `plot.gg_rfsrc`: all `aes()` calls used bare
+  string literals instead of `.data[[col]]`, causing every aesthetic to map
+  to a constant string rather than the underlying data column. All plot
+  types (regression, classification, survival) were affected.
+* Fix `aes()` bare-string literals in `plot.gg_roc` multi-class branch;
+  remove unreachable `if (crv < 2)` dead-code branch.
+* Fix `bootstrap_survival` CI-band indexing in `gg_rfsrc`: negative index
+  computed via `colnames()` was a no-op on large datasets and a latent crash
+  for data with ≤ 2 unique event times.
+* Fix `gg_rfsrc.rfsrc`: `is.null(df[, col])` does not detect missing columns;
+  replaced with `!col %in% colnames()` guard.
+* Fix `gg_rfsrc.randomForest`: method used non-existent `object$xvar`; now
+  recovers the training frame via `.rf_recover_model_frame()`.
+* Fix legend suppression in `plot.gg_error` for single-outcome forests where
+  the data frame has no `variable` column.
+* Fix `gg_vimp` and `plot.gg_vimp`: `1:nvar` replaced with `seq_len(nvar)`
+  in both S3 methods; `1:0` silently returned `c(1, 0)` instead of
+  `integer(0)` when `nvar == 0`.
+* Migrate full test suite to testthat 3.x API: `expect_is` →
+  `expect_s3_class` / `expect_type` / `expect_true(is.*())`;
+  `expect_equivalent` → `expect_equal(ignore_attr = TRUE)`; all `context()`
+  calls removed; testthat 1.x `expect_that` / `is_identical_to` removed.
+* Add `.lintr` package-level linter configuration; fix lintr spacing in
+  `gg_partial`.
+* Improve GitHub Actions: `lint.yaml` now fails CI on any lint issue;
+  `R-CMD-check.yaml` treats warnings as errors and uses Rtools 44;
+  `test-coverage.yaml` duplicate codecov upload removed.
+* Add `covr` and `vdiffr` to `Suggests`.
+
+ggRandomForests v2.6.1
+=====================
+* Fix model-label assignment in `gg_partial` for categorical variable data
+* Refactor `gg_partial` and `gg_partial_rfsrc` to improve factor-level
+  normalisation and categorical data handling
+
+ggRandomForests v2.6.0
+=====================
+* Add and export new plotting functions; update existing plot documentation
+* Improve unit and integration tests; overall coverage raised to 83%
+* Remove `hvtiRutilities` internal dependency; clean up associated imports
+* Refactor `gg_partial_rfsrc` to use `.data` pronoun for all `dplyr` calls
+
+ggRandomForests v2.5.0
+=====================
+* Initial `gg_partial_rfsrc` function: computes partial dependence data
+  directly from an `rfsrc` model via `randomForestSRC::partial.rfsrc`, without
+  requiring a separate `plot.variable` call
+* Add support for a grouping variable (`xvar2.name`) in `gg_partial_rfsrc`
+* Improved vignette formatting and namespace usage
+
+ggRandomForests v2.4.0
+=====================
+* Updating to latest ggplot2 functions
+* Utilize some namespace referencing
+* Added pkgdown documentation
+* Minor testing improvements
+
+ggRandomForests v2.3.0
+=====================
+* Knocking the dust off this.
+* Fix the ROC curves
+* Fix the colors on VIMP plot
 
 ggRandomForests v2.2.1
 =====================

@@ -11,65 +11,89 @@
 ####
 ####**********************************************************************
 ####**********************************************************************
-#' Find points evenly distributed along the vectors values.
+#' Quantile-based cut points for coplots
 #'
-#' @param object vector object of values.
-#' @param groups how many points do we want
-#' @param intervals should we return the raw points or intervals to
-#' be passed to the \code{cut} function
+#' @param object Numeric vector of predictor values.
+#' @param groups Number of quantile points (or intervals) to compute.
+#' @param intervals Logical indicating whether to return interval boundaries
+#'   suitable for \code{cut()} (length \code{groups + 1}) or the interior
+#'   quantile points (length \code{groups}).
 #'
 #'
 #' @description
-#' This function finds point values from a vector argument to produce
-#'  \code{groups} intervals. Setting \code{groups=2} will return three values,
-#'  the two end points, and one mid point (at the median value of the vector).
+#' This helper wraps \code{\link[stats]{quantile}} to create well-spaced
+#' cut points for conditioning plots. When \code{intervals = TRUE} the lower
+#' boundary is nudged down so that \code{cut()} treats the minimum value as a
+#' valid observation.
 #'
 #' The output can be passed directly into the breaks argument of the
 #' \code{cut} function for creating groups for coplots.
 #'
-#' @return vector of groups+1 cut point values.
+#' @return Numeric vector of quantile points. When \code{intervals = TRUE}
+#'   the result is strictly increasing and can be supplied to \code{cut()} to
+#'   produce \code{groups} balanced strata.
 #'
-#' @seealso \code{cut} \code{\link{gg_partial_coplot}}
+#' @seealso \code{cut}
 #' @importFrom stats quantile
 #'
 #' @examples
-#' data(Boston, package="MASS")
-#' rfsrc_boston <- randomForestSRC::rfsrc(medv~., Boston)
+#' data(Boston, package = "MASS")
+#' rfsrc_boston <- randomForestSRC::rfsrc(medv ~ ., Boston)
 #'
 #' # To create 6 intervals, we want 7 points.
 #' # quantile_pts will find balanced intervals
-#' rm_pts <- quantile_pts(rfsrc_boston$xvar$rm, groups=6, intervals=TRUE)
+#' rm_pts <- quantile_pts(rfsrc_boston$xvar$rm, groups = 6, intervals = TRUE)
 #'
 #' # Use cut to create the intervals
-#' rm_grp <- cut(rfsrc_boston$xvar$rm, breaks=rm_pts)
+#' rm_grp <- cut(rfsrc_boston$xvar$rm, breaks = rm_pts)
 #'
 #' summary(rm_grp)
 #'
 #' @export
 quantile_pts <- function(object, groups, intervals = FALSE) {
-  # We need one more break than group,
-  breaks <- groups
-  if (intervals)
-    breaks <- breaks + 1
-  
-  if (sum(is.na(object)) > 0)
-    object <- object[-which(is.na(object))]
-  
-  n_x <- length(unique(object))
-  if (n_x > breaks) {
-    x_uniq <-
-      sort(unique(object))[unique(as.integer(seq(1, 
-                                                 n_x, 
-                                                 length = min(breaks, 
-                                                              n_x))))]
-  } else {
-    x_uniq <- unique(object)
+  if (!is.numeric(groups) || groups < 1) {
+    stop("`groups` must be a positive integer")
   }
-  
-  # If we're looking for intervals, we need to include the first point
-  # cut will make it NA if we don't move this a little bit lower,
-  # because of the (lv, uv] interval definition.
-  if (intervals)
-    x_uniq[1] <- x_uniq[1] - 1.e-7
-  x_uniq
+  groups <- as.integer(groups)
+
+  # Drop missing values before computing quantiles
+  object <- stats::na.omit(object)
+  if (!length(object)) {
+    return(numeric())
+  }
+
+  # When intervals = TRUE we need groups + 1 boundary points (including both
+  # endpoints) so that cut() produces exactly `groups` non-overlapping bins.
+  # When intervals = FALSE we return `groups` interior quantile points.
+  probs <- if (intervals) {
+    seq(0, 1, length.out = groups + 1)
+  } else {
+    seq(0, 1, length.out = groups)
+  }
+
+  # type = 2 uses the "nearest even" convention, matching the behaviour of
+  # SAS PROC UNIVARIATE and ensuring consistent results on small samples.
+  pts <- as.numeric(stats::quantile(object,
+    probs = probs,
+    na.rm = TRUE,
+    type = 2
+  ))
+
+  # Ensure breaks are strictly increasing for cut()
+  if (intervals) {
+    # Collapse any duplicated quantile values (can happen with low-cardinality
+    # variables where many observations share the same value).
+    pts <- unique(pts)
+    if (length(pts) < 2) {
+      # Degenerate case: all observations equal. Add a tiny offset so cut()
+      # still produces a valid (if trivial) set of intervals.
+      pts <- c(pts, pts + .Machine$double.eps)
+    }
+    # Nudge the lower boundary down so that the minimum value falls *inside*
+    # the first interval (cut() uses open-on-the-left, closed-on-the-right
+    # intervals by default, so the exact minimum would otherwise be excluded).
+    pts[1] <- pts[1] - 1e-7
+  }
+
+  pts
 }

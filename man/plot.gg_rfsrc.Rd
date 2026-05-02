@@ -4,31 +4,64 @@
 \alias{plot.gg_rfsrc}
 \title{Predicted response plot from a \code{\link{gg_rfsrc}} object.}
 \usage{
-\method{plot}{gg_rfsrc}(x, ...)
+\method{plot}{gg_rfsrc}(x, notch = TRUE, ...)
 }
 \arguments{
-\item{x}{\code{\link{gg_rfsrc}} object created from a
-\code{\link[randomForestSRC]{rfsrc}} object}
+\item{x}{A \code{\link{gg_rfsrc}} object, or a raw
+\code{\link[randomForestSRC]{rfsrc}} object (which will be passed through
+\code{\link{gg_rfsrc}} automatically before plotting).}
 
-\item{...}{arguments passed to \code{\link{gg_rfsrc}}.}
+\item{notch}{Logical; whether to draw notched boxplots for regression and
+classification forests (default \code{TRUE}).  Set \code{notch = FALSE}
+to suppress notches when sample sizes are too small for reliable
+confidence intervals on the median.}
+
+\item{...}{Additional arguments forwarded to the underlying
+\code{ggplot2} geometry calls.  Commonly useful arguments include:
+\describe{
+  \item{\code{alpha}}{Numeric in \eqn{[0,1]}; point/ribbon transparency.
+    For survival plots with confidence bands the ribbon alpha is
+    automatically halved relative to the value supplied here.}
+  \item{\code{size}}{Point or line size passed to \code{geom_jitter},
+    \code{geom_step}, etc.}
+}
+Arguments that control \code{\link{gg_rfsrc}} (e.g. \code{conf.int},
+\code{surv_type}, \code{by}) should be applied when constructing the
+\code{gg_rfsrc} object before calling \code{plot()}.}
 }
 \value{
-\code{ggplot} object
+A \code{ggplot} object.  The plot appearance depends on the forest
+  family stored in \code{x}:
+  \describe{
+    \item{Regression (\code{"regr"})}{Jitter + notched boxplot of OOB
+      predicted values.  If a \code{group} column is present the x-axis
+      shows each group label; otherwise observations are collapsed to a
+      single x-position.}
+    \item{Classification (\code{"class"})}{Binary: jitter + notched
+      boxplot of the predicted class probability.  Multi-class: jitter
+      plot with one panel per class (class probabilities in long form).}
+    \item{Survival (\code{"surv"})}{Step curves of the ensemble survival
+      function.  When \code{gg_rfsrc} was called with \code{conf.int},
+      a shaded ribbon is added.  When called with \code{by}, curves are
+      coloured by group.}
+  }
 }
 \description{
 Plot the predicted response from a \code{\link{gg_rfsrc}} object, the
 \code{\link[randomForestSRC]{rfsrc}} prediction, using the OOB prediction
-from the forest.
+from the forest.  The plot type adapts automatically to the forest family:
+jitter + boxplot for regression and classification, step curves for
+survival.
 }
 \examples{
-\dontrun{
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
 ## -------- iris data
-# rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-data(rfsrc_iris, package="ggRandomForests")
-gg_dta<- gg_rfsrc(rfsrc_iris)
+# Build a small classification forest (ntree=50 keeps example fast)
+set.seed(42)
+rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+gg_dta <- gg_rfsrc(rfsrc_iris)
 
 plot(gg_dta)
 
@@ -36,20 +69,18 @@ plot(gg_dta)
 ## Regression example
 ## ------------------------------------------------------------
 ## -------- air quality data
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, na.action = "na.impute")
-gg_dta<- gg_rfsrc(rfsrc_airq)
+# na.action = "na.impute" handles missing Ozone / Solar.R values
+set.seed(42)
+rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+                    na.action = "na.impute", ntree = 50)
+gg_dta <- gg_rfsrc(rfsrc_airq)
 
 plot(gg_dta)
 
-## -------- Boston data
-data(Boston, package = "MASS")
-rfsrc_boston <- randomForestSRC::rfsrc(medv~., Boston)
-
-plot(rfsrc_boston)
-
 ## -------- mtcars data
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars)
-gg_dta<- gg_rfsrc(rfsrc_mtcars)
+set.seed(42)
+rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+gg_dta <- gg_rfsrc(rfsrc_mtcars)
 
 plot(gg_dta)
 
@@ -59,78 +90,77 @@ plot(gg_dta)
 ## -------- veteran data
 ## randomized trial of two treatment regimens for lung cancer
 data(veteran, package = "randomForestSRC")
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 100)
+set.seed(42)
+rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_veteran)
 plot(gg_dta)
 
-gg_dta <- gg_rfsrc(rfsrc_veteran, conf.int=.95)
+# With 95\% pointwise bootstrap confidence bands
+gg_dta <- gg_rfsrc(rfsrc_veteran, conf.int = .95)
 plot(gg_dta)
 
-gg_dta <- gg_rfsrc(rfsrc_veteran, by="trt")
+# Stratified by treatment arm
+gg_dta <- gg_rfsrc(rfsrc_veteran, by = "trt")
 plot(gg_dta)
 
-## -------- pbc data
-#' # We need to create this dataset
-data(pbc, package = "randomForestSRC",) 
-# For whatever reason, the age variable is in days... makes no sense to me
+## -------- pbc data (larger dataset -- skipped on CRAN)
+\donttest{
+data(pbc, package = "randomForestSRC")
+# For whatever reason, the age variable is in days; convert to years
 for (ind in seq_len(dim(pbc)[2])) {
- if (!is.factor(pbc[, ind])) {
-   if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
-     if (sum(range(pbc[, ind], na.rm = TRUE) == c(0, 1)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-   }
- } else {
-   if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
-     if (sum(sort(unique(pbc[, ind])) == c(0, 1)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-     if (sum(sort(unique(pbc[, ind])) == c(FALSE, TRUE)) == 2) {
-       pbc[, ind] <- as.logical(pbc[, ind])
-     }
-   }
- }
- if (!is.logical(pbc[, ind]) &
-     length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 5) {
-   pbc[, ind] <- factor(pbc[, ind])
- }
+  if (!is.factor(pbc[, ind])) {
+    if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
+      if (sum(range(pbc[, ind], na.rm = TRUE) == c(0, 1)) == 2) {
+        pbc[, ind] <- as.logical(pbc[, ind])
+      }
+    }
+  } else {
+    if (length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 2) {
+      if (sum(sort(unique(pbc[, ind])) == c(0, 1)) == 2) {
+        pbc[, ind] <- as.logical(pbc[, ind])
+      }
+      if (sum(sort(unique(pbc[, ind])) == c(FALSE, TRUE)) == 2) {
+        pbc[, ind] <- as.logical(pbc[, ind])
+      }
+    }
+  }
+  if (!is.logical(pbc[, ind]) &
+    length(unique(pbc[which(!is.na(pbc[, ind])), ind])) <= 5) {
+    pbc[, ind] <- factor(pbc[, ind])
+  }
 }
-#Convert age to years
+# Convert age from days to years
 pbc$age <- pbc$age / 364.24
-
 pbc$years <- pbc$days / 364.24
 pbc <- pbc[, -which(colnames(pbc) == "days")]
 pbc$treatment <- as.numeric(pbc$treatment)
 pbc$treatment[which(pbc$treatment == 1)] <- "DPCA"
 pbc$treatment[which(pbc$treatment == 2)] <- "placebo"
 pbc$treatment <- factor(pbc$treatment)
+# Remove test-set patients (those with no assigned treatment)
 dta_train <- pbc[-which(is.na(pbc$treatment)), ]
-# Create a test set from the remaining patients
-pbc_test <- pbc[which(is.na(pbc$treatment)), ]
 
-#========
-# build the forest:
+set.seed(42)
 rfsrc_pbc <- randomForestSRC::rfsrc(
   Surv(years, status) ~ .,
- dta_train,
- nsplit = 10,
- na.action = "na.impute",
- forest = TRUE,
- importance = TRUE,
- save.memory = TRUE
+  dta_train,
+  nsplit = 10,
+  na.action = "na.impute",
+  forest = TRUE,
+  importance = TRUE,
+  save.memory = TRUE
 )
 
 gg_dta <- gg_rfsrc(rfsrc_pbc)
 plot(gg_dta)
 
-gg_dta <- gg_rfsrc(rfsrc_pbc, conf.int=.95)
+gg_dta <- gg_rfsrc(rfsrc_pbc, conf.int = .95)
 plot(gg_dta)
 
-gg_dta <- gg_rfsrc(rfsrc_pbc, by="treatment")
+gg_dta <- gg_rfsrc(rfsrc_pbc, by = "treatment")
 plot(gg_dta)
-
-
 }
+
 }
 \references{
 Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
@@ -138,9 +168,11 @@ Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 Ishwaran H. and Kogalur U.B. (2007). Random survival forests for
 R, Rnews, 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival, Regression
-and Classification (RF-SRC), R package version 1.4.
+Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
+Regression and Classification. R package version >= 3.4.0.
+\url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{
 \code{\link{gg_rfsrc}} \code{\link[randomForestSRC]{rfsrc}}
+  \code{\link[randomForest]{randomForest}}
 }

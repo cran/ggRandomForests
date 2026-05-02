@@ -32,17 +32,16 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for
 #' R, Rnews, 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. (2013). Random Forests for Survival,
-#' Regression and Classification (RF-SRC), R package version 1.4.
+#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
+#' Regression and Classification. R package version >= 3.4.0.
+#' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #' @examples
-#' \dontrun{
 #' ## ------------------------------------------------------------
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
-#' # rfsrc_iris <- rfsrc(Species ~ ., data = iris)
-#' data(rfsrc_iris, package="ggRandomForests")
+#' rfsrc_iris <- rfsrc(Species ~ ., data = iris)
 #' gg_dta <- gg_vimp(rfsrc_iris)
 #' plot(gg_dta)
 #'
@@ -50,103 +49,99 @@
 #' ## regression example
 #' ## ------------------------------------------------------------
 #' ## -------- air quality data
-#' # rfsrc_airq <- rfsrc(Ozone ~ ., airquality)
-#' data(rfsrc_airq, package="ggRandomForests")
+#' rfsrc_airq <- rfsrc(Ozone ~ ., airquality)
 #' gg_dta <- gg_vimp(rfsrc_airq)
 #' plot(gg_dta)
 #'
-#' ## -------- Boston data
-#' data(rfsrc_boston, package="ggRandomForests")
-#' gg_dta <- gg_vimp(rfsrc_boston)
-#' plot(gg_dta)
 #'
-#' ## -------- mtcars data
-#' data(rfsrc_mtcars, package="ggRandomForests")
-#' gg_dta <- gg_vimp(rfsrc_mtcars)
-#' plot(gg_dta)
-#'
-#' ## ------------------------------------------------------------
-#' ## survival example
-#' ## ------------------------------------------------------------
-#' ## -------- veteran data
-#' data(rfsrc_veteran, package="ggRandomForests")
-#' gg_dta <- gg_vimp(rfsrc_veteran)
-#' plot(gg_dta)
-#'
-#' ## -------- pbc data
-#' data(rfsrc_pbc, package="ggRandomForests")
-#' gg_dta <- gg_vimp(rfsrc_pbc)
-#' plot(gg_dta)
-#'
-#'}
-#'
-#' @importFrom ggplot2 ggplot geom_bar aes_string labs coord_flip facet_grid 
-#' @importFrom ggplot2 scale_x_discrete
 #' @export
 plot.gg_vimp <- function(x, relative, lbls, ...) {
-  gg_dta  <- x
-  if (!inherits(gg_dta, "gg_vimp"))
+  gg_dta <- x
+
+  # Accept raw rfsrc / randomForest objects and compute VIMP on the fly
+  if (!inherits(gg_dta, "gg_vimp")) {
     gg_dta <- gg_vimp(gg_dta, ...)
-  
-  # Classification...
-  arg_set <- as.list(substitute(list(...)))[-1L]
-  
+  }
+
+  # Capture extra args so we can inspect nvar.
+  arg_set <- list(...)
+
+  # Optionally restrict to the top-nvar most important variables (gg_vimp
+  # already sorts by descending VIMP, so we just trim the tail).
   nvar <- nrow(gg_dta)
   if (!is.null(arg_set$nvar)) {
     if (is.numeric(arg_set$nvar) && arg_set$nvar > 1) {
       if (arg_set$nvar < nrow(gg_dta)) {
         nvar <- arg_set$nvar
-        gg_dta <- gg_dta[1:nvar, ]
+        gg_dta <- gg_dta[seq_len(nvar), ]
       }
     }
   }
-  
-  gg_plt <- ggplot(gg_dta)
-  
+
+  gg_plt <- ggplot2::ggplot(gg_dta)
+
+  # Use "vimp" as the bar-height column when it exists; fall back to the
+  # first column name for objects that store a renamed importance measure.
   msr <- "vimp"
-  if (!msr %in% colnames(gg_dta))
+  if (!msr %in% colnames(gg_dta)) {
     msr <- colnames(gg_dta)[1]
-  
-  #  if(missing(relative) | is.null(gg_dta$rel_vimp)) {
-  if (length(unique(gg_dta$positive)) > 1) {
-    gg_plt <- gg_plt +
-      geom_bar(
-        aes_string(y = msr, x = "vars", fill = "positive"),
-        stat = "identity",
-        width = .5,
-        color = "black"
-      )
-  } else {
-    gg_plt <- gg_plt +
-      geom_bar(
-        aes_string(y = msr, x = "vars"),
-        stat = "identity",
-        width = .5,
-        color = "black"
-      )
   }
-  gg_plt <- gg_plt + labs(x = "", y = msr)
-  
+
+  # Always map both `fill` and `color` to `positive` -- this gives filled bars
+  # (rather than hollow outlines) and ensures the function-level
+  # `labs(fill = ..., color = ...)` below applies cleanly. When `positive` has
+  # only one level (all VIMPs positive, the common case for well-behaved
+  # forests), the bars simply render in a single colour and ggplot collapses
+  # the fill+color legend into a one-row legend; when both signs are present,
+  # the two-row legend distinguishes positive from negative VIMP.
+  #
+  # Both aesthetics share the same legend title ("VIMP > 0") so ggplot
+  # collapses what would otherwise be two legends -- one for fill and one
+  # titled with the column name "positive" -- into a single merged legend.
+  legend_title <- "VIMP > 0"
+  gg_plt <- gg_plt +
+    ggplot2::geom_bar(
+      ggplot2::aes(
+        y    = .data[[msr]],
+        x    = .data$vars,
+        fill = .data$positive,
+        color = .data$positive
+      ),
+      stat = "identity",
+      width = .5,
+    )
+  # Set both legends' titles to the same string so ggplot merges them.
+  # Users can override with their own labs() call after the fact.
+  gg_plt <- gg_plt +
+    ggplot2::labs(x = "", y = msr,
+                  fill = legend_title, color = legend_title)
+
   if (!missing(lbls)) {
-    # Print a warning if the lbls is not a named vector.
-    
+    # Map internal variable names to human-readable labels.  lbls should be a
+    # named character vector; any unmatched variables keep their original name.
     if (length(lbls) >= length(gg_dta$vars)) {
       st_lbls <- lbls[as.character(gg_dta$vars)]
       names(st_lbls) <- as.character(gg_dta$vars)
+      # Fall back to the raw variable name when no label was supplied
       st_lbls[which(is.na(st_lbls))] <-
         names(st_lbls[which(is.na(st_lbls))])
-      
+
       gg_plt <- gg_plt +
-        scale_x_discrete(labels = st_lbls)
+        ggplot2::scale_x_discrete(labels = st_lbls)
     }
   }
+
+  # Flip coordinates so variable names appear on the y-axis (horizontal bars
+  # are easier to read when there are many variables).  If gg_vimp contains
+  # a "set" column (comparison VIMP across two forests), facet by set.
   if (is.null(gg_dta$set) || length(unique(gg_dta$set)) < 2) {
     gg_plt <- gg_plt +
-      coord_flip()
+      ggplot2::coord_flip()
   } else {
     gg_plt <- gg_plt +
-      coord_flip() + facet_grid(~ set)
+      ggplot2::coord_flip() +
+      ggplot2::facet_grid(~set)
   }
-  
+
   return(gg_plt)
 }
