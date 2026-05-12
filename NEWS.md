@@ -1,6 +1,39 @@
 Package: ggRandomForests
-Version: 2.7.2
+Version: 2.7.3
 
+ggRandomForests v2.7.3
+======================
+* `plot.gg_partial()`, `plot.gg_partial_rfsrc()`, and `plot.gg_partialpro()`
+  now always return a single `ggplot`/`patchwork` object. Previously, when
+  both continuous and categorical predictors were present, they returned a
+  named list `list(continuous=, categorical=)`, which surprised users and
+  made `autoplot()` dispatch ambiguous. The two panels are now combined
+  vertically via `patchwork::wrap_plots()` (patchwork moved from `Suggests`
+  to `Imports`). Closes #77.
+* `autoplot()` S3 methods for all 10 `gg_*` classes, delegating to the
+  corresponding `plot.gg_*()` method so objects work in `|>` pipelines,
+  `patchwork`, and `cowplot` compositions via `ggplot2::autoplot()`.
+* `print()` and `summary()` S3 methods for every `gg_*` data object
+  (gg_error, gg_vimp, gg_rfsrc, gg_variable, gg_partial,
+  gg_partial_rfsrc, gg_partialpro, gg_roc, gg_survival, gg_brier).
+  `print()` is header-only — use `head()` for rows. `summary()`
+  returns a printable `summary.gg` object with per-class diagnostics.
+  Each `gg_*` constructor now attaches a `"provenance"` attribute
+  (source, family, ntree, n, xvar.names) consumed by the new methods.
+* New `gg_brier()` extractor and `plot.gg_brier()` method for time-resolved
+  Brier scores and CRPS on survival forests (issue #9). Wraps
+  `randomForestSRC::get.brier.survival()` and adds the mortality-quartile
+  decomposition, a 15-85 percent per-subject envelope, and running CRPS
+  via trapezoidal integration. Supports `cens.model = c("km", "rfsrc")`,
+  `type = c("brier", "crps")`, and `envelope` (overall line + 15-85%
+  ribbon). Multi-model comparison is left to `dplyr::bind_rows()` on
+  multiple `gg_brier` outputs — see `?gg_brier` for an example.
+* Visual unification of ribbon overlays across plot methods. All
+  ribbons now use a shared alpha (`.gg_ribbon_alpha = 0.2`) and a
+  shared fill (`.gg_ribbon_fill = "steelblue"`) for single-series
+  cases (KM/NA CIs, bootstrap CIs, `gg_brier` envelope); group-stratified
+  ribbons keep their group-coloured fill. Statistical bounds unchanged —
+  only styling.
 ggRandomForests v2.7.2
 =====================
 * Address CRAN reviewer (Benjamin Altmann) feedback on the v2.7.1

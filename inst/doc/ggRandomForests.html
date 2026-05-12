@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="John Ehrlinger">
-<meta name="dcterms.date" content="2026-04-28">
+<meta name="dcterms.date" content="2026-05-12">
 
 <title>Exploring Random Forests with ggRandomForests</title>
 <style>
@@ -211,7 +211,7 @@ text-decoration: underline; }
 <h1 class="title">Exploring Random Forests with ggRandomForests</h1>
 <p class="author">John Ehrlinger</p>
 
-<p class="date">2026-04-28</p>
+<p class="date">2026-05-12</p>
 </header>
 
 <nav id="TOC" role="doc-toc">
@@ -234,13 +234,7 @@ text-decoration: underline; }
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>err_df <span class="ot">&lt;-</span> ggRandomForests<span class="sc">::</span><span class="fu">gg_error</span>(rf_iris, <span class="at">training =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(err_df)</span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>         OOB setosa versicolor  virginica ntree      train
-1 0.06349206      0 0.08695652 0.13333333     1 0.02666667
-2 0.04255319      0 0.03225806 0.10714286     2 0.02000000
-3 0.04761905      0 0.05714286 0.09375000     3 0.02666667
-4 0.04098361      0 0.07500000 0.05263158     4 0.02000000
-5 0.05426357      0 0.06976744 0.10256410     5 0.01333333
-6 0.05970149      0 0.08888889 0.09756098     6 0.01333333</code></pre>
+<pre><code>&lt;gg_error&gt;  from randomForest  |  family: classification  |  ntree: 200  |  n: 150</code></pre>
 </div>
 </div>
 <p>The <code>gg_error()</code> object stores the cumulative OOB error rate for each outcome column plus the <code>ntree</code> counter. When <code>training = TRUE</code>, the function reconstructs the original model frame and appends the in-bag error trajectory (<code>train</code>). Plotting overlays both curves by default:</p>
@@ -287,15 +281,7 @@ text-decoration: underline; }
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>vimp_df <span class="ot">&lt;-</span> ggRandomForests<span class="sc">::</span><span class="fu">gg_vimp</span>(rf_boston)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(vimp_df)</span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 4
-  vars    set     vimp positive
-  &lt;fct&gt;   &lt;chr&gt;  &lt;dbl&gt; &lt;lgl&gt;   
-1 lstat   vimp  13005. TRUE    
-2 rm      vimp  11662. TRUE    
-3 dis     vimp   2849. TRUE    
-4 indus   vimp   2751. TRUE    
-5 ptratio vimp   2698. TRUE    
-6 crim    vimp   2646. TRUE    </code></pre>
+<pre><code>&lt;gg_vimp&gt;  from randomForest  |  family: regression  |  ntree: 150  |  n: 506  |  variables: 6</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vimp_df)</span></code></pre></div>
 <div class="cell-output-display">

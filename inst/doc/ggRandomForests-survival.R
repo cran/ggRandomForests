@@ -369,3 +369,20 @@ if (!exists("surface_df")) {
 }
 })
 
+
+## ----brier-overall, fig.width=7, fig.height=3.5, fig.cap="Time-resolved Brier score for the PBC survival forest."----
+gg_bs <- gg_brier(rfsrc_pbc)
+plot(gg_bs)
+
+
+## ----brier-envelope, fig.width=7, fig.height=3.5, fig.cap="Brier score with 15--85% per-subject envelope."----
+plot(gg_bs, envelope = TRUE)
+
+
+## ----brier-crps, fig.width=7, fig.height=3.5, fig.cap="Running CRPS for the PBC survival forest."----
+plot(gg_bs, type = "crps")
+
+
+## ----brier-crps-scalar--------------------------------------------------------
+attr(gg_bs, "crps_integrated")
+

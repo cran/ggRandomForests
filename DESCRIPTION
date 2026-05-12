@@ -1,8 +1,8 @@
 Package: ggRandomForests
 Type: Package
 Title: Visually Exploring Random Forests
-Version: 2.7.2
-Date: 2026-04-27
+Version: 2.7.3
+Date: 2026-05-12
 Authors@R: person("John", "Ehrlinger",
   role = c("aut", "cre"),
   email = "john.ehrlinger@gmail.com")
@@ -19,14 +19,14 @@ Description: Graphic elements for exploring Random Forests using the
     <doi:10.1023/A:1010933404324> and Ishwaran, Kogalur, Blackstone, and
     Lauer (2008) <doi:10.1214/08-AOAS169>.
 Depends: R (>= 4.4.0), randomForestSRC (>= 3.4.0), randomForest
-Imports: survival, parallel, tidyr, dplyr, ggplot2, stringr
+Imports: survival, parallel, tidyr, dplyr, ggplot2, patchwork, stringr
 Suggests: testthat, bookdown, RColorBrewer, MASS, lintr, covr, vdiffr,
         datasets, rmarkdown, quarto, pkgdown, pkgload, knitr, plotly
 VignetteBuilder: quarto
 RoxygenNote: 7.3.3
 NeedsCompilation: no
-Packaged: 2026-04-28 20:56:41 UTC; ehrlinj
+Packaged: 2026-05-12 13:23:09 UTC; ehrlinj
 Author: John Ehrlinger [aut, cre]
 Maintainer: John Ehrlinger <john.ehrlinger@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-05-02 09:30:02 UTC
+Date/Publication: 2026-05-12 13:50:02 UTC
