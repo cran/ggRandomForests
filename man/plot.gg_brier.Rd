@@ -23,12 +23,25 @@ contributions at each time, around the overall line. When \code{FALSE}
 A \code{ggplot} object.
 }
 \description{
-Plot the time-resolved Brier score (default) or running CRPS for a
-survival forest, optionally overlaid with a 15-85 percent per-subject
-envelope.
+Draws the time-resolved Brier score or the running CRPS from a
+\code{\link{gg_brier}} object.  The curve moves across the event-time
+grid on the x-axis; lower values mean the forest's predicted survival
+probabilities are closer to what actually happened.  Think of
+\code{0} as "perfect" and roughly \code{0.25} as "uninformative" -- a
+forest that predicts \code{0.5} for every subject regardless of
+prognosis would sit near that ceiling.
+}
+\details{
+Set \code{envelope = TRUE} to add a ribbon around the overall curve
+spanning the 15th to 85th percentile of the per-subject Brier
+contributions at each time.  The ribbon shows how heterogeneous the
+scoring is across subjects: a narrow ribbon means most subjects are
+predicted equally well (or equally poorly); a wide ribbon means a
+minority of subjects are driving the average.
 }
 \examples{
-\dontrun{
+\donttest{
+library(survival)   # Surv() must be on the search path for rfsrc()
 data(pbc, package = "randomForestSRC")
 rf <- randomForestSRC::rfsrc(Surv(days, status) ~ ., data = pbc,
                              nsplit = 10)
@@ -41,5 +54,5 @@ plot(gg_dta, envelope = TRUE)   # adds 15-85\% envelope
 }
 \seealso{
 \code{\link{gg_brier}},
-  \code{\link[randomForestSRC]{get.brier.survival}}
+\code{\link[randomForestSRC]{get.brier.survival}}
 }

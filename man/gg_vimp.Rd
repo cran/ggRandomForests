@@ -23,22 +23,45 @@ importance information.}
 }
 \value{
 \code{gg_vimp} object. A \code{data.frame} of VIMP measures, in rank
-  order, optionally containing class-specific scores and a relative importance
-  column. When \code{randomForest} objects lack stored importance values a
-  warning is issued and \code{NA} placeholders are returned so plots remain
-  reproducible.
+order, optionally containing class-specific scores and a relative importance
+column. When \code{randomForest} objects lack stored importance values a
+warning is issued and \code{NA} placeholders are returned so plots remain
+reproducible.
 }
 \description{
 \code{gg_vimp} Extracts the variable importance (VIMP) information from a
 \code{\link[randomForestSRC]{rfsrc}} or \code{\link[randomForest]{randomForest}}
 object and reshapes it into a tidy data set.
 }
+\details{
+\code{gg_vimp()} shows \strong{permutation (Breiman-Cutler) variable
+importance}: the forest permutes a variable's observed values across the
+out-of-bag (OOB) cases, runs those perturbed cases down the already-grown
+trees, and measures how much the OOB prediction error climbs.  That
+perturbation is synthetic (the variable's link to the response is broken
+on purpose) so a large increase means the variable was carrying genuine
+signal; near-zero or negative values mean it added noise or nothing at all.
+
+\code{\link{gg_varpro}()} takes the opposite route, comparing local
+estimators on real observed data through varPro's release rules, with no
+permutation and no synthetic features.  The two approaches answer "which
+variables matter?" by opposite mechanisms, so a variable can rank
+differently under each, and that disagreement is itself informative: it
+often signals interaction structure or non-monotone effects that one
+mechanism surfaces and the other obscures.
+
+For survival forests, VIMP is measured against the ensemble cumulative
+hazard function (CHF); the error metric is one minus the concordance index
+(C-statistic).  Variables with non-positive VIMP are flagged in the
+\code{positive} column and colored differently by
+\code{\link{plot.gg_vimp}}.
+}
 \examples{
 ## ------------------------------------------------------------
 ## classification example
 ## ------------------------------------------------------------
 ## -------- iris data
-rfsrc_iris <- rfsrc(Species ~ .,
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ .,
   data = iris,
   importance = TRUE
 )
@@ -50,7 +73,7 @@ plot(gg_dta)
 ## ------------------------------------------------------------
 
 ## -------- air quality data
-rfsrc_airq <- rfsrc(Ozone ~ ., airquality,
+rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., airquality,
   importance = TRUE
 )
 gg_dta <- gg_vimp(rfsrc_airq)
@@ -72,7 +95,7 @@ plot(gg_dta)
 
 
 ## -------- mtcars data
-rfsrc_mtcars <- rfsrc(mpg ~ .,
+rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ .,
   data = mtcars,
   importance = TRUE
 )
@@ -85,7 +108,7 @@ plot(gg_dta)
 
 ## -------- veteran data
 data(veteran, package = "randomForestSRC")
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ .,
+rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ .,
   data = veteran,
   ntree = 100,
   importance = TRUE
@@ -161,5 +184,5 @@ forests, \emph{Electronic J. Statist.}, 1:519-537.
 \seealso{
 \code{\link{plot.gg_vimp}} \code{\link[randomForestSRC]{rfsrc}}
 
-\code{\link[randomForestSRC]{vimp}}
+\code{\link[randomForestSRC]{vimp}} \code{\link{gg_varpro}}
 }

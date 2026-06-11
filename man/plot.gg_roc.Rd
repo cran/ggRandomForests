@@ -4,29 +4,33 @@
 \alias{plot.gg_roc}
 \title{ROC plot generic function for a \code{\link{gg_roc}} object.}
 \usage{
-\method{plot}{gg_roc}(x, which_outcome = NULL, ...)
+\method{plot}{gg_roc}(x, which_outcome = NULL, ..., panel = c("overlay", "facet"))
 }
 \arguments{
 \item{x}{A \code{\link{gg_roc}} object, or a raw
-\code{\link[randomForestSRC]{rfsrc}} classification forest or
-\code{\link[randomForest]{randomForest}} classification object.  When a
-forest is supplied, \code{\link{gg_roc}} is called automatically.}
+\code{\link[randomForestSRC]{rfsrc}} or
+\code{\link[randomForest]{randomForest}} classification forest. Hand it a
+forest and \code{\link{gg_roc}} is called for you.}
 
 \item{which_outcome}{Integer; for multi-class problems, the index of the
-class whose ROC curve should be plotted.  When \code{NULL} (default) and
-the forest has more than two classes, ROC curves for all classes are
-overlaid in a single plot.  For binary forests \code{NULL} defaults to
-class index 2.}
+class to plot. When \code{NULL} (default) and the forest has more than two
+classes, the curves for all classes are overlaid in one plot. For binary
+forests, \code{NULL} defaults to class index 2.}
 
-\item{...}{Additional arguments forwarded to \code{\link{gg_roc}} when
-\code{x} is a raw forest object (e.g. \code{oob = FALSE}).}
+\item{...}{Additional arguments passed to \code{\link{gg_roc}} when
+\code{x} is a raw forest (e.g. \code{oob = FALSE}).}
+
+\item{panel}{Character; layout for per-class ROC objects, the ones from
+\code{gg_roc(..., per_class = TRUE)}. \code{"overlay"} (default) draws
+every class curve in one panel, coloured by class; \code{"facet"} gives
+each class its own panel. Ignored for single-class \code{gg_roc} objects.}
 }
 \value{
-A \code{ggplot} object.  The x-axis shows 1 - Specificity (FPR)
-  and the y-axis shows Sensitivity (TPR).  A dashed red diagonal reference
-  line marks the random-classifier baseline.  The AUC value is annotated
-  on the plot for single-class curves.  Multi-class plots colour and style
-  each class curve distinctly.
+A \code{ggplot} object. The x-axis is 1 - Specificity (FPR), the
+y-axis is Sensitivity (TPR), and a dashed red diagonal marks the
+random-classifier baseline. Single-class curves carry the AUC as an
+annotation; multi-class plots colour and style each class curve
+distinctly.
 }
 \description{
 ROC plot generic function for a \code{\link{gg_roc}} object.
@@ -38,7 +42,7 @@ ROC plot generic function for a \code{\link{gg_roc}} object.
 ## -------- iris data
 # Build a small classification forest (ntree=50 keeps example fast)
 set.seed(42)
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 
 # ROC for setosa (outcome index 1)
 gg_dta <- gg_roc(rfsrc_iris, which_outcome = 1)
@@ -69,6 +73,6 @@ Regression and Classification. R package version >= 3.4.0.
 }
 \seealso{
 \code{\link{gg_roc}} \code{\link{calc_roc}} \code{\link{calc_auc}}
-  \code{\link[randomForestSRC]{rfsrc}}
-  \code{\link[randomForest]{randomForest}}
+\code{\link[randomForestSRC]{rfsrc}}
+\code{\link[randomForest]{randomForest}}
 }

@@ -66,7 +66,7 @@ ggplot(dta, aes(x = medv, y = value, color = chas)) +
 
 ## ----rfsrc-fit----------------------------------------------------------------
 rfsrc_Boston <- rfsrc(medv ~ ., data = Boston, # nolint: object_name_linter
-                      importance = TRUE, err.block = 5)
+                      ntree = 200, importance = TRUE, err.block = 5)
 rfsrc_Boston
 
 
@@ -157,7 +157,7 @@ plot(gg_v, xvar = "rm", alpha = 0.5) +
 
 
 ## ----surface-data, cache=TRUE-------------------------------------------------
-rm_grid <- quantile_pts(rfsrc_Boston$xvar$rm, groups = 25)
+rm_grid <- quantile_pts(rfsrc_Boston$xvar$rm, groups = 10)
 
 surface_list <- lapply(rm_grid, function(rm_val) {
   newx <- rfsrc_Boston$xvar
@@ -171,36 +171,10 @@ surface_list <- lapply(rm_grid, function(rm_val) {
 surface_df <- bind_rows(surface_list)
 
 
-## ----plotly-surface, fig.cap="Interactive partial dependence surface: median home value as a function of lstat and rm."----
-if (requireNamespace("plotly", quietly = TRUE)) {
-  library(plotly)
-
-  surface_wide <- surface_df |>
-    select(lstat = x, rm, medv = yhat) |>
-    arrange(rm, lstat)
-
-  lstat_vals <- sort(unique(surface_wide$lstat))
-  rm_vals    <- sort(unique(surface_wide$rm))
-  z_matrix   <- matrix(surface_wide$medv,
-                        nrow = length(rm_vals),
-                        ncol = length(lstat_vals),
-                        byrow = TRUE)
-
-  plot_ly(x = lstat_vals, y = rm_vals, z = z_matrix) |>
-    add_surface(colorscale = "Viridis", showscale = TRUE) |>
-    layout(
-      scene = list(
-        xaxis = list(title = "Lower Status (%)"),
-        yaxis = list(title = "Rooms per Dwelling"),
-        zaxis = list(title = "Median Value ($1000s)")
-      )
-    )
-} else {
-  message("Install the plotly package for interactive 3D surfaces.")
-  ggplot(surface_df, aes(x = x, y = rm, fill = yhat)) +
-    geom_tile() +
-    scale_fill_viridis_c(name = "Median Value") +
-    labs(x = "Lower Status (%)", y = "Rooms per Dwelling") +
-    theme_bw()
-}
+## ----pd-surface, fig.cap="Partial dependence surface: median home value as a function of lstat and rm. Fill colour is the predicted median value."----
+ggplot(surface_df, aes(x = x, y = rm, fill = yhat)) +
+  geom_tile() +
+  scale_fill_viridis_c(name = "Median Value\n($1000s)") +
+  labs(x = "Lower Status (%)", y = "Rooms per Dwelling") +
+  theme_bw()
 

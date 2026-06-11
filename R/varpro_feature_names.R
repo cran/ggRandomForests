@@ -3,9 +3,9 @@
 #' Recover original variable names from varpro one-hot encoded feature names
 #'
 #' \code{varpro} one-hot encodes factor variables, appending a numeric suffix
-#' for each level (e.g., \code{sex} becomes \code{sex0} and \code{sex1}).
-#' This function strips those suffixes iteratively until every name in
-#' \code{varpro_names} can be matched back to a column in \code{dataset}.
+#' for each level -- \code{sex} becomes \code{sex0} and \code{sex1}.  To map
+#' those back, this function strips the suffix one character at a time until
+#' every name in \code{varpro_names} matches a column in \code{dataset}.
 #'
 #' @param varpro_names character vector of names as output by varpro (may
 #'   include one-hot encoded suffixed names such as \code{"sex0"}, \code{"sex1"})
@@ -49,10 +49,10 @@
 #'
 #' @export
 varpro_feature_names <- function(varpro_names, dataset) {
-  # Names that already match a column in dataset — keep as-is
+  # Names that already match a column in dataset: keep as-is
   inc_set <- varpro_names[which(varpro_names %in% colnames(dataset))]
 
-  # Names that do not yet match any column — need suffix stripping
+  # Names that do not yet match any column: need suffix stripping
   one_set <- varpro_names[which(!varpro_names %in% colnames(dataset))]
 
   ## Iteratively strip the last character of each unmatched name until every

@@ -27,10 +27,17 @@ partial_surv_y_label <- function(partial.type) {
 
 #' Plot a \code{\link{gg_partial}} object
 #'
-#' Produces ggplot2 partial dependence curves from the named list returned by
-#' \code{\link{gg_partial}}.  Continuous predictors are shown as line plots;
-#' categorical predictors are shown as bar charts.  Both panels are faceted by
-#' variable name so multiple predictors can be compared at a glance.
+#' Turns a \code{\link{gg_partial}} object into a ggplot2 figure.  Each curve
+#' is a partial dependence trace -- the forest's average prediction as one
+#' predictor is swept across its range while the rest are marginalized over the
+#' training data.  Continuous predictors appear as line plots; categorical
+#' predictors appear as bar charts.  Both panels are faceted by variable name
+#' so you can compare the shape and scale of each variable's effect at a
+#' glance.
+#'
+#' When a \code{model} label was attached in \code{gg_partial()}, lines are
+#' coloured by model -- handy for overlaying results from two forests (e.g.,
+#' one tuned, one default) in the same figure.
 #'
 #' @param x A \code{\link{gg_partial}} object (output of \code{\link{gg_partial}}).
 #' @param ... Not currently used; reserved for future arguments.
@@ -95,20 +102,26 @@ plot.gg_partial <- function(x, ...) {
 
 #' Plot a \code{\link{gg_partial_rfsrc}} object
 #'
-#' Produces ggplot2 partial dependence curves from the named list returned by
-#' \code{\link{gg_partial_rfsrc}}.
+#' Renders the partial dependence curves from \code{\link{gg_partial_rfsrc}}
+#' as a ggplot2 figure.  The layout adapts automatically to what the object
+#' contains.
 #'
-#' For standard (non-survival) forests: continuous predictors are line plots,
-#' categorical predictors are bar charts, both faceted by variable name.
+#' For a standard regression or classification forest, continuous predictors
+#' are drawn as line plots and categorical predictors as bar charts, both
+#' faceted by variable name -- the same arrangement as
+#' \code{\link{plot.gg_partial}}.
 #'
-#' For survival forests (when a \code{time} column is present): each evaluation
-#' time point is a separate curve over the predictor's value, faceted by
-#' variable name. The y-axis label adapts to the \code{partial.type} stored on
-#' the object (\dQuote{Predicted Survival}, \dQuote{Predicted CHF}, or
-#' \dQuote{Predicted Mortality}).
+#' For a survival forest, each call to \code{partial.rfsrc} returns a predicted
+#' quantity (survival probability, cumulative hazard function, or mortality) at
+#' one or more chosen time horizons.  When a \code{time} column is present in
+#' the data, each horizon becomes a separate coloured curve over the predictor's
+#' value, still faceted by variable.  The y-axis label (\dQuote{Predicted
+#' Survival}, \dQuote{Predicted CHF}, or \dQuote{Predicted Mortality}) tracks
+#' the \code{partial.type} attribute set by \code{gg_partial_rfsrc()}.
 #'
-#' For two-variable surface plots (when a \code{grp} column is present):
-#' each group level is a separate line, faceted by primary predictor name.
+#' For a two-variable interaction surface (when \code{xvar2.name} was supplied
+#' to \code{gg_partial_rfsrc}), the secondary variable's levels become
+#' separate coloured lines, faceted by the primary predictor.
 #'
 #' @param x A \code{\link{gg_partial_rfsrc}} object.
 #' @param ... Not currently used.
@@ -238,119 +251,12 @@ plot.gg_partial_rfsrc <- function(x, ...) {
   }
 }
 
-#' Plot a \code{\link{gg_partialpro}} object
-#'
-#' Produces ggplot2 partial dependence curves from the named list returned by
-#' \code{\link{gg_partialpro}}, which wraps \code{varpro::partialpro} output.
-#'
-#' Each variable produces up to three effect curves: parametric, nonparametric,
-#' and causal.  The \code{type} argument controls which are shown.
-#'
-#' @param x A \code{\link{gg_partialpro}} object.
-#' @param type Character vector; one or more of \code{"parametric"},
-#'   \code{"nonparametric"}, \code{"causal"}.  Defaults to all three.
-#' @param ... Not currently used.
-#'
-#' @return A \code{ggplot} (or \code{patchwork}) object.  When both continuous
-#'   and categorical variables are present the two panels are combined
-#'   vertically via \code{patchwork::wrap_plots()}.
-#'
-#' @seealso \code{\link{gg_partialpro}}
-#'
-#' @examples
-#' ## ggRandomForests does not depend on the varpro package; we construct a
-#' ## minimal mock of the partialpro() output so the example runs everywhere.
-#' set.seed(42)
-#' n_obs <- 30
-#' n_pts <- 15
-#' mock_data <- list(
-#'   age = list(
-#'     xvirtual    = seq(30, 80, length.out = n_pts),
-#'     xorg        = sample(seq(30, 80, by = 5), n_obs, replace = TRUE),
-#'     yhat.par    = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
-#'     yhat.nonpar = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
-#'     yhat.causal = matrix(rnorm(n_obs * n_pts), nrow = n_obs)
-#'   ),
-#'   sex = list(
-#'     xvirtual    = c(0, 1),
-#'     xorg        = sample(c(0, 1), n_obs, replace = TRUE),
-#'     yhat.par    = matrix(rnorm(n_obs * 2), nrow = n_obs),
-#'     yhat.nonpar = matrix(rnorm(n_obs * 2), nrow = n_obs),
-#'     yhat.causal = matrix(rnorm(n_obs * 2), nrow = n_obs)
-#'   )
-#' )
-#'
-#' pp <- gg_partialpro(mock_data)
-#'
-#' # Returns a single ggplot/patchwork figure combining continuous and
-#' # categorical panels when both variable types are present.
-#' plot(pp)
-#'
-#' # Restrict to one or two effect types
-#' plot(pp, type = "nonparametric")
-#' plot(pp, type = c("parametric", "causal"))
-#'
-#' @importFrom ggplot2 .data
-#' @importFrom patchwork wrap_plots
+#' @rdname plot.gg_partial_varpro
+#' @name plot.gg_partial_varpro
 #' @export
-plot.gg_partialpro <- function(x,
-                               type = c("parametric", "nonparametric", "causal"),
-                               ...) {
-  gg_dta <- x
-  type <- match.arg(type, several.ok = TRUE)
-
-  gg_cont <- NULL
-  if (!is.null(gg_dta$continuous) && nrow(gg_dta$continuous) > 0) {
-    cont <- gg_dta$continuous
-    ## Pivot to long form so all requested effect types appear as one colour/line
-    cont_long <- tidyr::pivot_longer(
-      cont,
-      cols      = tidyr::all_of(type),
-      names_to  = "effect_type",
-      values_to = "yhat"
-    )
-    gg_cont <- ggplot2::ggplot(
-      cont_long,
-      ggplot2::aes(
-        x        = .data$variable,
-        y        = .data$yhat,
-        color    = .data$effect_type,
-        linetype = .data$effect_type
-      )
-    ) +
-      ggplot2::geom_line() +
-      ggplot2::facet_wrap(~name, scales = "free_x") +
-      ggplot2::labs(x = NULL, y = "Partial Effect",
-                    color = "Effect type", linetype = "Effect type")
-  }
-
-  gg_cat <- NULL
-  if (!is.null(gg_dta$categorical) && nrow(gg_dta$categorical) > 0) {
-    cat_dta <- gg_dta$categorical
-    cat_long <- tidyr::pivot_longer(
-      cat_dta,
-      cols      = tidyr::all_of(type),
-      names_to  = "effect_type",
-      values_to = "yhat"
-    )
-    gg_cat <- ggplot2::ggplot(
-      cat_long,
-      ggplot2::aes(
-        x    = factor(.data$variable),
-        y    = .data$yhat,
-        fill = .data$effect_type
-      )
-    ) +
-      ggplot2::geom_boxplot() +
-      ggplot2::facet_wrap(~name, scales = "free_x") +
-      ggplot2::labs(x = NULL, y = "Partial Effect", fill = "Effect type")
-  }
-
-  if (!is.null(gg_cont) && !is.null(gg_cat)) {
-    wrap_plots(gg_cont, gg_cat, ncol = 1)
-  } else if (!is.null(gg_cont)) {
-    gg_cont
-  } else {
-    gg_cat
-  }
+plot.gg_partialpro <- function(x, type = c("parametric", "nonparametric",
+                                            "causal"), ...) {
+  ## Deprecated class shim: re-dispatch to plot.gg_partial_varpro.
+  class(x) <- c("gg_partial_varpro", setdiff(class(x), "gg_partialpro"))
+  plot.gg_partial_varpro(x, type = type, ...)
 }

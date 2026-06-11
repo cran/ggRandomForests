@@ -54,7 +54,7 @@
 #' ## ------------------------------------------------------------
 #' ## ------------- iris data
 #' ## You can build a randomForest
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris,
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris,
 #'   forest = TRUE,
 #'   importance = TRUE,
 #'   tree.err = TRUE,
@@ -83,7 +83,7 @@
 #' ## Regression example
 #' ## ------------------------------------------------------------
 #' ## ------------- airq data
-#' rfsrc_airq <- rfsrc(Ozone ~ .,
+#' rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ .,
 #'   data = airquality,
 #'   na.action = "na.impute",
 #'   forest = TRUE,
@@ -102,7 +102,7 @@
 #' ## ------------- Boston data
 #' data(Boston, package = "MASS")
 #' Boston$chas <- as.logical(Boston$chas)
-#' rfsrc_boston <- rfsrc(medv ~ .,
+#' rfsrc_boston <- randomForestSRC::rfsrc(medv ~ .,
 #'   data = Boston,
 #'   forest = TRUE,
 #'   importance = TRUE,
@@ -117,7 +117,7 @@
 #' plot(gg_dta)
 #'
 #' ## ------------- mtcars data
-#' rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars,
+#' rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars,
 #'   importance = TRUE,
 #'   save.memory = TRUE,
 #'   forest = TRUE,
@@ -136,7 +136,7 @@
 #' ## ------------- veteran data
 #' ## randomized trial of two treatment regimens for lung cancer
 #' data(veteran, package = "randomForestSRC")
-#' rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran,
+#' rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., data = veteran,
 #'                        tree.err = TRUE)
 #'
 #' gg_dta <- gg_error(rfsrc_veteran)
@@ -222,7 +222,8 @@ plot.gg_error <- function(x, ...) {
     point <- TRUE
   }
 
-  if (ncol(gg_dta) > 2) {
+  multi_outcome <- ncol(gg_dta) > 2
+  if (multi_outcome) {
     # Multi-outcome (classification): gg_error has one column per class plus
     # the "ntree" column.  Pivot to long form so we can colour by outcome.
     gg_dta <- tidyr::pivot_longer(gg_dta, -"ntree", names_to = "variable", values_to = "value")
@@ -238,17 +239,23 @@ plot.gg_error <- function(x, ...) {
                                                     y = .data[["error"]]))
   }
 
-  if (point) {
-    gg_plt <- gg_plt +
-      ggplot2::geom_point() +
-      ggplot2::labs(x = "Number of Trees", y = "OOB Error Rate", color = "Outcome")
+  # Build the labs() once with the colour label only mapped on the
+  # multi-outcome / classification path (avoids the "Ignoring unknown
+  # labels: colour Outcome" warning on the single-outcome path where no
+  # colour aesthetic is mapped). #82.
+  err_labs <- if (multi_outcome) {
+    ggplot2::labs(x = "Number of Trees", y = "OOB Error Rate",
+                  color = "Outcome")
   } else {
-    gg_plt <- gg_plt +
-      ggplot2::geom_line() +
-      ggplot2::labs(x = "Number of Trees", y = "OOB Error Rate", color = "Outcome")
+    ggplot2::labs(x = "Number of Trees", y = "OOB Error Rate")
+  }
+  if (point) {
+    gg_plt <- gg_plt + ggplot2::geom_point() + err_labs
+  } else {
+    gg_plt <- gg_plt + ggplot2::geom_line() + err_labs
   }
 
-  # Hide the legend when there is only a single outcome variable — the colour
+  # Hide the legend when there is only a single outcome variable: the colour
   # key adds no information and clutters the plot.  For single-outcome forests
   # (regression / survival) the data is never gathered, so there is no
   # "variable" column; suppress the legend unconditionally in that case.

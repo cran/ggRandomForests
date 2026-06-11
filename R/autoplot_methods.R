@@ -14,13 +14,13 @@ NULL
 
 #' \code{autoplot} methods for \pkg{ggRandomForests} data objects
 #'
-#' These methods let you use \code{ggplot2::autoplot()} on any \code{gg_*}
-#' object returned by \pkg{ggRandomForests}.  They are thin wrappers around
-#' the corresponding \code{plot.gg_*()} S3 methods, so all arguments
-#' accepted by those methods are forwarded via \code{...}.
+#' These let you call \code{ggplot2::autoplot()} on any \code{gg_*} object
+#' \pkg{ggRandomForests} returns. Each is a thin wrapper around the matching
+#' \code{plot.gg_*()} S3 method, and \code{...} passes straight through, so
+#' every argument those plot methods take is still available here.
 #'
 #' @param object A \code{gg_*} data object (see Details).
-#' @param ... Additional arguments forwarded to the underlying
+#' @param ... Additional arguments passed to the underlying
 #'   \code{plot.gg_*()} method.
 #'
 #' @return A \code{ggplot} object.
@@ -34,7 +34,9 @@ NULL
 #'   \item{\code{gg_variable}}{Marginal dependence}
 #'   \item{\code{gg_partial}}{Partial dependence (via \code{plot.variable})}
 #'   \item{\code{gg_partial_rfsrc}}{Partial dependence (via \code{partial.rfsrc})}
-#'   \item{\code{gg_partialpro}}{Partial dependence (via \code{varPro})}
+#'   \item{\code{gg_partial_varpro}}{Partial dependence (via \code{varPro})}
+#'   \item{\code{gg_partialpro}}{Partial dependence via \code{varPro} (deprecated alias)}
+#'   \item{\code{gg_varpro}}{Variable importance from \code{varPro}}
 #'   \item{\code{gg_roc}}{ROC curve}
 #'   \item{\code{gg_survival}}{Survival / cumulative hazard curves}
 #'   \item{\code{gg_brier}}{Time-resolved Brier score and CRPS}
@@ -93,6 +95,14 @@ autoplot.gg_partial_rfsrc <- function(object, ...) {
 #' @rdname autoplot.gg
 #' @export
 autoplot.gg_partialpro <- function(object, ...) {
+  ## Deprecated-class shim: re-dispatch to autoplot.gg_partial_varpro.
+  class(object) <- c("gg_partial_varpro", setdiff(class(object), "gg_partialpro"))
+  autoplot.gg_partial_varpro(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_partial_varpro <- function(object, ...) {
   plot(object, ...)
 }
 
@@ -111,5 +121,23 @@ autoplot.gg_survival <- function(object, ...) {
 #' @rdname autoplot.gg
 #' @export
 autoplot.gg_brier <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_varpro <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_udependent <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_isopro <- function(object, ...) {
   plot(object, ...)
 }

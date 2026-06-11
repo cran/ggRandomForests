@@ -14,20 +14,39 @@
 #'
 #' Brier score and CRPS for survival forests
 #'
-#' Extract the time-resolved Brier score and continuous ranked probability
-#' score (CRPS) for a survival forest grown with \code{randomForestSRC}. The
-#' Brier score is computed at each time on \code{object$time.interest}, both
-#' overall and stratified by mortality-risk quartile. CRPS is the running
-#' trapezoidal integral of the Brier score, normalised by elapsed time, and
-#' is computed within each quartile and overall.
+#' The Brier score asks a familiar question of any probabilistic forecast:
+#' how far did the predicted probability sit from what actually happened?
+#' For a survival forest the forecast is the predicted survival probability
+#' at a given moment, and the "what happened" is whether the subject was
+#' still alive at that moment.  The score is computed at every event time,
+#' so you get a curve rather than a single number -- lower is better
+#' everywhere.  A perfectly calibrated forest that predicts \code{0} for
+#' every subject who died and \code{1} for every subject who survived would
+#' score \code{0}; a forest that predicts \code{0.5} for everyone scores
+#' roughly \code{0.25} regardless of the true outcome -- that is the
+#' "uninformative" ceiling.
 #'
-#' @details Wraps \code{\link[randomForestSRC]{get.brier.survival}} and
-#' rebuilds the quartile decomposition + running CRPS from the returned
-#' \code{brier.matx} and \code{mort} components, mirroring the computation
-#' in the internal \code{plot.survival} function of \pkg{randomForestSRC}. The Brier score uses
-#' inverse-probability-of-censoring weighting; the censoring distribution
-#' is estimated either by Kaplan-Meier (\code{cens.model = "km"}, the
-#' default) or by a separate censoring forest (\code{cens.model = "rfsrc"}).
+#' This function extracts the time-resolved Brier score for a survival
+#' forest grown with \code{randomForestSRC}, both overall and broken down
+#' by mortality-risk quartile (lowest-risk to highest-risk subjects).  It
+#' also returns the continuous ranked probability score (CRPS) -- the Brier
+#' score integrated over time and divided by elapsed time, a running average
+#' that summarises calibration up to each point on the time axis.
+#'
+#' @details
+#' Because subjects are right-censored, a plain Brier score is biased:
+#' censored subjects contribute no outcome information yet still inflate the
+#' denominator.  The score here uses inverse-probability-of-censoring
+#' weighting (IPCW), which up-weights uncensored observations to compensate.
+#' The censoring distribution is estimated either by Kaplan-Meier
+#' (\code{cens.model = "km"}, the default) or by a separate censoring
+#' forest (\code{cens.model = "rfsrc"}) when the censoring mechanism is
+#' itself covariate-dependent.
+#'
+#' Internally, this wraps \code{\link[randomForestSRC]{get.brier.survival}}
+#' and rebuilds the quartile decomposition and running CRPS from the returned
+#' \code{brier.matx} and \code{mort} components, following the approach in
+#' the internal \code{plot.survival} of \pkg{randomForestSRC}.
 #'
 #' @param object A fitted \code{\link[randomForestSRC]{rfsrc}} survival
 #'   forest (\code{object$family == "surv"}).
@@ -68,7 +87,8 @@
 #' Biometrical Journal, 48(6):1029-1040.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' library(survival)   # Surv() must be on the search path for rfsrc()
 #' data(pbc, package = "randomForestSRC")
 #' rfsrc_pbc <- randomForestSRC::rfsrc(
 #'   Surv(days, status) ~ ., data = pbc, nsplit = 10
@@ -91,6 +111,8 @@
 #'   ggplot2::geom_line()
 #' }
 #'
+#' @note Brier score / CRPS is `randomForestSRC` survival-only; there
+#'   is no `randomForest` method.
 #' @importFrom stats quantile
 #' @export
 gg_brier <- function(object, ...) {
@@ -134,7 +156,7 @@ gg_brier.rfsrc <- function(object,
   bs_quartile <- vapply(seq_len(4), function(k) {
     in_bin <- mort > mort_breaks[k] & mort <= mort_breaks[k + 1]
     if (!any(in_bin, na.rm = TRUE)) {
-      # Empty bin — can occur when mort has ties at a quantile boundary.
+      # Empty bin: can occur when mort has ties at a quantile boundary.
       return(rep(NA_real_, nrow(bs_df)))
     }
     colMeans(brier_matx[in_bin, , drop = FALSE], na.rm = TRUE)

@@ -38,8 +38,13 @@
 }
 \value{
 A single \code{ggplot} object when \code{length(xvar) == 1} or
-  \code{panel = TRUE}. Otherwise a named list of \code{ggplot} objects, one
-  per variable in \code{xvar}.
+\code{panel = TRUE}; otherwise a \code{patchwork} composite that stacks
+one panel per variable in \code{xvar}. Either way the result is one
+plottable object, never a bare list, so it composes with
+\code{patchwork} and dispatches through \code{ggplot2::autoplot()}.
+For the patchwork case, to inspect one panel with
+\code{ggplot2::layer_data()} pull that panel out first
+(e.g. \code{ggplot2::layer_data(p[[1]])}).
 }
 \description{
 Plot a \code{\link{gg_variable}} object,
@@ -50,7 +55,7 @@ Plot a \code{\link{gg_variable}} object,
 ## ------------------------------------------------------------
 ## -------- iris data
 set.seed(42)
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 
 gg_dta <- gg_variable(rfsrc_iris)
 plot(gg_dta, xvar = "Sepal.Width")
@@ -68,7 +73,7 @@ plot(gg_dta,
 ## -------- air quality data
 # na.action = "na.impute" handles missing Ozone / Solar.R values
 set.seed(42)
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality,
                     na.action = "na.impute", ntree = 50)
 gg_dta <- gg_variable(rfsrc_airq)
 
@@ -79,19 +84,22 @@ plot(gg_dta, xvar = "Wind")
 plot(gg_dta, xvar = "Temp")
 plot(gg_dta, xvar = "Solar.R")
 
-# Panel plot across continuous predictors
-plot(gg_dta, xvar = c("Solar.R", "Wind", "Temp", "Day"), panel = TRUE)
-
 # Factor variable uses notched boxplots
 plot(gg_dta, xvar = "Month", notch = TRUE)
+
+\donttest{
+# Panel plot across continuous predictors (loess smooths; slower)
+plot(gg_dta, xvar = c("Solar.R", "Wind", "Temp", "Day"), panel = TRUE)
+}
 
 ## ------------------------------------------------------------
 ## survival examples
 ## ------------------------------------------------------------
 ## -------- veteran data
+\donttest{
 data(veteran, package = "randomForestSRC")
 set.seed(42)
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., veteran,
+rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., veteran,
   nsplit = 10,
   ntree = 50
 )
@@ -114,6 +122,7 @@ plot(gg_dta, xvar = "age")
 
 # Panel coplot across two predictors and three time points
 plot(gg_dta, xvar = c("age", "diagtime"), panel = TRUE)
+}
 
 }
 \references{
@@ -128,5 +137,5 @@ Regression and Classification. R package version >= 3.4.0.
 }
 \seealso{
 \code{\link{gg_variable}}, \code{\link{gg_partial}},
-  \code{\link[randomForestSRC]{plot.variable}}
+\code{\link[randomForestSRC]{plot.variable}}
 }

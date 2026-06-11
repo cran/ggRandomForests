@@ -31,7 +31,7 @@ partial effects at. Defaults to the training data stored in
 
 \item{partial.time}{Numeric vector of desired time points for survival
 forests (ignored for regression/classification).  Values are automatically
-snapped to the nearest entry in \code{rf_model$time.interest} — see the
+snapped to the nearest entry in \code{rf_model$time.interest}; see the
 \strong{Survival forests} section below.  When \code{NULL} (default),
 three quartile points of \code{time.interest} are used.}
 
@@ -54,35 +54,52 @@ Defaults to 25.}
 }
 \value{
 A named list with two elements:
-  \describe{
-    \item{continuous}{A \code{data.frame} with columns \code{x} (numeric),
-      \code{yhat}, \code{name} (variable name), and optionally \code{grp}
-      (the level of \code{xvar2.name}) and \code{time} (survival forests
-      only) for all continuous predictors.}
-    \item{categorical}{A \code{data.frame} with the same columns but
-      \code{x} kept as character, for low-cardinality predictors.}
-  }
+\describe{
+\item{continuous}{A \code{data.frame} with columns \code{x} (numeric),
+\code{yhat}, \code{name} (variable name), and optionally \code{grp}
+(the level of \code{xvar2.name}) and \code{time} (survival forests
+only) for all continuous predictors.}
+\item{categorical}{A \code{data.frame} with the same columns but
+\code{x} kept as character, for low-cardinality predictors.}
+}
 }
 \description{
-Computes partial dependence for one or more predictors by calling
-\code{\link[randomForestSRC]{partial.rfsrc}} internally, then splits the
+A partial dependence curve marginalizes the forest's prediction over all
+other predictors: for each evaluation point of the target variable, the
+forest scores every training observation with that value substituted in,
+then averages the result.  What you get is the average effect of the target
+variable after "integrating out" the rest -- a curve that would be flat if
+the variable carried no signal.
+}
+\details{
+This function builds those curves for one or more predictors by calling
+\code{\link[randomForestSRC]{partial.rfsrc}} and then tidy-stacking the
 results into separate data frames for continuous and categorical variables.
-Unlike \code{\link{gg_partial}}, no separate \code{plot.variable} call is
-required — supply the fitted \code{rfsrc} object directly.
+Unlike \code{\link{gg_partial}} (which wraps \code{plot.variable}), you
+pass the fitted \code{rfsrc} object directly -- no intermediate
+\code{plot.variable} step.
+
+For survival forests, the marginalized quantity depends on
+\code{partial.type}: survival probability (\code{"surv"}), cumulative
+hazard function (\code{"chf"}), or expected mortality (\code{"mort"}).
+You can request the curve at one or more time horizons via
+\code{partial.time}; the resulting data have a \code{time} column so the
+plot layers them as separate coloured lines.
 }
 \section{Survival forests and \code{partial.time}}{
 
-\code{\link[randomForestSRC]{partial.rfsrc}} requires that every value in
-\code{partial.time} be an exact member of the model's \code{time.interest}
-vector (the unique observed event times stored in the fitted object).
-Passing arbitrary time values — even plausible ones such as \code{c(1, 3)}
-for a study measured in years — causes a C-level prediction error inside
-\code{partial.rfsrc}.
+\code{\link[randomForestSRC]{partial.rfsrc}} expects every value in
+\code{partial.time} to be an exact member of the model's
+\code{time.interest} vector, the unique observed event times stored in the
+fitted object.  Pass an arbitrary time, even a plausible one such as
+\code{c(1, 3)} for a study measured in years, and you get a C-level
+prediction error from inside \code{partial.rfsrc}.
 
-\code{gg_partial_rfsrc} handles this automatically: every element of
-\code{partial.time} is silently snapped to its nearest \code{time.interest}
-value before the call is made.  To target a specific follow-up horizon,
-find the closest grid point yourself and pass it explicitly:
+\code{gg_partial_rfsrc} takes care of this: every element of
+\code{partial.time} is silently snapped to its nearest
+\code{time.interest} value before the call.  To target a specific
+follow-up horizon, find the closest grid point yourself and pass it
+explicitly:
 
 \preformatted{
 ti  <- rf_model$time.interest
@@ -107,7 +124,7 @@ before fitting the model.
 ##
 ## ------------------------------------------------------------
 
-airq.obj <- rfsrc(Ozone ~ ., data = airquality)
+airq.obj <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality)
 
 ## partial effect for wind
 prt_dta <- gg_partial_rfsrc(airq.obj,
@@ -116,5 +133,5 @@ prt_dta <- gg_partial_rfsrc(airq.obj,
 }
 \seealso{
 \code{\link{gg_partial}}, \code{\link[randomForestSRC]{partial.rfsrc}},
-  \code{\link[randomForestSRC]{get.partial.plot.data}}
+\code{\link[randomForestSRC]{get.partial.plot.data}}
 }

@@ -37,11 +37,8 @@ test_that("gg_variable classifications", {
   ## Test plotting the gg_error object
   gg_plt <- plot.gg_variable(gg_dta, xvar = rfsrc_iris$xvar.names)
 
-  # Test return is s ggplot object
-  expect_type(gg_plt, "list")
-  expect_equal(length(gg_plt), length(rfsrc_iris$xvar.names))
-  for (ind in seq_along(rfsrc_iris$xvar.names))
-    expect_s3_class(gg_plt[[ind]], "ggplot")
+  # Test return is a single plottable object (patchwork composite or ggplot)
+  expect_true(inherits(gg_plt, "patchwork") || inherits(gg_plt, "ggplot"))
   ## Test plotting the gg_error object
   gg_plt <- plot.gg_variable(gg_dta, xvar = rfsrc_iris$xvar.names,
                              panel = TRUE)
@@ -105,11 +102,8 @@ test_that("gg_variable regression", {
   ## Test plotting the gg_error object
   gg_plt <- plot.gg_variable(gg_dta)
 
-  # Test return is s ggplot object
-  expect_type(gg_plt, "list")
-  expect_equal(length(gg_plt), length(rfsrc_boston$xvar.names))
-  for (ind in seq_along(rfsrc_boston$xvar.names))
-    expect_s3_class(gg_plt[[ind]], "ggplot")
+  # Test return is a single plottable object (patchwork composite or ggplot)
+  expect_true(inherits(gg_plt, "patchwork") || inherits(gg_plt, "ggplot"))
 
 
   ## Test plotting the gg_error object
@@ -190,10 +184,9 @@ test_that("gg_variable survival: multiple times, single variable facets", {
   gg_plt <- plot(gg_dta, xvar = "age")
   expect_s3_class(gg_plt, "ggplot")
 
-  # Multiple xvars → returns a list
+  # Multiple xvars → returns a single plottable object (patchwork composite)
   gg_plt2 <- plot(gg_dta, xvar = c("age", "diagtime"))
-  expect_type(gg_plt2, "list")
-  expect_s3_class(gg_plt2[[1]], "ggplot")
+  expect_true(inherits(gg_plt2, "patchwork") || inherits(gg_plt2, "ggplot"))
 })
 
 test_that("gg_variable survival: multiple times, panel plot", {
@@ -359,7 +352,247 @@ test_that("plot.gg_variable: missing xvar returns list for all predictors", {
 
   gg_dta <- gg_variable(rfsrc_boston)
   gg_plt <- plot(gg_dta)
-  expect_type(gg_plt, "list")
-  expect_gt(length(gg_plt), 0)
-  expect_s3_class(gg_plt[[1]], "ggplot")
+  # Returns a single plottable object (patchwork composite for multiple predictors)
+  expect_true(inherits(gg_plt, "patchwork") || inherits(gg_plt, "ggplot"))
+})
+
+test_that("gg_variable.randomForest classification: class attr uses 'class' not 'classification'", {
+  # randomForest stores the family in $type as "classification", but
+  # plot.gg_variable and the rfsrc path both dispatch on "class".
+  # Verify the mapping is applied so callers see a consistent class attribute.
+  set.seed(42)
+  rf_iris <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg_dta  <- gg_variable(rf_iris)
+
+  expect_true("class"          %in% class(gg_dta))
+  expect_false("classification" %in% class(gg_dta))
+  expect_s3_class(gg_dta, "gg_variable")
+})
+
+## ── randomForest classification (PR #87) ─────────────────────────────────────
+
+test_that("gg_variable.randomForest classification: produces yhat.* columns not yhat", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  # Must have one column per class
+  expect_true(all(c("yhat.setosa", "yhat.versicolor", "yhat.virginica")
+                  %in% names(gg)))
+  # Must NOT have a bare yhat column for multi-class
+  expect_false("yhat" %in% names(gg))
+  # Observed-class column must be present
+  expect_true("yvar" %in% names(gg))
+  # Vote fractions must be in [0, 1] and row-sum to ~1
+  vote_cols <- c("yhat.setosa", "yhat.versicolor", "yhat.virginica")
+  expect_true(all(gg[, vote_cols] >= 0))
+  expect_true(all(gg[, vote_cols] <= 1))
+  expect_true(all(abs(rowSums(gg[, vote_cols]) - 1) < 1e-6))
+})
+
+test_that("gg_variable.randomForest classification: plot returns patchwork for all xvar", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  p  <- plot(gg)
+  # iris has 4 predictors so the no-xvar default assembles a multi-panel
+  # patchwork; assert patchwork specifically to catch regressions to a bare
+  # list (#80).
+  expect_s3_class(p, "patchwork")
+})
+
+test_that("gg_variable.randomForest classification: layer_data works on single-xvar plot", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  p  <- plot(gg, xvar = "Sepal.Length")
+  expect_no_error(ggplot2::layer_data(p, 1L))
+})
+
+test_that("gg_variable.randomForest classification: default plot renders every panel", {
+  # yvar / outcome must not be treated as predictors by the default-xvar pick.
+  skip_if_not_installed("randomForest")
+  # Regression test: the default-xvar selection in plot.gg_variable used to
+  # include yvar and outcome (the response factor and the multi-class pivot's
+  # facet column), pivoting them into `var` and dropping them from the
+  # panel data. The geom_jitter aes then errored at render time with
+  # "Column `yvar` not found". This test exercises a real build of every
+  # patchwork sub-plot, which is what catches the regression — checking the
+  # patchwork class alone does not, because patchwork is lazy.
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  p  <- plot(gg)
+  expect_s3_class(p, "patchwork")
+  # Force every sub-plot to actually build.
+  for (sub in p$patches$plots) {
+    expect_no_error(ggplot2::ggplot_build(sub))
+  }
+})
+
+test_that("plot.gg_variable default xvar matches column names exactly, not substring", {
+  # Regression: the pre-existing default-xvar exclusion used grep("time", ...)
+  # and grep("event", ...), which silently dropped any predictor whose name
+  # *contained* those substrings -- e.g. the documented veteran-data survival
+  # predictor `diagtime`. Switch to exact matching for event/time/yvar/outcome
+  # and a prefix match for yhat (to catch yhat.<class> columns).
+  data(veteran, package = "randomForestSRC")
+  set.seed(42L)
+  Surv <- survival::Surv # nolint: object_name_linter
+  rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., data = veteran,
+                                          ntree = 25, nsplit = 3)
+  gg <- gg_variable(rfsrc_veteran, time = 90)
+  expect_true("diagtime" %in% names(gg))
+  # The default xvar list must include diagtime (not dropped by substring match).
+  p <- plot(gg)
+  # The plot should be a patchwork (multiple predictors) -- and diagtime should
+  # appear as one of the panels. Force every sub-plot to build cleanly.
+  expect_s3_class(p, "patchwork")
+  for (sub in p$patches$plots) {
+    expect_no_error(ggplot2::ggplot_build(sub))
+  }
+  # Spot-check: at least one panel's data has `var` sourced from diagtime by
+  # confirming diagtime is NOT in the residual data columns of every panel
+  # (it was pivoted into `var` for exactly one panel).
+  var_panel_count <- sum(vapply(p$patches$plots, function(sub) {
+    !("diagtime" %in% names(sub$data))
+  }, logical(1L)))
+  expect_gte(var_panel_count, 1L)
+})
+
+test_that("gg_variable.randomForest classification: norm.votes=FALSE still gives [0,1] fractions", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L,
+                                   norm.votes = FALSE)
+  gg <- gg_variable(rf)
+  vote_cols <- c("yhat.setosa", "yhat.versicolor", "yhat.virginica")
+  expect_true(all(c("yhat.setosa", "yhat.versicolor", "yhat.virginica") %in% names(gg)))
+  expect_true(all(gg[, vote_cols] >= 0))
+  expect_true(all(gg[, vote_cols] <= 1))
+  expect_true(all(abs(rowSums(gg[, vote_cols]) - 1) < 1e-6))
+})
+
+test_that("plot.gg_variable RF classification: smooth=TRUE layer_data smokeable (binary smooth aes bug)", {
+  skip_if_not_installed("randomForest")
+  # Two-class subset to exercise the *binary* classification path
+  set.seed(42L)
+  bin_data        <- iris[iris$Species != "virginica", ]
+  bin_data$Species <- droplevels(bin_data$Species)
+  rf  <- randomForest::randomForest(Species ~ ., data = bin_data, ntree = 50L)
+  gg  <- gg_variable(rf)
+  p   <- plot(gg, xvar = "Sepal.Length", smooth = TRUE)
+  # Before the fix, geom_smooth(...)  has no aes and layer_data errors with
+  # "stat_smooth() requires the following missing aesthetics: x and y"
+  expect_no_error(ggplot2::layer_data(p, 2L))
+})
+
+test_that("plot.gg_variable RF classification: smooth=TRUE works for multi-class (missing block)", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  # Before the fix the multi-class numeric path silently skips smooth=TRUE
+  # but does not error; after the fix a smooth layer is present (layer 2).
+  p  <- plot(gg, xvar = "Sepal.Length", smooth = TRUE)
+  expect_s3_class(p, "ggplot")
+  ld <- ggplot2::layer_data(p, 2L)   # layer 2 = geom_smooth
+  expect_gt(nrow(ld), 0L)
+})
+
+test_that("plot.gg_variable RF classification multi-class: outcome column is class names not integers", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  p  <- plot(gg, xvar = "Sepal.Length")
+  expect_s3_class(p, "ggplot")
+  # The 'outcome' column in the plot data drives facet labels.
+  # It must contain class names, not integer indices.
+  # ggplot2 >= 3.5 uses S7 slots; fall back to $ accessor for older versions.
+  pd <- tryCatch(p@data, error = function(e) p$data)
+  expect_false(is.numeric(pd$outcome))
+  expect_true(all(c("setosa", "versicolor", "virginica") %in% as.character(pd$outcome)))
+})
+
+test_that("plot.gg_variable RF classification multi-class: outcome factor levels match column order", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  gg <- gg_variable(rf)
+  p  <- plot(gg, xvar = "Sepal.Length")
+  pd <- tryCatch(p@data, error = function(e) p$data)
+  # Levels must follow the yhat.* column order in gg_variable output,
+  # not alphabetical order (which factor() would impose by default).
+  expected_levels <- sub("^yhat\\.", "", grep("^yhat\\.", names(gg), value = TRUE))
+  expect_equal(levels(pd$outcome), expected_levels)
+})
+
+test_that("gg_variable.randomForest: oob=FALSE triggers a warning", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  rf <- randomForest::randomForest(Species ~ ., data = iris, ntree = 50L)
+  # oob=FALSE is not supported for randomForest; a warning must be emitted
+  # and OOB vote fractions are still returned.
+  expect_warning(
+    gg <- gg_variable(rf, oob = FALSE),
+    regexp = "oob = FALSE is not supported"
+  )
+  expect_s3_class(gg, "gg_variable")
+  expect_true("yhat.setosa" %in% names(gg))
+})
+
+## ── smooth=TRUE is a no-op for factor predictors (all families) ──────────────
+
+# geom_smooth requires a continuous x-axis, so smooth=TRUE has no meaning for a
+# factor predictor.  The contract these tests lock in: no GeomSmooth layer is
+# added for a factor x.  Assert that directly (rather than a brittle layer
+# count) so benign plot-composition changes do not break the suite.
+has_smooth_layer <- function(p) {
+  any(vapply(p$layers, function(l) inherits(l$geom, "GeomSmooth"), logical(1)))
+}
+
+test_that("plot.gg_variable binary classification + factor predictor: smooth=TRUE adds no smooth layer", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  bin_data         <- iris[iris$Species != "virginica", ]
+  bin_data$Species <- droplevels(bin_data$Species)
+  bin_data$size    <- cut(bin_data$Petal.Length, 2L, labels = c("small", "large"))
+  rf  <- randomForest::randomForest(Species ~ size + Sepal.Width, data = bin_data,
+                                    ntree = 25L)
+  gg  <- gg_variable(rf)
+  # smooth=TRUE with a factor predictor must not error
+  expect_no_error(p <- plot(gg, xvar = "size", smooth = TRUE))
+  expect_s3_class(p, "ggplot")
+  expect_false(has_smooth_layer(p))
+})
+
+test_that("plot.gg_variable multi-class classification + factor predictor: smooth=TRUE adds no smooth layer", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  iris2      <- iris
+  iris2$size <- cut(iris2$Petal.Length, 3L, labels = c("small", "medium", "large"))
+  rf <- randomForest::randomForest(Species ~ size + Sepal.Width, data = iris2,
+                                   ntree = 25L)
+  gg <- gg_variable(rf)
+  # smooth=TRUE with a factor predictor must not error
+  expect_no_error(p <- plot(gg, xvar = "size", smooth = TRUE))
+  expect_s3_class(p, "ggplot")
+  expect_false(has_smooth_layer(p))
+})
+
+test_that("plot.gg_variable regression + factor predictor: smooth=TRUE adds no smooth layer", {
+  skip_if_not_installed("randomForest")
+  set.seed(42L)
+  iris2      <- iris
+  iris2$size <- cut(iris2$Petal.Length, 3L, labels = c("small", "medium", "large"))
+  rf <- randomForest::randomForest(Sepal.Length ~ size + Sepal.Width, data = iris2,
+                                   ntree = 25L)
+  gg <- gg_variable(rf)
+  # smooth=TRUE with a factor predictor must not error
+  expect_no_error(p <- plot(gg, xvar = "size", smooth = TRUE))
+  expect_s3_class(p, "ggplot")
+  expect_false(has_smooth_layer(p))
 })

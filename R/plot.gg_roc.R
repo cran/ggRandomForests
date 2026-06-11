@@ -16,22 +16,25 @@
 #' ROC plot generic function for a \code{\link{gg_roc}} object.
 #'
 #' @param x A \code{\link{gg_roc}} object, or a raw
-#'   \code{\link[randomForestSRC]{rfsrc}} classification forest or
-#'   \code{\link[randomForest]{randomForest}} classification object.  When a
-#'   forest is supplied, \code{\link{gg_roc}} is called automatically.
+#'   \code{\link[randomForestSRC]{rfsrc}} or
+#'   \code{\link[randomForest]{randomForest}} classification forest. Hand it a
+#'   forest and \code{\link{gg_roc}} is called for you.
 #' @param which_outcome Integer; for multi-class problems, the index of the
-#'   class whose ROC curve should be plotted.  When \code{NULL} (default) and
-#'   the forest has more than two classes, ROC curves for all classes are
-#'   overlaid in a single plot.  For binary forests \code{NULL} defaults to
-#'   class index 2.
-#' @param ... Additional arguments forwarded to \code{\link{gg_roc}} when
-#'   \code{x} is a raw forest object (e.g. \code{oob = FALSE}).
+#'   class to plot. When \code{NULL} (default) and the forest has more than two
+#'   classes, the curves for all classes are overlaid in one plot. For binary
+#'   forests, \code{NULL} defaults to class index 2.
+#' @param panel Character; layout for per-class ROC objects, the ones from
+#'   \code{gg_roc(..., per_class = TRUE)}. \code{"overlay"} (default) draws
+#'   every class curve in one panel, coloured by class; \code{"facet"} gives
+#'   each class its own panel. Ignored for single-class \code{gg_roc} objects.
+#' @param ... Additional arguments passed to \code{\link{gg_roc}} when
+#'   \code{x} is a raw forest (e.g. \code{oob = FALSE}).
 #'
-#' @return A \code{ggplot} object.  The x-axis shows 1 - Specificity (FPR)
-#'   and the y-axis shows Sensitivity (TPR).  A dashed red diagonal reference
-#'   line marks the random-classifier baseline.  The AUC value is annotated
-#'   on the plot for single-class curves.  Multi-class plots colour and style
-#'   each class curve distinctly.
+#' @return A \code{ggplot} object. The x-axis is 1 - Specificity (FPR), the
+#'   y-axis is Sensitivity (TPR), and a dashed red diagonal marks the
+#'   random-classifier baseline. Single-class curves carry the AUC as an
+#'   annotation; multi-class plots colour and style each class curve
+#'   distinctly.
 #'
 #' @seealso \code{\link{gg_roc}} \code{\link{calc_roc}} \code{\link{calc_auc}}
 #'   \code{\link[randomForestSRC]{rfsrc}}
@@ -54,7 +57,7 @@
 #' ## -------- iris data
 #' # Build a small classification forest (ntree=50 keeps example fast)
 #' set.seed(42)
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 #'
 #' # ROC for setosa (outcome index 1)
 #' gg_dta <- gg_roc(rfsrc_iris, which_outcome = 1)
@@ -73,7 +76,12 @@
 #' for (i in seq_len(n_cls)) print(plot(gg_roc(rfsrc_iris, which_outcome = i)))
 #'
 #' @export
-plot.gg_roc <- function(x, which_outcome = NULL, ...) {
+plot.gg_roc <- function(x, which_outcome = NULL, ...,
+                        panel = c("overlay", "facet")) {
+  # `panel` is placed after `...` so it is name-only: this preserves
+  # positional back-compatibility for existing callers (e.g.
+  # plot(x, 1, FALSE) still routes the 3rd positional arg into `...`).
+  panel <- match.arg(panel)
   gg_dta <- x
 
   ## ---- Accept a raw rfsrc or randomForest object -----------------------
@@ -86,7 +94,7 @@ plot.gg_roc <- function(x, which_outcome = NULL, ...) {
 
       if (crv > 2 && is.null(which_outcome)) {
         # Multi-class: compute ROC for every class in parallel
-        gg_dta <- mclapply(seq_len(crv), function(ind) {
+        gg_dta <- lapply(seq_len(crv), function(ind) {
           gg_roc(gg_dta, which_outcome = ind, ...)
         })
       } else {
@@ -105,7 +113,7 @@ plot.gg_roc <- function(x, which_outcome = NULL, ...) {
       crv <- length(levels(gg_dta$predicted))
       if (crv > 2 && is.null(which_outcome)) {
         # Multi-class: compute ROC for every class in parallel
-        gg_dta <- parallel::mclapply(seq_len(crv), function(ind) {
+        gg_dta <- lapply(seq_len(crv), function(ind) {
           gg_roc(gg_dta, which_outcome = ind, ...)
         })
       } else {
@@ -118,8 +126,17 @@ plot.gg_roc <- function(x, which_outcome = NULL, ...) {
     }
   }
 
-  ## ---- Single-class ROC plot ------------------------------------------
+  ## ---- Single-class ROC plot (or per_class long-format) ----------------
   if (inherits(gg_dta, "gg_roc")) {
+
+    # Per-class detection: gg_roc produced by gg_roc(..., per_class = TRUE)
+    # carries a 'class' column (factor) + a named AUC vector attribute.
+    # Rendering is delegated to a helper to keep this method's cyclomatic
+    # complexity within the project lint budget.
+    if ("class" %in% names(gg_dta)) {
+      return(.plot_gg_roc_per_class(gg_dta, attr(x, "auc"), panel))
+    }
+
     # Sort by specificity so the ROC curve is drawn left-to-right
     gg_dta <- gg_dta[order(gg_dta$spec), ]
     # False positive rate = 1 - specificity
@@ -151,23 +168,23 @@ plot.gg_roc <- function(x, which_outcome = NULL, ...) {
   } else {
     ## ---- Multi-class ROC plot (list of gg_roc objects) ----------------
     # Sort each class's data by specificity
-    gg_dta <- parallel::mclapply(gg_dta, function(st) {
+    gg_dta <- lapply(gg_dta, function(st) {
       st <- st[order(st$spec), ]
       st
     })
     # Compute FPR for each class
-    gg_dta <- parallel::mclapply(gg_dta, function(st) {
+    gg_dta <- lapply(gg_dta, function(st) {
       st$fpr <- 1 - st$spec
       st
     })
     # Tag each subset with its outcome index for colour/linetype mapping
-    gg_dta <- parallel::mclapply(seq_along(gg_dta), function(ind) {
+    gg_dta <- lapply(seq_along(gg_dta), function(ind) {
       gg_dta[[ind]]$outcome <- ind
       gg_dta[[ind]]
     })
 
     # Compute AUC for each class
-    auc <- parallel::mclapply(gg_dta, function(st) {
+    auc <- lapply(gg_dta, function(st) {
       calc_auc(st)
     })
 
@@ -193,7 +210,54 @@ plot.gg_roc <- function(x, which_outcome = NULL, ...) {
       ) +
       ggplot2::coord_fixed()
 
-    # Multi-class: do not annotate a single AUC value — each class has its own.
+    # Multi-class: do not annotate a single AUC value - each class has its own.
   }
   return(gg_plt)
+}
+
+# Render a per-class (one-vs-rest) ROC object produced by
+# gg_roc(..., per_class = TRUE).  Split out of plot.gg_roc() so that method
+# stays within the project's cyclomatic-complexity lint budget.
+#
+# gg_dta : long-format gg_roc data frame with a 'class' factor column
+# auc    : named numeric AUC vector (one entry per class) or NULL
+# panel  : "overlay" (curves coloured by class) or "facet" (one panel each)
+.plot_gg_roc_per_class <- function(gg_dta, auc, panel) {
+  gg_dta$fpr <- 1 - gg_dta$spec
+
+  if (panel == "overlay") {
+    gg_plt <- ggplot2::ggplot(gg_dta) +
+      ggplot2::geom_line(ggplot2::aes(
+        x = .data$fpr, y = .data$sens, color = .data$class
+      )) +
+      ggplot2::labs(
+        x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)",
+        color = "Class"
+      )
+  } else {
+    gg_plt <- ggplot2::ggplot(gg_dta) +
+      ggplot2::geom_line(ggplot2::aes(x = .data$fpr, y = .data$sens)) +
+      ggplot2::labs(x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)") +
+      ggplot2::facet_wrap(~class)
+  }
+
+  gg_plt <- gg_plt +
+    ggplot2::geom_abline(
+      slope = 1, intercept = 0,
+      col = "red", linetype = 2, linewidth = .5
+    ) +
+    ggplot2::coord_fixed()
+
+  # AUC caption - top 5 classes by descending AUC (already sorted)
+  if (!is.null(auc) && length(auc) > 0L) {
+    top_n   <- min(5L, length(auc))
+    auc_str <- paste(
+      sprintf("%s=%.3g", names(auc)[seq_len(top_n)], auc[seq_len(top_n)]),
+      collapse = ", "
+    )
+    if (length(auc) > 5L) auc_str <- paste0(auc_str, ", ...")
+    gg_plt <- gg_plt +
+      ggplot2::labs(caption = paste("OvR ROC, per_class=TRUE. AUC:", auc_str))
+  }
+  gg_plt
 }

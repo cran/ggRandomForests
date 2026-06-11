@@ -14,16 +14,16 @@ gg_variable(object, ...)
 \code{\link[randomForest]{randomForest}} object, or a
 \code{\link[randomForestSRC]{plot.variable}} result.}
 
-\item{...}{Optional arguments such as \code{time}, \code{time_labels}, and
-\code{oob} that tailor the marginal dependence extraction.}
+\item{...}{Optional arguments \code{time}, \code{time_labels}, and
+\code{oob} that tune the marginal dependence extraction.}
 }
 \value{
-A \code{gg_variable} object: a \code{data.frame} of all predictor
-  columns from the training data paired with the OOB (or in-bag) predicted
-  response. For survival forests each requested time horizon produces an
-  additional column named by \code{time_labels}. The object carries a
-  \code{"family"} class attribute (\code{"regr"}, \code{"class"}, or
-  \code{"surv"}) used by \code{\link{plot.gg_variable}} for dispatch.
+A \code{gg_variable} object: a \code{data.frame} pairing every
+training predictor column with the OOB (or in-bag) predicted response.
+For survival forests, each requested time horizon adds a column named by
+\code{time_labels}. The object carries a \code{"family"} class attribute
+(\code{"regr"}, \code{"class"}, or \code{"surv"}) that
+\code{\link{plot.gg_variable}} uses for dispatch.
 }
 \description{
 \code{\link[randomForestSRC]{plot.variable}} generates a
@@ -33,14 +33,14 @@ partial variable dependence. The \code{gg_variable} function creates a
 variables) and the predicted response for each observation. Marginal
 dependence figures are created using the \code{\link{plot.gg_variable}}
 function.
-For \code{randomForest} fits the original model frame is rebuilt
-from the stored call so that the same predictors can be paired with the
-in-sample predictions.
+A \code{randomForest} fit does not keep the model frame, so for those
+objects \code{gg_variable} rebuilds it from the stored call. That lets the
+same predictors be paired with the in-sample predictions.
 
-Optional arguments include \code{time} (scalar or vector of survival times
-of interest), \code{time_labels} (labels for multiple survival horizons) and
-\code{oob} which toggles between out-of-bag and in-bag predictions when the
-forest stores both.
+A few optional arguments tune the extraction: \code{time} (one survival
+time, or a vector of them), \code{time_labels} (labels for multiple
+survival horizons), and \code{oob}, which switches between out-of-bag and
+in-bag predictions when the forest carries both.
 }
 \details{
 The marginal variable dependence is determined by comparing
@@ -58,7 +58,7 @@ The \code{gg_variable} function operates on a
 ## ------------------------------------------------------------
 ## -------- iris data
 set.seed(42)
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 
 gg_dta <- gg_variable(rfsrc_iris)
 plot(gg_dta, xvar = "Sepal.Width")
@@ -79,7 +79,7 @@ plot(gg_dta, xvar = rfsrc_iris$xvar.names, panel = TRUE)
 ## ------------------------------------------------------------
 
 ## -------- air quality data
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, ntree = 50)
+rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality, ntree = 50)
 gg_dta <- gg_variable(rfsrc_airq)
 
 # an ordinal variable
@@ -92,7 +92,7 @@ plot(gg_dta, xvar = c("Solar.R", "Wind", "Temp", "Day"), panel = TRUE)
 plot(gg_dta, xvar = "Month", notch = TRUE)
 
 ## -------- motor trend cars data
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars, ntree = 50)
 
 gg_dta <- gg_variable(rfsrc_mtcars)
 
@@ -128,7 +128,7 @@ if (requireNamespace("MASS", quietly = TRUE)) {
 
 ## -------- veteran data
 data(veteran, package = "randomForestSRC")
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., veteran,
+rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., veteran,
   nsplit = 10,
   ntree = 50
 )
@@ -151,5 +151,5 @@ plot(gg_dta, xvar = "age")
 }
 \seealso{
 \code{\link{plot.gg_variable}},
-  \code{\link[randomForestSRC]{plot.variable}}
+\code{\link[randomForestSRC]{plot.variable}}
 }

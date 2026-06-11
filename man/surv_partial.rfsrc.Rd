@@ -24,14 +24,14 @@ See \code{\link[randomForestSRC]{partial.rfsrc}} for full details.}
 }
 \value{
 A named list with one element per variable in \code{var_list}. Each
-  element is itself a list with:
-  \describe{
-    \item{name}{The predictor variable name (character).}
-    \item{dta}{The raw output of
-      \code{\link[randomForestSRC]{get.partial.plot.data}}, a list containing
-      at minimum \code{x} (predictor values) and \code{yhat} (partial
-      predictions), and for survival/competing risk, \code{partial.time}.}
-  }
+element is itself a list with:
+\describe{
+\item{name}{The predictor variable name (character).}
+\item{dta}{The raw output of
+\code{\link[randomForestSRC]{get.partial.plot.data}}, a list containing
+at minimum \code{x} (predictor values) and \code{yhat} (partial
+predictions), and for survival/competing risk, \code{partial.time}.}
+}
 }
 \description{
 \strong{Deprecated.} Use \code{\link{gg_partial_rfsrc}} instead, which
@@ -40,9 +40,9 @@ returns a classed \code{gg_partial_rfsrc} object with a dedicated
 }
 \details{
 Computes partial dependence curves for a survival or competing-risk
-\code{\link[randomForestSRC]{rfsrc}} forest by calling
+\code{\link[randomForestSRC]{rfsrc}} forest.  For each predictor it calls
 \code{\link[randomForestSRC]{partial.rfsrc}} at \code{npts} evenly-spaced
-unique values of each predictor across all stored event times.
+unique values, across every stored event time.
 }
 \examples{
 ## ------------------------------------------------------------
@@ -56,35 +56,35 @@ v.obj <- randomForestSRC::rfsrc(Surv(time,status)~.,
 spart <- surv_partial.rfsrc(v.obj, var_list="age", partial.type = "mort")
 
 ## partial effect of age on mortality
-partial.obj <- partial(v.obj,
+partial.obj <- randomForestSRC::partial(v.obj,
                        partial.type = "mort",
                        partial.xvar = "age",
                        partial.values = v.obj$xvar$age,
                        partial.time = v.obj$time.interest)
-pdta <- get.partial.plot.data(partial.obj)
+pdta <- randomForestSRC::get.partial.plot.data(partial.obj)
 
 plot(lowess(pdta$x, pdta$yhat, f = 1/3),
      type = "l", xlab = "age", ylab = "adjusted mortality")
 
 ## example where x is discrete - partial effect of age on mortality
 ## we use the granule=TRUE option
-partial.obj <- partial(v.obj,
+partial.obj <- randomForestSRC::partial(v.obj,
                        partial.type = "mort",
                        partial.xvar = "trt",
                        partial.values = v.obj$xvar$trt,
                        partial.time = v.obj$time.interest)
-pdta <- get.partial.plot.data(partial.obj, granule = TRUE)
+pdta <- randomForestSRC::get.partial.plot.data(partial.obj, granule = TRUE)
 boxplot(pdta$yhat ~ pdta$x, xlab = "treatment", ylab = "partial effect")
 
 
 ## partial effects of karnofsky score on survival
 karno <- quantile(v.obj$xvar$karno)
-partial.obj <- partial(v.obj,
+partial.obj <- randomForestSRC::partial(v.obj,
                        partial.type = "surv",
                        partial.xvar = "karno",
                        partial.values = karno,
                        partial.time = v.obj$time.interest)
-pdta <- get.partial.plot.data(partial.obj)
+pdta <- randomForestSRC::get.partial.plot.data(partial.obj)
 
 matplot(pdta$partial.time, t(pdta$yhat), type = "l", lty = 1,
         xlab = "time", ylab = "karnofsky adjusted survival")
@@ -96,16 +96,16 @@ legend("topright", legend = paste0("karnofsky = ", karno), fill = 1:5)
 ## ------------------------------------------------------------
 
 data(follic, package = "randomForestSRC")
-follic.obj <- rfsrc(Surv(time, status) ~ ., follic, nsplit = 3, ntree = 100)
+follic.obj <- randomForestSRC::rfsrc(Surv(time, status) ~ ., follic, nsplit = 3, ntree = 100)
 
 ## partial effect of age on years lost
-partial.obj <- partial(follic.obj,
+partial.obj <- randomForestSRC::partial(follic.obj,
                        partial.type = "years.lost",
                        partial.xvar = "age",
                        partial.values = follic.obj$xvar$age,
                        partial.time = follic.obj$time.interest)
-pdta1 <- get.partial.plot.data(partial.obj, target = 1)
-pdta2 <- get.partial.plot.data(partial.obj, target = 2)
+pdta1 <- randomForestSRC::get.partial.plot.data(partial.obj, target = 1)
+pdta2 <- randomForestSRC::get.partial.plot.data(partial.obj, target = 2)
 
 # Save and restore the user's graphical parameters per CRAN policy.
 oldpar <- par(no.readonly = TRUE)
@@ -117,13 +117,13 @@ plot(lowess(pdta2$x, pdta2$yhat),
      type = "l", xlab = "age", ylab = "adjusted years lost death")
 
 ## partial effect of age on cif
-partial.obj <- partial(follic.obj,
+partial.obj <- randomForestSRC::partial(follic.obj,
                        partial.type = "cif",
                        partial.xvar = "age",
                        partial.values = quantile(follic.obj$xvar$age),
                        partial.time = follic.obj$time.interest)
-pdta1 <- get.partial.plot.data(partial.obj, target = 1)
-pdta2 <- get.partial.plot.data(partial.obj, target = 2)
+pdta1 <- randomForestSRC::get.partial.plot.data(partial.obj, target = 1)
+pdta2 <- randomForestSRC::get.partial.plot.data(partial.obj, target = 2)
 
 matplot(pdta1$partial.time, t(pdta1$yhat), type = "l", lty = 1,
         xlab = "time", ylab = "age adjusted cif for relapse")
@@ -133,6 +133,6 @@ matplot(pdta2$partial.time, t(pdta2$yhat), type = "l", lty = 1,
 }
 \seealso{
 \code{\link{gg_partial_rfsrc}},
-  \code{\link[randomForestSRC]{partial.rfsrc}},
-  \code{\link[randomForestSRC]{get.partial.plot.data}}
+\code{\link[randomForestSRC]{partial.rfsrc}},
+\code{\link[randomForestSRC]{get.partial.plot.data}}
 }

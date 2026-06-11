@@ -14,9 +14,24 @@
 #'
 #' Predicted response data object
 #'
-#' Extracts the predicted response values from the
-#' \code{\link[randomForestSRC]{rfsrc}} object, and formats data for plotting
-#' the response using \code{\link{plot.gg_rfsrc}}.
+#' Every tree in a random forest makes its own prediction, and the forest's
+#' "ensemble" prediction is the average across all trees.  The out-of-bag
+#' (OOB) variant averages only over the trees that did not include a given
+#' observation in their bootstrap sample -- a built-in cross-validation
+#' estimate that requires no held-out test set.  \code{gg_rfsrc} pulls those
+#' ensemble predictions out of the fitted forest and arranges them for plotting
+#' with \code{\link{plot.gg_rfsrc}}.
+#'
+#' The structure of the returned data depends on the forest family.  For a
+#' regression forest you get a scatter of OOB predicted values against the
+#' observed response.  For classification you get predicted class probabilities
+#' alongside the observed class label.  For a survival forest you get the
+#' ensemble survival function (or cumulative hazard, or mortality, controlled
+#' by \code{surv_type}) at each unique event time -- one curve per
+#' observation -- which together trace the range of predicted risk in the
+#' cohort.  Pass \code{conf.int} to add pointwise bootstrap confidence bands
+#' around the mean survival curve, or \code{by} to stratify all of the above
+#' by a predictor group.
 #'
 #' @param object A fitted \code{\link[randomForestSRC]{rfsrc}} or
 #'   \code{\link[randomForest]{randomForest}} object.
@@ -77,7 +92,7 @@
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
 #' set.seed(42)
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 #' gg_dta <- gg_rfsrc(rfsrc_iris)
 #' plot(gg_dta)
 #'
@@ -90,7 +105,7 @@
 #' ## ------------------------------------------------------------
 #'
 #' ## -------- air quality data (regression)
-#' rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+#' rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality,
 #'                     na.action = "na.impute", ntree = 50)
 #' plot(gg_rfsrc(rfsrc_airq))
 #'
@@ -98,7 +113,7 @@
 #' if (requireNamespace("MASS", quietly = TRUE)) {
 #'   data(Boston, package = "MASS")
 #'   Boston$chas <- as.logical(Boston$chas)
-#'   rfsrc_boston <- rfsrc(medv ~ ., data = Boston, ntree = 50,
+#'   rfsrc_boston <- randomForestSRC::rfsrc(medv ~ ., data = Boston, ntree = 50,
 #'                         forest = TRUE, importance = TRUE,
 #'                         tree.err = TRUE, save.memory = TRUE)
 #'   plot(gg_rfsrc(rfsrc_boston))
@@ -109,12 +124,12 @@
 #' }
 #'
 #' ## -------- mtcars data
-#' rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+#' rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars, ntree = 50)
 #' plot(gg_rfsrc(rfsrc_mtcars))
 #'
 #' ## -------- veteran data (survival; with CI and group-by)
 #' data(veteran, package = "randomForestSRC")
-#' rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran,
+#' rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., data = veteran,
 #'                        ntree = 50)
 #' plot(gg_rfsrc(rfsrc_veteran))
 #' plot(gg_rfsrc(rfsrc_veteran, conf.int = .95))
@@ -190,7 +205,7 @@ gg_rfsrc.rfsrc <- function(object, # nolint: cyclocomp_linter
   if (object$family == "class") {
     # For binary classification rfsrc stores exactly two probability columns
     # (one per class); we drop the first (the "negative" class probability)
-    # since it is redundant — prob(class 2) = 1 - prob(class 1).
+    # since it is redundant: prob(class 2) = 1 - prob(class 1).
     # Multi-class forests (3+ classes) keep all columns.
     if (oob) {
       gg_dta <-
@@ -286,7 +301,7 @@ gg_rfsrc.rfsrc <- function(object, # nolint: cyclocomp_linter
         arg_list$conf.int
       }
 
-      # Accept a single coverage probability (e.g. 0.95 → two-sided tails
+      # Accept a single coverage probability (e.g. 0.95 gives two-sided tails
       # at 0.025 and 0.975) or a length-2 vector of explicit quantile probs.
       if (length(level) == 1) {
         if (level > 1) {
@@ -299,7 +314,7 @@ gg_rfsrc.rfsrc <- function(object, # nolint: cyclocomp_linter
         level_set <- sort(level)
       }
 
-      # Number of bootstrap resamples — default to the number of observations.
+      # Number of bootstrap resamples: default to the number of observations.
       if (is.null(arg_list$bs.sample)) {
         bs_samples <- nrow(gg_dta)
       } else {
@@ -383,7 +398,7 @@ gg_rfsrc.rfsrc <- function(object, # nolint: cyclocomp_linter
 #' @param bs_samples Integer; number of bootstrap resamples.
 #' @param level_set Numeric vector of length 2 giving the lower and upper
 #'   quantile probabilities for the confidence band (e.g. \code{c(0.025, 0.975)}
-#'   for a 95\% CI).
+#'   for a 95% CI).
 #'
 #' @return A \code{data.frame} with one row per unique event time and columns
 #'   \code{value} (time), \code{lower}, \code{upper}, \code{median}, and

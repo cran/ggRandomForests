@@ -162,12 +162,13 @@ plot(gg_survival(interval = "years", censor = "status",
 # Step 1: impute missing values via random forest proximity
 pbc_imputed <- impute.rfsrc(Surv(years, status) ~ .,
                              data    = pbc_trial,
-                             ntree   = 500,
+                             ntree   = 100,
                              nimpute = 2)
 
 # Step 2: grow the survival forest on the complete imputed data
 rfsrc_pbc <- rfsrc(Surv(years, status) ~ .,
                    data      = pbc_imputed,
+                   ntree     = 150,
                    nsplit    = 10,
                    tree.err  = TRUE,
                    importance = TRUE)
@@ -312,7 +313,7 @@ plot(gg_v1, xvar = "bili", alpha = 0.5) +
 ## ----surface-data, error=TRUE, cache=FALSE------------------------------------
 try({
 # Create grid of albumin values
-alb_grid <- quantile_pts(pbc_trial$albumin, groups = 25)
+alb_grid <- quantile_pts(pbc_trial$albumin, groups = 8)
 
 # For each albumin value, compute partial dependence on bili at ~1 year
 surface_list <- lapply(alb_grid, function(alb_val) {
@@ -329,38 +330,11 @@ surface_df <- bind_rows(surface_list)
 })
 
 
-## ----plotly-surface, error=TRUE, fig.cap="Interactive partial dependence surface: survival as a function of bilirubin and albumin."----
+## ----pd-surface, error=TRUE, fig.height=5, fig.cap="Partial dependence surface: survival at 1 year as a function of bilirubin and albumin. Fill colour is the predicted survival probability."----
 try({
 if (!exists("surface_df")) {
-  message("surface_df not available — skipping plotly surface (see surface-data chunk error above).")
-} else if (requireNamespace("plotly", quietly = TRUE)) {
-  # Reshape for surface
-  library(plotly)
-
-  surface_wide <- surface_df |>
-    select(bili = x, albumin, survival = yhat) |>
-    arrange(albumin, bili)
-
-  # Create matrix form
-  bili_vals <- sort(unique(surface_wide$bili))
-  alb_vals  <- sort(unique(surface_wide$albumin))
-  z_matrix  <- matrix(surface_wide$survival,
-                       nrow = length(alb_vals),
-                       ncol = length(bili_vals),
-                       byrow = TRUE)
-
-  plot_ly(x = bili_vals, y = alb_vals, z = z_matrix) |>
-    add_surface(colorscale = "Viridis", showscale = TRUE) |>
-    layout(
-      scene = list(
-        xaxis = list(title = "Bilirubin"),
-        yaxis = list(title = "Albumin"),
-        zaxis = list(title = "Survival")
-      )
-    )
+  message("surface_df not available --- skipping surface (see surface-data chunk error above).")
 } else {
-  message("Install the plotly package for interactive 3D surfaces.")
-  # Fallback: contour plot with ggplot2
   ggplot(surface_df, aes(x = x, y = albumin, fill = yhat)) +
     geom_tile() +
     scale_fill_viridis_c(name = "Survival") +

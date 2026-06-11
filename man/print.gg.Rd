@@ -9,9 +9,16 @@
 \alias{print.gg_partial}
 \alias{print.gg_partial_rfsrc}
 \alias{print.gg_partialpro}
+\alias{print.gg_partial_varpro}
 \alias{print.gg_roc}
 \alias{print.gg_survival}
 \alias{print.gg_brier}
+\alias{print.gg_udependent}
+\alias{print.summary.gg_udependent}
+\alias{print.gg_varpro}
+\alias{print.gg_isopro}
+\alias{print.gg_beta_varpro}
+\alias{print.gg_ivarpro}
 \title{Print methods for gg_* data objects}
 \usage{
 \method{print}{gg_error}(x, ...)
@@ -28,11 +35,25 @@
 
 \method{print}{gg_partialpro}(x, ...)
 
+\method{print}{gg_partial_varpro}(x, ...)
+
 \method{print}{gg_roc}(x, ...)
 
 \method{print}{gg_survival}(x, ...)
 
 \method{print}{gg_brier}(x, ...)
+
+\method{print}{gg_udependent}(x, ...)
+
+\method{print}{summary.gg_udependent}(x, ...)
+
+\method{print}{gg_varpro}(x, ...)
+
+\method{print}{gg_isopro}(x, ...)
+
+\method{print}{gg_beta_varpro}(x, ...)
+
+\method{print}{gg_ivarpro}(x, ...)
 }
 \arguments{
 \item{x}{A \code{gg_*} data object.}
@@ -43,14 +64,14 @@
 The object \code{x}, invisibly.
 }
 \description{
-Each \code{print.gg_*()} method emits a single-line header containing the
-class label and, when available, forest provenance metadata (source package,
-family, ntree, n). The object is returned invisibly so \code{print()} calls
-chain cleanly in pipes.
+Each \code{print.gg_*()} method prints a one-line header: the class label
+and, where the forest recorded it, provenance (source package, family,
+ntree, n). It returns the object invisibly, so \code{print()} sits cleanly
+in a pipe.
 }
 \details{
-To inspect rows use \code{head()}.  To retrieve per-class diagnostics use
-\code{\link{summary.gg}}.
+To see the rows themselves, use \code{head()}; for per-class diagnostics,
+use \code{\link{summary.gg}}.
 }
 \examples{
 set.seed(42)

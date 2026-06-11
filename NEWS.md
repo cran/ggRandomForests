@@ -1,5 +1,273 @@
 Package: ggRandomForests
-Version: 2.7.3
+Version: 3.1.0
+
+ggRandomForests v3.1.0
+======================
+* Fix: `gg_vimp()` for single-outcome rfsrc forests now correctly flags
+  variables with non-positive VIMP in the `positive` column (affecting
+  plot coloring). The column was named `VIMP` (uppercase) in single-outcome
+  fits but the flag check accessed `$vimp` (lowercase), leaving `positive`
+  stuck at `TRUE` for all variables. Surfaced by the Copilot review on
+  PR #109.
+* Documentation pass. Deepened the varPro-family and rfsrc
+  importance/partial/survival help pages against the upstream
+  randomForestSRC and varPro documentation, and made the line between
+  `gg_vimp()` (permutation, Breiman-Cutler importance) and `gg_varpro()`
+  (varPro release-rule importance) explicit and cross-linked. Vignette
+  prose deepened with the same framing; one-line code-comment fixes;
+  fixed a stale `@return` in `gg_roc()` (documented a `yvar` column the
+  function does not return). No user-facing behaviour change.
+* Vignettes: the regression and survival partial-dependence surfaces are
+  now rendered as static `ggplot2` heat maps instead of interactive
+  `plotly` widgets, and figures render at 96 dpi. This cuts the installed
+  size from ~17 MB to ~5 MB (the `plotly` library is no longer bundled into
+  the vignette HTML). `plotly` is dropped from `Suggests`.
+* Check time: reduced the `R CMD check` vignette-rebuild and test timings to
+  bring the overall CRAN check comfortably under budget (CRAN flagged the
+  overall check time on the 3.1.0 submission). The regression and survival
+  vignettes use lighter forests (`ntree` 200 / 150, imputation `ntree` 100)
+  and coarser partial-dependence grids. The varpro vignette's three
+  `gg_partial_varpro()` calls and the Boston `beta.varpro()` fit (~34 s
+  combined) are precomputed offline by `vignettes/precompute_varpro.R` and
+  loaded from `vignettes/varpro_precomputed.rds`, with an automatic
+  live-computation fallback if the file is absent. The `gg_udependent()`
+  tests memoise the per-fit entropy matrix (`varPro::get.beta.entropy()`,
+  ~1.5 s and a pure function of the fit) instead of recomputing it once per
+  test. No user-facing behaviour change.
+
+ggRandomForests v3.0.0
+======================
+* **Version jump to 3.0.0.** The varPro integration is a major scope
+  expansion plus the `gg_partialpro()` soft-deprecation, which is
+  major-version territory. Survival / multivariate varPro families,
+  ROC confidence intervals, and hazard estimates are deferred to
+  v3.1.0.
+* CRAN-audit cleanup: the `gg_brier()` / `plot.gg_brier()` examples move
+  from `\dontrun` to `\donttest` (so they execute under `R CMD check --as-cran` and on
+  CRAN; `library(survival)` added so `Surv()` resolves), the
+  per-variable `message()` in the deprecated `surv_partial.rfsrc()` is
+  removed (its one behaviour change: that function no longer prints a
+  line per variable), and the README points to the new "varpro"
+  vignette.
+* Fix: importance plots now consistently put the most-important variable
+  at the **top**. `gg_varpro()`, `gg_beta_varpro()`, and `gg_ivarpro()`
+  previously built their `variable` factor with descending levels, so
+  after `coord_flip()` the most-important variable landed at the bottom
+  — inverted relative to `gg_vimp()`. All three now reverse the factor
+  levels to match the `gg_vimp` convention (and the `varImpPlot` / `vip`
+  standard). Row order and `summary()` output are unchanged (still
+  most-important first). A new cross-function test pins the convention.
+* New vignette: "Exploring variable importance with varPro." Walks the
+  full gg_* varPro layer (gg_partial_varpro, gg_varpro, gg_udependent,
+  gg_isopro, gg_beta_varpro, gg_ivarpro) on three worked examples —
+  regression (Boston), classification (iris binary + multi-class), and
+  survival (PBC). Includes a family-support matrix documenting which
+  wrapper works for which forest family. Headline document for v3.0.0.
+* `gg_ivarpro()` and `plot.gg_ivarpro()`: tidy wrapper and
+  per-variable-distribution / per-observation-profile plots for
+  `varPro::ivarpro()` (individual / local variable importance) across
+  regression and classification (binary + multi-class) families. The
+  long-format tidy frame is `(obs, variable, local_imp, selected)` for
+  regression; classification adds a `class` column. NA cells are
+  filtered out and sparsity is surfaced in provenance. `which_obs`
+  (integer index) collapses to a single-observation profile; the plot
+  switches from a jittered distribution view to a horizontal bar
+  chart. `which_class` (response level name) collapses to a single
+  class panel; binary fits default to the last factor level (positive
+  class). `cutoff` accepts `NULL` (per-class mean), a scalar, or a
+  named numeric vector — matching the gg_beta_varpro classification
+  contract. Optional `ivarpro_fit` argument lets callers cache the
+  expensive `ivarpro()` call. Last of four Phase 4 sub-projects.
+* `gg_beta_varpro()` adds varPro classification support (binary +
+  multi-class). Binary fits default to a single positive-class panel
+  (last factor level); multi-class fits return a long-format frame
+  with a `class` column and plot as `facet_wrap(~ class)`. Optional
+  `which_class` selects a single class; `cutoff` accepts a scalar or
+  per-class named vector. Variables are stored as a factor whose
+  levels are set by `mean(|sum-of-class-beta|)` descending so every
+  facet shows rows in the same order. Motivating use case: 30-day
+  mortality.
+* Provenance shape change for `gg_beta_varpro()`:
+  `attr(*, "provenance")$cutoff` is now always a named numeric
+  vector — length 1 named `"regr"` for regression, length K named
+  with the response factor levels for classification. Downstream
+  tooling should read it as a vector and select by name; the prior
+  scalar shape is gone.
+* `gg_beta_varpro()` and `plot.gg_beta_varpro()`: tidy wrapper and default
+  horizontal bar chart for `varPro::beta.varpro()` — the per-rule lasso-β
+  refinement of variable importance. Aggregates per-rule β̂ by variable
+  into `beta_mean = mean(|β̂|)` and flags variables above a selection
+  cutoff (default `mean(beta_mean)`). Optional `beta_fit` argument lets
+  callers compute the expensive `beta.varpro()` step once and reuse the
+  result across multiple wrapper calls (different cutoffs, snapshot
+  rebuilds, vignette knits). `print` / `summary` / `autoplot` S3
+  companions follow the existing `gg_*` conventions. **Regression family
+  only** — classification, regr+, and survival are tracked under Phase 4d
+  (see the spec for the endpoint map). Third of three Phase 4 sub-projects.
+* `gg_isopro()` gains a `newdata` argument so a fitted `varPro::isopro`
+  model can score new observations into the same tidy `gg_isopro` frame.
+  Internally the wrapper calls `predict.isopro()` twice: with
+  `quantiles = FALSE` to populate the `case.depth` column (varPro's native
+  polarity, lower = more anomalous) and with `quantiles = TRUE` to compute
+  `howbad = 1 - quantile` (the wrapper convention, higher = more anomalous).
+  Both polarities are visible in the returned data frame, and the
+  relationship is named in the roxygen. The `plot` / `print` / `summary` /
+  `autoplot` S3 companions work unchanged on the new tidy frame; to overlay
+  training and test scores, bind the two extractor calls with a `method`
+  label column and pass the result to `plot()`. Second of three Phase 4
+  sub-projects.
+* **Fix (gg_isopro training-path polarity).** Bug in the original
+  `gg_isopro` (PR #94): varPro's `$howbad` on an `isopro` fit uses
+  "lower = more anomalous" polarity (it is the quantile of `case.depth`),
+  but the wrapper's plot method and documentation both assume "higher =
+  more anomalous". Train scores and the new test-data scores were
+  anti-correlated until this PR's training-path flip
+  (`howbad = 1 - object$howbad`) brought them into agreement. The fix
+  surfaced because the test-data sanity check (training-as-newdata top-5
+  overlap) failed at 0/5 instead of 5/5 before the flip. Note: the two
+  vdiffr baselines recorded in PR #94 (`gg-isopro-default` and
+  `gg-isopro-threshold`) were recorded under the inverted polarity; they
+  are visually flipped relative to the new behaviour but CI skips
+  snapshots (`VDIFFR_RUN_TESTS = false`) so no failure surfaces. Re-record
+  with `VDIFFR_RUN_TESTS = true` when convenient.
+* Documentation: pedagogical pass over the varPro wrappers
+  (`gg_partial_varpro`, `gg_varpro`, `gg_udependent` and their `plot.*`
+  methods). Each help page now has explicit "What X is doing", "What's
+  in the output", and "What you use this for" sections so a reader new
+  to varPro can learn the underlying method (release rules, beta-entropy
+  dependency, parametric / nonparametric / causal partial estimators)
+  from the help page alone, not just the wrapper mechanics. No API or
+  behavioural change.
+* Documentation: enable roxygen2 markdown package-wide via
+  `Roxygen: list(markdown = TRUE)` in `DESCRIPTION`. New roxygen blocks
+  can use backticks and `[fn()]` link syntax; existing `\code{}` /
+  `\link{}` markup keeps working. Two source-roxygen edits to keep
+  R CMD check clean: `randomForest[SRC]` in `R/help.R` (markdown read
+  it as an unfinished link) becomes plain `randomForestSRC`; the `95\%`
+  escape in `R/gg_rfsrc.R::bootstrap_survival` becomes a literal `95%`.
+  No API or rendered-doc behavioural change beyond the conventions
+  switch.
+* New `gg_isopro()` and `plot.gg_isopro()`: tidy wrapper and ranked-elbow +
+  density visualisation for `varPro::isopro` isolation-forest anomaly
+  scores. `plot.gg_isopro()` takes `panel = c("both", "elbow", "density")`
+  and optional `threshold` (score-space) or `top_n_pct` (quantile-space)
+  to draw a reference line; if both are set, `threshold` wins with a
+  message. A `method` column auto-triggers colour grouping for multi-method
+  comparisons (use `dplyr::bind_rows()` on three `gg_isopro()` calls).
+  `print` / `summary` / `autoplot` S3 companions follow the existing `gg_*`
+  conventions. First of three Phase 4 sub-projects.
+* `plot.gg_variable()`: fix render error on the default multi-class
+  classification plot. The default-xvar selection was treating `yvar` (the
+  observed-class column) and `outcome` (the multi-class pivot facet) as
+  predictors; pivoting them into `var` then dropped the column the
+  downstream `geom_jitter(aes(color = yvar))` referenced, and the patchwork
+  errored when actually rendered. CI did not catch this because the existing
+  test only asserted the patchwork class (lazy) and snapshots run with
+  `VDIFFR_RUN_TESTS = false`. New test exercises a real build of every
+  sub-plot.
+* `plot.gg_variable()`: the same default-xvar selection used substring
+  `grep("time", ...)` / `grep("event", ...)`, which silently dropped any
+  predictor whose name contained those substrings -- e.g. the documented
+  veteran-data survival predictor `diagtime`. Switch to exact matching for
+  `event` / `time` / `yvar` / `outcome` and an anchored prefix for `yhat`
+  (`yhat` or `yhat.<class>`). New test exercises `diagtime` on the veteran
+  survival forest.
+* `gg_roc()`: per-class one-vs-rest ROC curves (#88, closes #72).
+  - New `per_class` argument, default `FALSE`. With `per_class = TRUE` on a
+    forest of more than two classes, `gg_roc()` returns a long-format
+    `gg_roc` data frame with a `class` factor column, plus a named AUC
+    vector attribute with one entry per class, ordered by descending AUC.
+  - `plot.gg_roc()` gains `panel = c("overlay", "facet")`. When the object
+    has a `class` column, `"overlay"` colours the curves by class and
+    `"facet"` gives each class its own panel.
+  - `summary.gg_roc()` prints the named per-class AUC values when a `class`
+    column is present.
+  - On a binary forest, `per_class = TRUE` does nothing, the usual
+    single-curve result comes back unchanged.
+  - ROC confidence intervals are still to come, in v3.1.0 (issue #7 / #72-CIs).
+* New `gg_udependent()`: varPro cross-variable dependency (Phase 3).
+  - `gg_udependent()` reads cross-variable dependency scores off a `uvarpro`
+    fit, via `varPro::get.beta.entropy()` and `varPro::sdependent()`. It
+    returns a tidy list: `$edges` (variable_from, variable_to, weight),
+    `$nodes` (variable, degree, selected), and `$graph`, an igraph object.
+  - `plot.gg_udependent()` draws the dependency network with ggraph. Edge
+    width and opacity scale with dependency strength; node colour marks the
+    signal variables. The layout is configurable (`"fr"`, `"kk"`,
+    `"stress"`, and so on).
+  - `ggraph` added to `Suggests:`.
+* New `gg_varpro()`: varPro variable importance (#85).
+  - `gg_varpro()` pulls per-tree importance scores from a fitted `varpro`
+    object and draws a boxplot of the per-tree z-score distribution for each
+    variable. The hinges sit at the 15th and 85th percentiles and the
+    whiskers at the 5th and 95th, so the box is not the usual Tukey one —
+    it reports the percentiles it actually shows. Variables with aggregate
+    z above `cutoff` (default 0.79) are colour-highlighted.
+  - With `faithful = TRUE`, the individual per-tree z-scores are jittered
+    over the box as semi-transparent points, with a white-outlined dot at
+    the mean, the same view as varPro's internal `bxp` output.
+  - With `conditional = TRUE` (classification forests only), `gg_varpro()`
+    reads `$conditional.z` and draws class-conditional importance as a
+    `facet_wrap(~class, nrow=1)` bar chart.
+  - Set `local.std = FALSE` to allow `plot(..., type = "raw")`, which shows
+    raw per-tree importance instead of the z-normalised values.
+* `gg_variable.randomForest`: classification fix (#87).
+  - For a classification forest, `gg_variable.randomForest()` now stores
+    per-class OOB vote fractions as `yhat.<classname>` columns, read from
+    `object$votes`, the same layout the `rfsrc` path produces. It used to
+    store a single `yhat` factor column of class labels (from
+    `object$predicted`), and that column shape stopped the multi-class
+    pivot in `plot.gg_variable` from ever running. The vote fractions are
+    row-normalised to `[0, 1]`, even when the forest was fit with
+    `norm.votes = FALSE`.
+  - `plot.gg_variable`, binary classification: with `smooth = TRUE` the
+    x and y aesthetics are now mapped onto the smooth layer correctly.
+  - `plot.gg_variable`, multi-class numeric path: `smooth = TRUE` now adds
+    the smooth layer instead of skipping it silently.
+  - Closes stale issues #81 (fixed in PR #83) and #82.
+* New `gg_partial_varpro()`: varPro partial dependence (#84).
+  - `gg_partial_varpro()` takes over from `gg_partialpro()` as the entry
+    point for varPro partial dependence plots. It accepts an optional
+    `object` argument (the originating `varpro` fit) which it uses for
+    provenance-aware axis labels, and a `scale` argument
+    (`"auto"`, `"mortality"`, `"rmst"`, `"surv"`, `"chf"`).
+  - Ensemble mortality labelling (Ishwaran et al. 2008): with
+    `scale = "mortality"`, or `scale = "auto"` on a survival forest, the
+    y-axis reads "Ensemble mortality (expected events)". That is an
+    unbounded relative-risk score, not a survival probability, and the
+    documentation says so plainly so it is not misread.
+  - Survival path C: with `scale = "surv"` or `scale = "chf"`,
+    `gg_partial_varpro()` pulls the embedded rfsrc forest from `object$rf`
+    and returns true S(t) or CHF partial curves through the existing
+    `gg_partial_rfsrc` machinery.
+  - `varPro` is now a hard dependency (`Imports:`).
+  - `gg_partialpro()` is soft-deprecated: it warns, then hands off to
+    `gg_partial_varpro()`. It will be removed in the release after v3.0.0.
+* randomForest engine validation and repair (#82). Fixes #80, #81, and a
+  `plot.gg_error` label wart, and adds full randomForest regression test
+  coverage. Details below.
+  - `plot.gg_variable()` now always returns a single `ggplot` (one
+    variable) or a `patchwork` composite (several variables, or the
+    default) — never a bare list. This matches the v2.7.3
+    `plot.gg_partial*` change. A list used to come back for multiple
+    `xvar`, which broke `patchwork` / `autoplot()` / `layer_data()`
+    composition (#80).
+  - `gg_roc()` and `calc_roc()` for `randomForest` now build the ROC from
+    class probabilities (OOB votes by default, honouring `oob`) rather
+    than the degenerate three-point curve they produced before. With
+    `which_outcome = "all"` (the default for `gg_roc(rf)`) the result is a
+    macro-averaged one-vs-rest ROC, and no warning. The shared
+    `.validate_which_outcome` helper and `calc_roc.rfsrc` are
+    byte-for-byte unchanged, so rfsrc behaviour is untouched (#81).
+* Dependency modernization. This breaks scripts that relied on attachment.
+  `randomForestSRC` and `randomForest` move from `Depends:` to `Imports:`;
+  `igraph`, `callr`, and `varPro` are added to `Suggests:` (`varPro` later
+  moves up to `Imports:`, with the first varPro-integration component).
+  `library(ggRandomForests)` no longer puts `randomForestSRC` or
+  `randomForest` on the search path. A script that called `rfsrc()` or
+  `randomForest()` unqualified after only `library(ggRandomForests)` now
+  needs its own `library(randomForestSRC)` / `library(randomForest)`, or
+  must qualify the calls. ggRandomForests itself is unaffected. It
+  qualifies every call into its dependencies.
 
 ggRandomForests v2.7.3
 ======================

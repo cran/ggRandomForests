@@ -30,9 +30,9 @@ probabilities. Forced to \code{FALSE} for \code{randomForest} objects.}
 }
 \value{
 A \code{gg_roc} \code{data.frame} with columns \code{sens}
-  (sensitivity), \code{spec} (specificity), and \code{pct} (the probability
-  threshold), with one row per unique prediction value. Suitable for passing
-  to \code{\link{calc_auc}} or \code{\link{plot.gg_roc}}.
+(sensitivity), \code{spec} (specificity), and \code{pct} (the probability
+threshold), with one row per unique prediction value. Suitable for passing
+to \code{\link{calc_auc}} or \code{\link{plot.gg_roc}}.
 }
 \description{
 Receiver Operator Characteristic calculator
@@ -47,7 +47,7 @@ not intended for use by the end user.
 }
 \examples{
 ## Taken from the gg_roc example
-rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris)
 
 gg_dta <- calc_roc(rfsrc_iris, rfsrc_iris$yvar,
   which_outcome = 1, oob = TRUE
@@ -56,11 +56,13 @@ gg_dta <- calc_roc(rfsrc_iris, rfsrc_iris$yvar,
   which_outcome = 1, oob = FALSE
 )
 
-rf_iris <- randomForest(Species ~ ., data = iris)
-gg_dta <- calc_roc(rf_iris, rf_iris$yvar,
+rf_iris <- randomForest::randomForest(Species ~ ., data = iris)
+# randomForest stores the response in $y (rfsrc uses $yvar); pass the
+# original training factor so calc_roc has the class labels.
+gg_dta <- calc_roc(rf_iris, iris$Species,
   which_outcome = 1
 )
-gg_dta <- calc_roc(rf_iris, rf_iris$yvar,
+gg_dta <- calc_roc(rf_iris, iris$Species,
   which_outcome = 2
 )
 

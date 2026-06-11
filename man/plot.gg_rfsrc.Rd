@@ -19,11 +19,11 @@ confidence intervals on the median.}
 \item{...}{Additional arguments forwarded to the underlying
 \code{ggplot2} geometry calls.  Commonly useful arguments include:
 \describe{
-  \item{\code{alpha}}{Numeric in \eqn{[0,1]}; point/ribbon transparency.
-    For survival plots with confidence bands the ribbon alpha is
-    automatically halved relative to the value supplied here.}
-  \item{\code{size}}{Point or line size passed to \code{geom_jitter},
-    \code{geom_step}, etc.}
+\item{\code{alpha}}{Numeric in \eqn{[0,1]}; point/ribbon transparency.
+For survival plots with confidence bands the ribbon alpha is
+automatically halved relative to the value supplied here.}
+\item{\code{size}}{Point or line size passed to \code{geom_jitter},
+\code{geom_step}, etc.}
 }
 Arguments that control \code{\link{gg_rfsrc}} (e.g. \code{conf.int},
 \code{surv_type}, \code{by}) should be applied when constructing the
@@ -31,27 +31,38 @@ Arguments that control \code{\link{gg_rfsrc}} (e.g. \code{conf.int},
 }
 \value{
 A \code{ggplot} object.  The plot appearance depends on the forest
-  family stored in \code{x}:
-  \describe{
-    \item{Regression (\code{"regr"})}{Jitter + notched boxplot of OOB
-      predicted values.  If a \code{group} column is present the x-axis
-      shows each group label; otherwise observations are collapsed to a
-      single x-position.}
-    \item{Classification (\code{"class"})}{Binary: jitter + notched
-      boxplot of the predicted class probability.  Multi-class: jitter
-      plot with one panel per class (class probabilities in long form).}
-    \item{Survival (\code{"surv"})}{Step curves of the ensemble survival
-      function.  When \code{gg_rfsrc} was called with \code{conf.int},
-      a shaded ribbon is added.  When called with \code{by}, curves are
-      coloured by group.}
-  }
+family stored in \code{x}:
+\describe{
+\item{Regression (\code{"regr"})}{Jitter + notched boxplot of OOB
+predicted values.  If a \code{group} column is present the x-axis
+shows each group label; otherwise observations are collapsed to a
+single x-position.}
+\item{Classification (\code{"class"})}{Binary: jitter + notched
+boxplot of the predicted class probability.  Multi-class: jitter
+plot with one panel per class (class probabilities in long form).}
+\item{Survival (\code{"surv"})}{Step curves of the ensemble survival
+function.  When \code{gg_rfsrc} was called with \code{conf.int},
+a shaded ribbon is added.  When called with \code{by}, curves are
+coloured by group.}
+}
 }
 \description{
-Plot the predicted response from a \code{\link{gg_rfsrc}} object, the
-\code{\link[randomForestSRC]{rfsrc}} prediction, using the OOB prediction
-from the forest.  The plot type adapts automatically to the forest family:
-jitter + boxplot for regression and classification, step curves for
-survival.
+Visualizes the ensemble predictions extracted by \code{\link{gg_rfsrc}}.
+By default those are out-of-bag (OOB) predictions -- the forest's built-in
+cross-validation estimate, averaging only over the trees that left a given
+observation out of their bootstrap sample.
+}
+\details{
+The geometry adapts to the forest family.  For regression or
+classification, you get a jitter-and-boxplot: every observation is a dot
+placed at its OOB predicted value, coloured by observed response, with a
+notched boxplot overlaid to show the central tendency and spread.  For a
+survival forest, each observation contributes one ensemble survival curve
+(or CHF / mortality, whichever \code{surv_type} was chosen in
+\code{gg_rfsrc}); the bundle of step functions shows the spread of
+predicted risk across the cohort.  Pass \code{by} to \code{gg_rfsrc}
+beforehand to colour curves by a predictor group, or \code{conf.int} to
+replace the individual curves with a mean curve and bootstrap ribbon.
 }
 \examples{
 ## ------------------------------------------------------------
@@ -60,7 +71,7 @@ survival.
 ## -------- iris data
 # Build a small classification forest (ntree=50 keeps example fast)
 set.seed(42)
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_iris)
 
 plot(gg_dta)
@@ -71,7 +82,7 @@ plot(gg_dta)
 ## -------- air quality data
 # na.action = "na.impute" handles missing Ozone / Solar.R values
 set.seed(42)
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality,
                     na.action = "na.impute", ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_airq)
 
@@ -79,7 +90,7 @@ plot(gg_dta)
 
 ## -------- mtcars data
 set.seed(42)
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars, ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_mtcars)
 
 plot(gg_dta)
@@ -91,7 +102,7 @@ plot(gg_dta)
 ## randomized trial of two treatment regimens for lung cancer
 data(veteran, package = "randomForestSRC")
 set.seed(42)
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 50)
+rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., data = veteran, ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_veteran)
 plot(gg_dta)
 
@@ -174,5 +185,5 @@ Regression and Classification. R package version >= 3.4.0.
 }
 \seealso{
 \code{\link{gg_rfsrc}} \code{\link[randomForestSRC]{rfsrc}}
-  \code{\link[randomForest]{randomForest}}
+\code{\link[randomForest]{randomForest}}
 }

@@ -28,27 +28,27 @@
 #' variables) and the predicted response for each observation. Marginal
 #' dependence figures are created using the \code{\link{plot.gg_variable}}
 #' function.
-#' For \code{randomForest} fits the original model frame is rebuilt
-#' from the stored call so that the same predictors can be paired with the
-#' in-sample predictions.
+#' A \code{randomForest} fit does not keep the model frame, so for those
+#' objects \code{gg_variable} rebuilds it from the stored call. That lets the
+#' same predictors be paired with the in-sample predictions.
 #'
-#' Optional arguments include \code{time} (scalar or vector of survival times
-#' of interest), \code{time_labels} (labels for multiple survival horizons) and
-#' \code{oob} which toggles between out-of-bag and in-bag predictions when the
-#' forest stores both.
+#' A few optional arguments tune the extraction: \code{time} (one survival
+#' time, or a vector of them), \code{time_labels} (labels for multiple
+#' survival horizons), and \code{oob}, which switches between out-of-bag and
+#' in-bag predictions when the forest carries both.
 #'
 #' @param object A \code{\link[randomForestSRC]{rfsrc}} or
 #'   \code{\link[randomForest]{randomForest}} object, or a
 #'   \code{\link[randomForestSRC]{plot.variable}} result.
-#' @param ... Optional arguments such as \code{time}, \code{time_labels}, and
-#'   \code{oob} that tailor the marginal dependence extraction.
+#' @param ... Optional arguments \code{time}, \code{time_labels}, and
+#'   \code{oob} that tune the marginal dependence extraction.
 #'
-#' @return A \code{gg_variable} object: a \code{data.frame} of all predictor
-#'   columns from the training data paired with the OOB (or in-bag) predicted
-#'   response. For survival forests each requested time horizon produces an
-#'   additional column named by \code{time_labels}. The object carries a
-#'   \code{"family"} class attribute (\code{"regr"}, \code{"class"}, or
-#'   \code{"surv"}) used by \code{\link{plot.gg_variable}} for dispatch.
+#' @return A \code{gg_variable} object: a \code{data.frame} pairing every
+#'   training predictor column with the OOB (or in-bag) predicted response.
+#'   For survival forests, each requested time horizon adds a column named by
+#'   \code{time_labels}. The object carries a \code{"family"} class attribute
+#'   (\code{"regr"}, \code{"class"}, or \code{"surv"}) that
+#'   \code{\link{plot.gg_variable}} uses for dispatch.
 #'
 #' @seealso \code{\link{plot.gg_variable}},
 #'   \code{\link[randomForestSRC]{plot.variable}}
@@ -61,7 +61,7 @@
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
 #' set.seed(42)
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 #'
 #' gg_dta <- gg_variable(rfsrc_iris)
 #' plot(gg_dta, xvar = "Sepal.Width")
@@ -82,7 +82,7 @@
 #' ## ------------------------------------------------------------
 #'
 #' ## -------- air quality data
-#' rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality, ntree = 50)
+#' rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality, ntree = 50)
 #' gg_dta <- gg_variable(rfsrc_airq)
 #'
 #' # an ordinal variable
@@ -95,7 +95,7 @@
 #' plot(gg_dta, xvar = "Month", notch = TRUE)
 #'
 #' ## -------- motor trend cars data
-#' rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+#' rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars, ntree = 50)
 #'
 #' gg_dta <- gg_variable(rfsrc_mtcars)
 #'
@@ -131,7 +131,7 @@
 #'
 #' ## -------- veteran data
 #' data(veteran, package = "randomForestSRC")
-#' rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., veteran,
+#' rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., veteran,
 #'   nsplit = 10,
 #'   ntree = 50
 #' )
@@ -271,10 +271,16 @@ gg_variable.randomForest <- function(object,
                                      ...) {
   arg_list <- list(...)
 
-  # randomForest objects do not store OOB predictions in a way that maps back
-  # to the predictor space, so we always use in-bag (full-forest) predictions.
-  if (!is.null(arg_list$oob)) {
-    arg_list$oob <- FALSE
+  # randomForest uses object$votes (OOB vote matrix) unconditionally; it is the
+  # only honest per-class probability estimate.  In-bag class probabilities are
+  # not exposed through a consistent randomForest API, so oob=FALSE is not
+  # supported.  Warn the caller rather than silently ignoring the argument.
+  if (!is.null(arg_list$oob) && identical(arg_list$oob, FALSE)) {
+    warning(
+      "oob = FALSE is not supported for randomForest objects: ",
+      "in-bag class probabilities are unavailable. ",
+      "OOB vote fractions (object$votes) will be used instead."
+    )
   }
 
   if (!inherits(object, "randomForest")) {
@@ -307,13 +313,28 @@ gg_variable.randomForest <- function(object,
   }
 
   gg_dta <- predictors
-  # Append the forest's in-bag predicted values.
-  gg_dta$yhat <- as.vector(object$predicted)
+  # For classification forests use per-class OOB vote fractions (object$votes),
+  # stored as yhat.<classname> columns: the same shape gg_variable.rfsrc
+  # produces.  For regression a single numeric yhat column suffices.
   if (object$type == "classification") {
-    gg_dta$yvar <- response
+    preds    <- object$votes   # n × n_classes matrix; may be raw counts or fractions
+    rs       <- rowSums(preds)
+    if (any(rs > 1 + 1e-8, na.rm = TRUE)) {
+      preds  <- preds / rs   # normalise raw vote counts to [0, 1]
+    }
+    colnames(preds) <- paste0("yhat.", colnames(preds))
+    gg_dta          <- cbind(gg_dta, preds)
+    gg_dta$yvar     <- response
+  } else {
+    gg_dta$yhat <- as.vector(object$predicted)
   }
 
-  class(gg_dta) <- c("gg_variable", object$type, class(gg_dta))
+  # randomForest uses object$type ("classification" / "regression"); the
+  # plot.gg_variable dispatcher and the rfsrc path both use "class" for
+  # classification forests.  Map here so the class attribute is consistent
+  # and callers never need to special-case "classification".
+  family_lbl <- if (object$type == "classification") "class" else object$type
+  class(gg_dta) <- c("gg_variable", family_lbl, class(gg_dta))
   gg_dta <- .set_provenance(gg_dta, object)
   invisible(gg_dta)
 }

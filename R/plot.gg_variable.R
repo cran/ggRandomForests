@@ -27,8 +27,13 @@
 #' @param ... arguments passed to the \code{ggplot2} functions.
 #'
 #' @return A single \code{ggplot} object when \code{length(xvar) == 1} or
-#'   \code{panel = TRUE}. Otherwise a named list of \code{ggplot} objects, one
-#'   per variable in \code{xvar}.
+#'   \code{panel = TRUE}; otherwise a \code{patchwork} composite that stacks
+#'   one panel per variable in \code{xvar}. Either way the result is one
+#'   plottable object, never a bare list, so it composes with
+#'   \code{patchwork} and dispatches through \code{ggplot2::autoplot()}.
+#'   For the patchwork case, to inspect one panel with
+#'   \code{ggplot2::layer_data()} pull that panel out first
+#'   (e.g. \code{ggplot2::layer_data(p[[1]])}).
 #'
 #' @seealso \code{\link{gg_variable}}, \code{\link{gg_partial}},
 #'   \code{\link[randomForestSRC]{plot.variable}}
@@ -50,7 +55,7 @@
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
 #' set.seed(42)
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 #'
 #' gg_dta <- gg_variable(rfsrc_iris)
 #' plot(gg_dta, xvar = "Sepal.Width")
@@ -68,7 +73,7 @@
 #' ## -------- air quality data
 #' # na.action = "na.impute" handles missing Ozone / Solar.R values
 #' set.seed(42)
-#' rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+#' rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality,
 #'                     na.action = "na.impute", ntree = 50)
 #' gg_dta <- gg_variable(rfsrc_airq)
 #'
@@ -79,19 +84,22 @@
 #' plot(gg_dta, xvar = "Temp")
 #' plot(gg_dta, xvar = "Solar.R")
 #'
-#' # Panel plot across continuous predictors
-#' plot(gg_dta, xvar = c("Solar.R", "Wind", "Temp", "Day"), panel = TRUE)
-#'
 #' # Factor variable uses notched boxplots
 #' plot(gg_dta, xvar = "Month", notch = TRUE)
+#'
+#' \donttest{
+#' # Panel plot across continuous predictors (loess smooths; slower)
+#' plot(gg_dta, xvar = c("Solar.R", "Wind", "Temp", "Day"), panel = TRUE)
+#' }
 #'
 #' ## ------------------------------------------------------------
 #' ## survival examples
 #' ## ------------------------------------------------------------
 #' ## -------- veteran data
+#' \donttest{
 #' data(veteran, package = "randomForestSRC")
 #' set.seed(42)
-#' rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., veteran,
+#' rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., veteran,
 #'   nsplit = 10,
 #'   ntree = 50
 #' )
@@ -114,6 +122,7 @@
 #'
 #' # Panel coplot across two predictors and three time points
 #' plot(gg_dta, xvar = c("age", "diagtime"), panel = TRUE)
+#' }
 #'
 #' @export
 plot.gg_variable <- function(x, # nolint: cyclocomp_linter
@@ -160,22 +169,32 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       gg_dta_x <- gg_dta[, -grep("yhat.", colnames(gg_dta))]
       gg_dta_y <- gg_dta[, grep("yhat.", colnames(gg_dta))]
       lng <- ncol(gg_dta_y)
-      gg2 <- parallel::mclapply(seq_len(ncol(gg_dta_y)), function(ind) {
-        cbind(gg_dta_x, yhat = gg_dta_y[, ind], outcome = ind)
+      gg2 <- lapply(seq_len(ncol(gg_dta_y)), function(ind) {
+        cbind(gg_dta_x, yhat = gg_dta_y[, ind],
+              outcome = sub("^yhat\\.", "", colnames(gg_dta_y)[ind]))
       })
       gg3 <- do.call(rbind, gg2)
-      gg3$outcome <- factor(gg3$outcome)
+      # Use column order from gg_dta_y (not alphabetical) so facet panels
+      # appear in the same order as the model's class levels.
+      outcome_levels <- sub("^yhat\\.", "", colnames(gg_dta_y))
+      gg3$outcome <- factor(gg3$outcome, levels = outcome_levels)
       gg_dta <- gg3
     }
   }
 
   ## ---- Default xvar: all predictor columns -----------------------------
   if (missing(xvar)) {
-    # Remove response-side columns (yhat, event, time) to isolate predictors
+    # Remove response-side and structural columns to isolate predictors.
+    # `event`, `time`, `yvar`, `outcome` are matched by exact name -- a
+    # substring match (the prior code's `grep("time", ...)`) would silently
+    # drop a documented predictor like the veteran data's `diagtime`. `yhat`
+    # matches the bare `yhat` column (regression / single-class survival) and
+    # also `yhat.<classname>` columns produced by classification gg_variable,
+    # so the regex anchors at the start and either ends or transitions on a
+    # literal dot.
     cls <- c(
-      grep("yhat", colnames(gg_dta)),
-      grep("event", colnames(gg_dta)),
-      grep("time", colnames(gg_dta))
+      grep("^yhat(\\.|$)", colnames(gg_dta)),
+      which(colnames(gg_dta) %in% c("event", "time", "yvar", "outcome"))
     )
     xvar <- colnames(gg_dta)[-cls]
   }
@@ -212,7 +231,7 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
   ccls[which(ccls == "integer")] <- "numeric"
 
   ## =========================================================
-  ## PANEL PLOT branch — facet multiple predictors in one figure
+  ## PANEL PLOT branch: facet multiple predictors in one figure
   ## =========================================================
   if (panel) {
     ## ---- Survival panel plot ----------------------------------------
@@ -341,7 +360,7 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       gg_dta_mlt$variable <-
         factor(gg_dta_mlt$variable, levels = xvar)
 
-      # All continuous predictors → scatter; any factor → boxplot
+      # All continuous predictors give scatter; any factor gives boxplot
       if (sum(ccls[wch_x_var] == "numeric") == length(wch_x_var)) {
         if (family == "class") {
           gg_plt <-
@@ -406,7 +425,7 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
     }
 
   ## =========================================================
-  ## INDIVIDUAL PLOT branch — one ggplot per predictor variable
+  ## INDIVIDUAL PLOT branch: one ggplot per predictor variable
   ## =========================================================
   } else {
     # Pre-allocate a list; collapsed to a single object when lng == 1
@@ -511,10 +530,17 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
             }
             if (smooth) {
               gg_plt[[ind]] <- gg_plt[[ind]] +
-                ggplot2::geom_smooth(...)
+                ggplot2::geom_smooth(
+                  ggplot2::aes(x = .data$var, y = .data$yhat),
+                  ...
+                )
             }
           } else {
-            # Factor predictor: jitter + boxplot coloured by observed class
+            # Factor predictor: jitter + boxplot coloured by observed class.
+            # smooth=TRUE is intentionally a no-op here: geom_smooth requires
+            # a continuous x-axis and has no meaningful interpretation for
+            # discrete factor levels.  The boxplot IQR serves as the spread
+            # summary.
             gg_plt[[ind]] <- gg_plt[[ind]] +
               ggplot2::geom_jitter(
                 ggplot2::aes(
@@ -545,7 +571,18 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
                 ),
                 ...
               )
+            if (smooth) {
+              gg_plt[[ind]] <- gg_plt[[ind]] +
+                ggplot2::geom_smooth(
+                  ggplot2::aes(x = .data$var, y = .data$yhat),
+                  ...
+                )
+            }
           } else {
+            # Factor predictor (multi-class): boxplot + jitter per facet.
+            # smooth=TRUE is intentionally a no-op here for the same reason
+            # as the binary factor path above: geom_smooth requires a
+            # continuous x-axis.
             gg_plt[[ind]] <- gg_plt[[ind]] +
               ggplot2::geom_boxplot(
                 ggplot2::aes(x = .data$var, y = .data$yhat),
@@ -586,7 +623,10 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
               ggplot2::geom_smooth(ggplot2::aes(x = .data$var, y = .data$yhat), ...)
           }
         } else {
-          # Factor predictor: boxplot + jitter
+          # Factor predictor (regression): boxplot + jitter.
+          # smooth=TRUE is intentionally a no-op here: geom_smooth requires a
+          # continuous x-axis and has no meaningful interpretation for discrete
+          # factor levels.  The boxplot IQR serves as the spread summary.
           gg_plt[[ind]] <- gg_plt[[ind]] +
             ggplot2::geom_boxplot(
               ggplot2::aes(x = .data$var, y = .data$yhat),
@@ -601,9 +641,13 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       # Restore the original column name before the next iteration
       colnames(gg_dta)[ch_indx] <- h_name
     }
-    # Return a single ggplot when only one variable was requested
+    # Return a single object: one ggplot for a single variable, otherwise a
+    # patchwork composite (one panel per variable). Never a bare list; see
+    # #80 / NEWS; mirrors the v2.7.3 #77/#78 plot.gg_partial* unification.
     if (lng == 1) {
       gg_plt <- gg_plt[[1]]
+    } else {
+      gg_plt <- patchwork::wrap_plots(gg_plt, ncol = 1)
     }
   }
   return(gg_plt)

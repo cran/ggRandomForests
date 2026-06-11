@@ -25,46 +25,61 @@ Omit or leave missing to return an unstratified result.}
 \item{...}{Additional arguments controlling output for specific forest
 families:
 \describe{
-  \item{surv_type}{Character; one of \code{"surv"} (default),
-    \code{"chf"}, or \code{"mortality"} for survival forests.}
-  \item{conf.int}{Numeric coverage probability (e.g. \code{0.95}) to
-    request bootstrap pointwise confidence bands for survival forests.
-    Triggers wide-format output with \code{lower}, \code{upper},
-    \code{median}, and \code{mean} columns.}
-  \item{bs.sample}{Integer; number of bootstrap resamples when
-    \code{conf.int} is set. Defaults to the number of observations.}
+\item{surv_type}{Character; one of \code{"surv"} (default),
+\code{"chf"}, or \code{"mortality"} for survival forests.}
+\item{conf.int}{Numeric coverage probability (e.g. \code{0.95}) to
+request bootstrap pointwise confidence bands for survival forests.
+Triggers wide-format output with \code{lower}, \code{upper},
+\code{median}, and \code{mean} columns.}
+\item{bs.sample}{Integer; number of bootstrap resamples when
+\code{conf.int} is set. Defaults to the number of observations.}
 }}
 }
 \value{
 A \code{gg_rfsrc} object (a classed \code{data.frame}) whose
-  structure depends on the forest family:
-  \describe{
-    \item{regression}{Columns \code{yhat} and the response name; optionally
-      a \code{group} column when \code{by} is supplied.}
-    \item{classification}{One column per class with predicted probabilities;
-      a \code{y} column with observed class labels; optionally \code{group}.}
-    \item{survival (no CI / grouping)}{Long-format with columns
-      \code{variable} (event time), \code{value} (survival probability),
-      \code{obs_id}, and \code{event}.}
-    \item{survival (with \code{conf.int} or \code{by})}{Wide-format with
-      pointwise bootstrap CI columns (\code{lower}, \code{upper},
-      \code{median}, \code{mean}) per time point; a \code{group} column
-      when \code{by} is supplied.}
-  }
-  The object carries class attributes for the forest family so that
-  \code{\link{plot.gg_rfsrc}} dispatches correctly.
+structure depends on the forest family:
+\describe{
+\item{regression}{Columns \code{yhat} and the response name; optionally
+a \code{group} column when \code{by} is supplied.}
+\item{classification}{One column per class with predicted probabilities;
+a \code{y} column with observed class labels; optionally \code{group}.}
+\item{survival (no CI / grouping)}{Long-format with columns
+\code{variable} (event time), \code{value} (survival probability),
+\code{obs_id}, and \code{event}.}
+\item{survival (with \code{conf.int} or \code{by})}{Wide-format with
+pointwise bootstrap CI columns (\code{lower}, \code{upper},
+\code{median}, \code{mean}) per time point; a \code{group} column
+when \code{by} is supplied.}
+}
+The object carries class attributes for the forest family so that
+\code{\link{plot.gg_rfsrc}} dispatches correctly.
 }
 \description{
-Extracts the predicted response values from the
-\code{\link[randomForestSRC]{rfsrc}} object, and formats data for plotting
-the response using \code{\link{plot.gg_rfsrc}}.
+Every tree in a random forest makes its own prediction, and the forest's
+"ensemble" prediction is the average across all trees.  The out-of-bag
+(OOB) variant averages only over the trees that did not include a given
+observation in their bootstrap sample -- a built-in cross-validation
+estimate that requires no held-out test set.  \code{gg_rfsrc} pulls those
+ensemble predictions out of the fitted forest and arranges them for plotting
+with \code{\link{plot.gg_rfsrc}}.
 }
 \details{
+The structure of the returned data depends on the forest family.  For a
+regression forest you get a scatter of OOB predicted values against the
+observed response.  For classification you get predicted class probabilities
+alongside the observed class label.  For a survival forest you get the
+ensemble survival function (or cumulative hazard, or mortality, controlled
+by \code{surv_type}) at each unique event time -- one curve per
+observation -- which together trace the range of predicted risk in the
+cohort.  Pass \code{conf.int} to add pointwise bootstrap confidence bands
+around the mean survival curve, or \code{by} to stratify all of the above
+by a predictor group.
+
 For survival forests, use the \code{surv_type} argument
-  (\code{"surv"}, \code{"chf"}, or \code{"mortality"}) to select the
-  predicted quantity. Bootstrap confidence bands are requested by passing
-  \code{conf.int} (e.g. \code{conf.int = 0.95}); the number of resamples
-  is controlled by \code{bs.sample}.
+(\code{"surv"}, \code{"chf"}, or \code{"mortality"}) to select the
+predicted quantity. Bootstrap confidence bands are requested by passing
+\code{conf.int} (e.g. \code{conf.int = 0.95}); the number of resamples
+is controlled by \code{bs.sample}.
 }
 \examples{
 ## ------------------------------------------------------------
@@ -72,7 +87,7 @@ For survival forests, use the \code{surv_type} argument
 ## ------------------------------------------------------------
 ## -------- iris data
 set.seed(42)
-rfsrc_iris <- rfsrc(Species ~ ., data = iris, ntree = 50)
+rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris, ntree = 50)
 gg_dta <- gg_rfsrc(rfsrc_iris)
 plot(gg_dta)
 
@@ -85,7 +100,7 @@ plot(gg_dta)
 ## ------------------------------------------------------------
 
 ## -------- air quality data (regression)
-rfsrc_airq <- rfsrc(Ozone ~ ., data = airquality,
+rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airquality,
                     na.action = "na.impute", ntree = 50)
 plot(gg_rfsrc(rfsrc_airq))
 
@@ -93,7 +108,7 @@ plot(gg_rfsrc(rfsrc_airq))
 if (requireNamespace("MASS", quietly = TRUE)) {
   data(Boston, package = "MASS")
   Boston$chas <- as.logical(Boston$chas)
-  rfsrc_boston <- rfsrc(medv ~ ., data = Boston, ntree = 50,
+  rfsrc_boston <- randomForestSRC::rfsrc(medv ~ ., data = Boston, ntree = 50,
                         forest = TRUE, importance = TRUE,
                         tree.err = TRUE, save.memory = TRUE)
   plot(gg_rfsrc(rfsrc_boston))
@@ -104,12 +119,12 @@ if (requireNamespace("MASS", quietly = TRUE)) {
 }
 
 ## -------- mtcars data
-rfsrc_mtcars <- rfsrc(mpg ~ ., data = mtcars, ntree = 50)
+rfsrc_mtcars <- randomForestSRC::rfsrc(mpg ~ ., data = mtcars, ntree = 50)
 plot(gg_rfsrc(rfsrc_mtcars))
 
 ## -------- veteran data (survival; with CI and group-by)
 data(veteran, package = "randomForestSRC")
-rfsrc_veteran <- rfsrc(Surv(time, status) ~ ., data = veteran,
+rfsrc_veteran <- randomForestSRC::rfsrc(Surv(time, status) ~ ., data = veteran,
                        ntree = 50)
 plot(gg_rfsrc(rfsrc_veteran))
 plot(gg_rfsrc(rfsrc_veteran, conf.int = .95))
@@ -119,6 +134,6 @@ plot(gg_rfsrc(rfsrc_veteran, by = "trt"))
 }
 \seealso{
 \code{\link{plot.gg_rfsrc}},
-  \code{\link[randomForestSRC]{rfsrc}},
-  \code{\link{gg_survival}}
+\code{\link[randomForestSRC]{rfsrc}},
+\code{\link{gg_survival}}
 }

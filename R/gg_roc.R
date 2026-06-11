@@ -14,32 +14,51 @@
 #'
 #' ROC (Receiver Operating Characteristic) curve data from a classification forest.
 #'
-#' Computes sensitivity (true positive rate) and specificity (1 - false positive
-#' rate) across all prediction thresholds for one class of a classification
+#' A classifier does not hand you a class; it hands you a predicted probability,
+#' and you pick a threshold. Slide that threshold from 0 to 1 and the trade-off
+#' between catching the positives and crying wolf shifts the whole way. The ROC
+#' curve traces that trade-off. For one class of a classification
 #' \code{\link[randomForestSRC]{rfsrc}} or
-#' \code{\link[randomForest]{randomForest}} object.
+#' \code{\link[randomForest]{randomForest}} forest, \code{gg_roc} walks every
+#' threshold and records sensitivity (the true positive rate) against
+#' specificity (1 minus the false positive rate).
 #'
 #' @param object A classification \code{\link[randomForestSRC]{rfsrc}} or
 #'   \code{\link[randomForest]{randomForest}} object. Only forests with
 #'   \code{family == "class"} (rfsrc) or \code{type == "classification"}
 #'   (randomForest) are supported.
-#' @param which_outcome Integer index or character name of the class for which
-#'   the ROC curve is computed. For binary forests this is typically \code{1}
-#'   or \code{2}; for multi-class forests any valid class index. Use
-#'   \code{which_outcome = 0} to obtain the overall (averaged) ROC.
-#' @param oob Logical; if \code{TRUE} (default) use out-of-bag predicted
-#'   probabilities for the curve. Set to \code{FALSE} to use full in-bag
-#'   predictions.
+#' @param which_outcome Integer index or character name of the class to score.
+#'   For binary forests this is usually \code{1} or \code{2}; for multi-class
+#'   forests, any valid class index or level name. \code{which_outcome = "all"}
+#'   or \code{0} behaves differently by engine:
+#'   \describe{
+#'     \item{\code{randomForest} method}{Returns a macro-averaged
+#'       one-vs-rest ROC computed over the per-class probabilities.}
+#'     \item{\code{rfsrc} method}{Warns and falls back to class 1. The
+#'       macro-average and per-class faceting for the \code{rfsrc} path
+#'       are tracked separately under issue #72.}
+#'   }
+#' @param oob Logical; if \code{TRUE} (default), build the curve from
+#'   out-of-bag predicted probabilities, otherwise from full in-bag
+#'   predictions. For \code{randomForest}, \code{TRUE} uses the out-of-bag
+#'   vote probabilities in \code{object$votes}; \code{FALSE} uses in-bag
+#'   \code{predict(type = "prob")}.
+#' @param per_class Logical; if \code{TRUE} and the forest has more than two
+#'   classes, return one ROC curve per class, each class scored against all
+#'   the others. The result is a long-format \code{data.frame} with a
+#'   \code{class} factor column and a named AUC vector attribute, ordered by
+#'   descending AUC. Binary forests treat \code{per_class = TRUE} as a no-op.
+#'   Honoured by the \code{randomForest} method only.
 #' @param ... Extra arguments (currently unused).
 #'
-#' @return A \code{gg_roc} \code{data.frame} with one row per unique prediction
-#'   threshold and columns:
+#' @return A \code{gg_roc} \code{data.frame}, one row per unique prediction
+#'   threshold, with columns:
 #'   \describe{
-#'     \item{sens}{Sensitivity (true positive rate) at each threshold.}
-#'     \item{spec}{Specificity (true negative rate) at each threshold.}
-#'     \item{yvar}{The observed class label for each observation.}
+#'     \item{sens}{Sensitivity (true positive rate) at the threshold.}
+#'     \item{spec}{Specificity (true negative rate) at the threshold.}
+#'     \item{pct}{The probability threshold used for that row.}
 #'   }
-#'   Pass to \code{\link{calc_auc}} for the area under the curve.
+#'   Pass it to \code{\link{calc_auc}} for the area under the curve.
 #'
 #' @seealso \code{\link{plot.gg_roc}}, \code{\link{calc_roc}},
 #'   \code{\link{calc_auc}},
@@ -51,7 +70,7 @@
 #' ## classification example
 #' ## ------------------------------------------------------------
 #' ## -------- iris data
-#' rfsrc_iris <- rfsrc(Species ~ ., data = iris)
+#' rfsrc_iris <- randomForestSRC::rfsrc(Species ~ ., data = iris)
 #'
 #' # ROC for setosa
 #' gg_dta <- gg_roc(rfsrc_iris, which_outcome = 1)
@@ -83,9 +102,10 @@
 #' @aliases gg_roc gg_roc.rfsrc gg_roc.randomForest
 
 #' @export
-gg_roc.rfsrc <- function(object, which_outcome, oob = TRUE, ...) {
+gg_roc.rfsrc <- function(object, which_outcome, oob = TRUE,
+                         per_class = FALSE, ...) {
   # Validate that the object was grown with randomForestSRC (grow or predict)
-  # or is a randomForest object — the two supported class signatures.
+  # or is a randomForest object: the two supported class signatures.
   if (sum(inherits(object, c("rfsrc", "grow"), TRUE) == c(1, 2)) != 2 &&
     sum(inherits(object, c("rfsrc", "predict"), TRUE) == c(1, 2)) != 2 &&
     !inherits(object, "randomForest")) {
@@ -126,37 +146,57 @@ gg_roc.rfsrc <- function(object, which_outcome, oob = TRUE, ...) {
   invisible(gg_dta)
 }
 #' @export
-gg_roc <- function(object, which_outcome, oob = TRUE, ...) {
+gg_roc <- function(object, which_outcome, oob = TRUE, per_class = FALSE, ...) {
   UseMethod("gg_roc", object)
 }
 
 #' @export
-gg_roc.randomForest <- function(object, which_outcome, oob, ...) {
-  # Validate that the object is a genuine randomForest instance.
+gg_roc.randomForest <- function(object, which_outcome, oob = TRUE,
+                                per_class = FALSE, ...) {
   if (!inherits(object, "randomForest")) {
-    stop(
-      "gg_roc.randomForest only works for objects of class 'randomForest'."
-    )
+    stop("gg_roc.randomForest only works for objects of class 'randomForest'.")
   }
-
-  # Default to computing the ROC curve for all outcome classes.
   if (missing(which_outcome)) {
     which_outcome <- "all"
   }
-
   if (!(object$type == "classification")) {
     stop("gg_roc only works with classification forests")
   }
 
+  lvls    <- levels(object$y)
+  n_class <- length(lvls)
+
+  # ── per_class = TRUE path (multi-class only) ─────────────────────────────
+  if (isTRUE(per_class) && n_class > 2L) {
+    if (!missing(which_outcome) && !identical(which_outcome, "all")) {
+      message("which_outcome is ignored when per_class = TRUE.")
+    }
+    prob   <- .rf_prob_matrix(object, oob, lvls)
+    dta    <- object$y
+    curves <- lapply(seq_along(lvls), function(k) {
+      cv       <- .rf_one_class_roc(dta, prob, k, lvls)
+      cv$class <- lvls[k]
+      cv
+    })
+    auc_vals        <- vapply(curves, calc_auc, numeric(1L))
+    names(auc_vals) <- lvls
+    auc_ord         <- order(auc_vals, decreasing = TRUE)
+    auc_vals        <- auc_vals[auc_ord]
+    gg_dta          <- do.call(rbind, curves)
+    gg_dta$class    <- factor(gg_dta$class, levels = lvls[auc_ord])
+    class(gg_dta)   <- c("gg_roc", class(gg_dta))
+    attr(gg_dta, "auc") <- auc_vals
+    gg_dta <- .set_provenance(gg_dta, object)
+    return(invisible(gg_dta))
+  }
+
+  # ── Standard path (binary, or per_class not requested) ──────────────────
   # For randomForest objects the response is stored in $y (not $yvar).
   gg_dta <- # nolint: object_usage_linter
-    calc_roc(object,
-      object$y,
-      which_outcome = which_outcome
-    )
-  class(gg_dta) <- c("gg_roc", class(gg_dta))
-  gg_dta <- .set_provenance(gg_dta, object)
-
+    calc_roc(object, object$y, which_outcome = which_outcome, oob = oob)
+  class(gg_dta)       <- c("gg_roc", class(gg_dta))
+  attr(gg_dta, "auc") <- calc_auc(gg_dta)
+  gg_dta              <- .set_provenance(gg_dta, object)
   invisible(gg_dta)
 }
 
