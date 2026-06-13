@@ -50,7 +50,12 @@ if (requireNamespace("ggRandomForests", quietly = TRUE)) {
 ## ----boston-fit---------------------------------------------------------------
 data("Boston", package = "MASS")
 set.seed(20260527L)
-v_boston <- varPro::varpro(medv ~ ., data = Boston, ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+v_boston <- if (is.null(.vp$v_boston)) {
+  varPro::varpro(medv ~ ., data = Boston, ntree = 50)
+} else {
+  .vp$v_boston
+}
 v_boston
 
 
@@ -82,8 +87,12 @@ plot(gg_beta_varpro(v_boston, beta_fit = b_boston))
 
 
 ## ----boston-uvarpro, cache=TRUE-----------------------------------------------
-u_boston <- varPro::uvarpro(Boston[, setdiff(names(Boston), "medv")],
-                            ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+u_boston <- if (is.null(.vp$u_boston)) {
+  varPro::uvarpro(Boston[, setdiff(names(Boston), "medv")], ntree = 50)
+} else {
+  .vp$u_boston
+}
 
 
 ## ----boston-gg-udependent, eval = requireNamespace("ggraph", quietly = TRUE)----
@@ -91,10 +100,13 @@ plot(gg_udependent(u_boston))
 
 
 ## ----boston-isopro, cache=TRUE------------------------------------------------
-iso_boston <- varPro::isopro(data = Boston[, setdiff(names(Boston),
-                                                      "medv")],
-                              method = "rnd", sampsize = 256,
-                              ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+iso_boston <- if (is.null(.vp$iso_boston)) {
+  varPro::isopro(data = Boston[, setdiff(names(Boston), "medv")],
+                 method = "rnd", sampsize = 256, ntree = 50)
+} else {
+  .vp$iso_boston
+}
 
 
 ## ----boston-gg-isopro---------------------------------------------------------
@@ -102,7 +114,12 @@ plot(gg_isopro(iso_boston))
 
 
 ## ----boston-ivarpro-fit, cache=TRUE-------------------------------------------
-iv_boston <- varPro::ivarpro(v_boston)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+iv_boston <- if (is.null(.vp$iv_boston)) {
+  varPro::ivarpro(v_boston)
+} else {
+  .vp$iv_boston
+}
 
 
 ## ----boston-gg-ivarpro-distribution-------------------------------------------
@@ -117,12 +134,22 @@ plot(gg_ivarpro(v_boston, ivarpro_fit = iv_boston, which_obs = 1L))
 iris_binary <- iris[iris$Species != "setosa", ]
 iris_binary$Species <- droplevels(iris_binary$Species)
 set.seed(20260527L)
-v_iris_binary <- varPro::varpro(Species ~ ., data = iris_binary, ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+v_iris_binary <- if (is.null(.vp$v_iris_binary)) {
+  varPro::varpro(Species ~ ., data = iris_binary, ntree = 50)
+} else {
+  .vp$v_iris_binary
+}
 
 
 ## ----iris-fit-multi-----------------------------------------------------------
 set.seed(20260527L)
-v_iris_multi <- varPro::varpro(Species ~ ., data = iris, ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+v_iris_multi <- if (is.null(.vp$v_iris_multi)) {
+  varPro::varpro(Species ~ ., data = iris, ntree = 50)
+} else {
+  .vp$v_iris_multi
+}
 
 
 ## ----iris-multi-gg-varpro-conditional-----------------------------------------
@@ -140,7 +167,12 @@ plot(gg_pd_iris)
 
 
 ## ----iris-binary-beta-fit, cache=TRUE-----------------------------------------
-b_iris_binary <- varPro::beta.varpro(v_iris_binary)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+b_iris_binary <- if (is.null(.vp$b_iris_binary)) {
+  varPro::beta.varpro(v_iris_binary)
+} else {
+  .vp$b_iris_binary
+}
 
 
 ## ----iris-binary-gg-beta-varpro-----------------------------------------------
@@ -148,7 +180,12 @@ plot(gg_beta_varpro(v_iris_binary, beta_fit = b_iris_binary))
 
 
 ## ----iris-multi-beta-fit, cache=TRUE------------------------------------------
-b_iris_multi <- varPro::beta.varpro(v_iris_multi)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+b_iris_multi <- if (is.null(.vp$b_iris_multi)) {
+  varPro::beta.varpro(v_iris_multi)
+} else {
+  .vp$b_iris_multi
+}
 
 
 ## ----iris-multi-gg-beta-varpro------------------------------------------------
@@ -162,10 +199,12 @@ pbc_small <- pbc[, c("days", "status", "age", "albumin", "bili",
                      "edema", "platelet")]
 pbc_small <- na.omit(pbc_small)
 set.seed(20260527L)
-v_pbc <- varPro::varpro(
-  Surv(days, status) ~ .,
-  data = pbc_small, ntree = 50
-)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+v_pbc <- if (is.null(.vp$v_pbc)) {
+  varPro::varpro(Surv(days, status) ~ ., data = pbc_small, ntree = 50)
+} else {
+  .vp$v_pbc
+}
 
 
 ## ----pbc-gg-varpro------------------------------------------------------------
@@ -183,8 +222,12 @@ plot(gg_pd_pbc)
 
 
 ## ----pbc-isopro, cache=TRUE---------------------------------------------------
-iso_pbc <- varPro::isopro(data = pbc_small[, c("age", "albumin", "bili",
-                                                "platelet")],
-                          method = "rnd", sampsize = 256, ntree = 50)
+# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
+iso_pbc <- if (is.null(.vp$iso_pbc)) {
+  varPro::isopro(data = pbc_small[, c("age", "albumin", "bili", "platelet")],
+                 method = "rnd", sampsize = 256, ntree = 50)
+} else {
+  .vp$iso_pbc
+}
 plot(gg_isopro(iso_pbc))
 

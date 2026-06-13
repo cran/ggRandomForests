@@ -1,8 +1,8 @@
 Package: ggRandomForests
 Type: Package
 Title: Visually Exploring Random Forests
-Version: 3.1.0
-Date: 2026-06-10
+Version: 3.1.2
+Date: 2026-06-13
 Authors@R: person("John", "Ehrlinger",
   role = c("aut", "cre"),
   email = "john.ehrlinger@gmail.com")
@@ -27,8 +27,8 @@ Suggests: testthat, bookdown, RColorBrewer, MASS, lintr, covr, vdiffr,
 VignetteBuilder: quarto
 Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-06-11 15:26:05 UTC; ehrlinj
+Packaged: 2026-06-13 13:49:05 UTC; ehrlinj
 Author: John Ehrlinger [aut, cre]
 Maintainer: John Ehrlinger <john.ehrlinger@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-06-11 16:00:02 UTC
+Date/Publication: 2026-06-13 16:10:24 UTC
