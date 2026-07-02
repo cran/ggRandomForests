@@ -86,19 +86,6 @@ b_boston <- if (is.null(.vp$b_boston)) {
 plot(gg_beta_varpro(v_boston, beta_fit = b_boston))
 
 
-## ----boston-uvarpro, cache=TRUE-----------------------------------------------
-# Precomputed offline (see precompute_varpro.R); falls back to a live fit.
-u_boston <- if (is.null(.vp$u_boston)) {
-  varPro::uvarpro(Boston[, setdiff(names(Boston), "medv")], ntree = 50)
-} else {
-  .vp$u_boston
-}
-
-
-## ----boston-gg-udependent, eval = requireNamespace("ggraph", quietly = TRUE)----
-plot(gg_udependent(u_boston))
-
-
 ## ----boston-isopro, cache=TRUE------------------------------------------------
 # Precomputed offline (see precompute_varpro.R); falls back to a live fit.
 iso_boston <- if (is.null(.vp$iso_boston)) {
