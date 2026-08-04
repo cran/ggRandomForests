@@ -1,4 +1,7 @@
 ## ----setup, include=FALSE-----------------------------------------------------
+# vignette dir under R CMD check, package root under an interactive knit
+.fo <- c("_fig_optim.R", file.path("vignettes", "_fig_optim.R"))
+if (any(file.exists(.fo))) source(.fo[file.exists(.fo)][1])
 knitr::opts_chunk$set(
   message    = FALSE,
   warning    = FALSE,
@@ -56,7 +59,10 @@ v_boston <- if (is.null(.vp$v_boston)) {
 } else {
   .vp$v_boston
 }
-v_boston
+# A varpro fit is a large list; a bare `v_boston` would render every
+# component, including the full per-rule `$results` table. Show its
+# structure instead: one line per component.
+str(v_boston, max.level = 1)
 
 
 ## ----boston-gg-varpro---------------------------------------------------------
@@ -217,4 +223,28 @@ iso_pbc <- if (is.null(.vp$iso_pbc)) {
   .vp$iso_pbc
 }
 plot(gg_isopro(iso_pbc))
+
+
+## ----varpro-counts------------------------------------------------------------
+c(handed_in = ncol(v_boston$x),
+  reachable = length(v_boston$xvar.names),
+  reported  = length(varPro::get.topvars(v_boston)))
+
+
+## ----topvars-widen, eval=FALSE------------------------------------------------
+# varPro::partialpro(v_boston, xvar.names = c("lstat", "age", "zn"))
+
+
+## ----varpro-counts-iris-------------------------------------------------------
+c(handed_in = ncol(v_iris_binary$x),
+  reachable = length(v_iris_binary$xvar.names))
+
+
+## ----partialpro-check, eval=FALSE---------------------------------------------
+# pd <- varPro::partialpro(v_boston, xvar.names = my_vars)
+# setdiff(my_vars, names(pd))   # anything here was dropped
+
+
+## ----both-off, eval=FALSE-----------------------------------------------------
+# varPro::varpro(medv ~ ., data = Boston, sparse = FALSE, split.weight = FALSE)
 

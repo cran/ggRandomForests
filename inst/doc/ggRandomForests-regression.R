@@ -1,4 +1,7 @@
 ## ----setup, include=FALSE-----------------------------------------------------
+# vignette dir under R CMD check, package root under an interactive knit
+.fo <- c("_fig_optim.R", file.path("vignettes", "_fig_optim.R"))
+if (any(file.exists(.fo))) source(.fo[file.exists(.fo)][1])
 knitr::opts_chunk$set(
   fig.align = "center",
   fig.width = 7,
@@ -57,7 +60,7 @@ dta <- Boston |>
 
 ggplot(dta, aes(x = medv, y = value, color = chas)) +
   geom_point(alpha = 0.4) +
-  geom_smooth(aes(x = medv, y = value), color = "grey30",
+  geom_smooth(aes(x = medv, y = value), color = "gray30",
               inherit.aes = FALSE, se = FALSE) +
   labs(y = "", x = st_labs["medv"]) +
   scale_color_brewer(palette = "Set2") +
@@ -92,6 +95,24 @@ md_Boston <- max.subtree(rfsrc_Boston) # nolint: object_name_linter
 
 ## ----select-vars--------------------------------------------------------------
 xvar <- md_Boston$topvars
+
+
+## ----shap-fit-----------------------------------------------------------------
+set.seed(42)
+shap_sample <- Boston[sample(nrow(Boston), 40), setdiff(colnames(Boston), "medv")]
+gg_shp <- gg_shap(rfsrc_Boston, newdata = shap_sample, bg_n = 50)
+
+
+## ----shap-importance-plot, fig.cap="Mean absolute SHAP value per predictor."----
+plot(gg_shp, type = "importance")
+
+
+## ----shap-beeswarm-plot, fig.cap="SHAP beeswarm: every dot is one tract's contribution for one predictor."----
+plot(gg_shp, type = "beeswarm")
+
+
+## ----shap-dependence-plot, fig.cap="SHAP dependence for lstat."---------------
+plot(gg_shp, type = "dependence", xvar = "lstat")
 
 
 ## ----vardep-panel, fig.cap="Variable dependence for top predictors (minimal depth rank order)."----
@@ -171,7 +192,7 @@ surface_list <- lapply(rm_grid, function(rm_val) {
 surface_df <- bind_rows(surface_list)
 
 
-## ----pd-surface, fig.cap="Partial dependence surface: median home value as a function of lstat and rm. Fill colour is the predicted median value."----
+## ----pd-surface, fig.cap="Partial dependence surface: median home value as a function of lstat and rm. Fill color is the predicted median value."----
 ggplot(surface_df, aes(x = x, y = rm, fill = yhat)) +
   geom_tile() +
   scale_fill_viridis_c(name = "Median Value\n($1000s)") +

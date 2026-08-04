@@ -1,4 +1,7 @@
 ## ----pkg-setup, include=FALSE-------------------------------------------------
+# vignette dir under R CMD check, package root under an interactive knit
+.fo <- c("_fig_optim.R", file.path("vignettes", "_fig_optim.R"))
+if (any(file.exists(.fo))) source(.fo[file.exists(.fo)][1])
 if (requireNamespace("ggRandomForests", quietly = TRUE)) {
   library(ggRandomForests)
 } else if (requireNamespace("pkgload", quietly = TRUE)) {

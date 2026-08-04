@@ -1,4 +1,7 @@
 ## ----setup, include=FALSE-----------------------------------------------------
+# vignette dir under R CMD check, package root under an interactive knit
+.fo <- c("_fig_optim.R", file.path("vignettes", "_fig_optim.R"))
+if (any(file.exists(.fo))) source(.fo[file.exists(.fo)][1])
 knitr::opts_chunk$set(
   fig.align = "center",
   fig.width = 7,
@@ -117,7 +120,7 @@ dta_cont <- pbc[, cnt_idx] |>
 ggplot(dta_cont |> filter(!is.na(value)),
        aes(x = years, y = value, color = factor(status), shape = factor(status))) +
   geom_point(alpha = 0.4) +
-  geom_rug(data = dta_cont |> filter(is.na(value)), color = "grey50") +
+  geom_rug(data = dta_cont |> filter(is.na(value)), color = "gray50") +
   labs(y = "", x = st_labs["years"], color = "Death", shape = "Death") +
   scale_color_manual(values = event_colors) +
   scale_shape_manual(values = event_marks) +
@@ -330,7 +333,7 @@ surface_df <- bind_rows(surface_list)
 })
 
 
-## ----pd-surface, error=TRUE, fig.height=5, fig.cap="Partial dependence surface: survival at 1 year as a function of bilirubin and albumin. Fill colour is the predicted survival probability."----
+## ----pd-surface, error=TRUE, fig.height=5, fig.cap="Partial dependence surface: survival at 1 year as a function of bilirubin and albumin. Fill color is the predicted survival probability."----
 try({
 if (!exists("surface_df")) {
   message("surface_df not available --- skipping surface (see surface-data chunk error above).")
