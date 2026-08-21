@@ -3,9 +3,10 @@
 ## ── Helpers ──────────────────────────────────────────────────────────────────
 
 make_uvp <- function(ntree = 25L) {
-  # uvarpro() grows a *synthetic-supervised* forest (yxyz123 ~ ., random Y), so
-  # yvar.wt is non-empty and it does NOT trip the entry.c:184 gcc-UBSAN report
-  # (only the truly-unsupervised isopro grow does). Runs on CRAN.
+  # uvarpro() defaults to method = "auto", which grows a multivariate forest
+  # from a real formula, so yvar.wt is non-empty and it does NOT trip the
+  # entry.c:184 gcc-UBSAN report. Runs on CRAN. See helper-varpro-fixtures.R
+  # for the calls that DO reach rfsrc without a formula.
   set.seed(42L)
   varPro::uvarpro(iris[, -5L], ntree = ntree)
 }
@@ -43,6 +44,7 @@ test_that("gg_udependent: non-uvarpro object -> stop", {
 })
 
 test_that("gg_udependent: non-positive threshold -> stop", {
+  skip_on_cran()
   uv <- make_uvp()
   expect_error(gg_udependent(uv, threshold = -0.1), regexp = "threshold")
   expect_error(gg_udependent(uv, threshold = 0),    regexp = "threshold")
@@ -51,16 +53,19 @@ test_that("gg_udependent: non-positive threshold -> stop", {
 ## ── Class & structure ────────────────────────────────────────────────────────
 
 test_that("gg_udependent returns gg_udependent class", {
+  skip_on_cran()
   expect_s3_class(make_ggu(), "gg_udependent")
 })
 
 test_that("gg_udependent$edges has required columns", {
+  skip_on_cran()
   gg <- make_ggu()
   expect_true(all(c("variable_from", "variable_to", "weight") %in% names(gg$edges)))
   expect_type(gg$edges$weight, "double")
 })
 
 test_that("gg_udependent$nodes has required columns", {
+  skip_on_cran()
   gg <- make_ggu()
   expect_true(all(c("variable", "degree", "selected") %in% names(gg$nodes)))
   expect_s3_class(gg$nodes$variable, "factor")
@@ -69,24 +74,28 @@ test_that("gg_udependent$nodes has required columns", {
 })
 
 test_that("gg_udependent$graph is an igraph", {
+  skip_on_cran()
   skip_if_not_installed("igraph")
   gg <- make_ggu()
   expect_true(igraph::is_igraph(gg$graph))
 })
 
 test_that("gg_udependent directed=TRUE returns directed igraph", {
+  skip_on_cran()
   skip_if_not_installed("igraph")
   gg <- make_ggu(directed = TRUE)
   expect_true(igraph::is_directed(gg$graph))
 })
 
 test_that("gg_udependent directed=FALSE returns undirected igraph", {
+  skip_on_cran()
   skip_if_not_installed("igraph")
   gg <- make_ggu(directed = FALSE)
   expect_false(igraph::is_directed(gg$graph))
 })
 
 test_that("gg_udependent$edges is empty data frame (not NULL) for empty graph", {
+  skip_on_cran()
   # threshold=999 -> no edges -> empty graph
   gg <- make_ggu(threshold = 999, .quiet = TRUE)
   expect_false(is.null(gg$edges))
@@ -95,6 +104,7 @@ test_that("gg_udependent$edges is empty data frame (not NULL) for empty graph", 
 })
 
 test_that("gg_udependent$nodes is empty data frame for empty graph", {
+  skip_on_cran()
   gg <- make_ggu(threshold = 999, .quiet = TRUE)
   expect_false(is.null(gg$nodes))
   expect_equal(nrow(gg$nodes), 0L)
@@ -103,6 +113,7 @@ test_that("gg_udependent$nodes is empty data frame for empty graph", {
 ## ── Provenance ───────────────────────────────────────────────────────────────
 
 test_that("gg_udependent provenance has all expected fields", {
+  skip_on_cran()
   gg   <- make_ggu()
   prov <- attr(gg, "provenance")
   expect_type(prov, "list")
@@ -111,6 +122,7 @@ test_that("gg_udependent provenance has all expected fields", {
 })
 
 test_that("gg_udependent provenance threshold matches argument", {
+  skip_on_cran()
   gg <- make_ggu(threshold = 0.5)
   expect_equal(attr(gg, "provenance")$threshold, 0.5)
 })
@@ -118,6 +130,7 @@ test_that("gg_udependent provenance threshold matches argument", {
 ## ── S3 companions ────────────────────────────────────────────────────────────
 
 test_that("print.gg_udependent returns object invisibly", {
+  skip_on_cran()
   gg  <- make_ggu()
   out <- capture.output(ret <- print(gg))
   expect_identical(ret, gg)
@@ -125,12 +138,14 @@ test_that("print.gg_udependent returns object invisibly", {
 })
 
 test_that("summary.gg_udependent returns summary.gg_udependent class", {
+  skip_on_cran()
   gg <- make_ggu()
   s  <- summary(gg)
   expect_s3_class(s, "summary.gg_udependent")
 })
 
 test_that("autoplot.gg_udependent returns a ggplot", {
+  skip_on_cran()
   skip_if_not_installed("ggraph")
   gg <- make_ggu()
   expect_s3_class(ggplot2::autoplot(gg), "ggplot")
@@ -139,6 +154,7 @@ test_that("autoplot.gg_udependent returns a ggplot", {
 ## ── Plot smoke tests ─────────────────────────────────────────────────────────
 
 test_that("plot.gg_udependent default returns a ggplot", {
+  skip_on_cran()
   skip_if_not_installed("ggraph")
   gg <- make_ggu()
   p  <- plot(gg)
@@ -146,6 +162,7 @@ test_that("plot.gg_udependent default returns a ggplot", {
 })
 
 test_that("plot.gg_udependent layout='kk' returns a ggplot", {
+  skip_on_cran()
   skip_if_not_installed("ggraph")
   gg <- make_ggu()
   p  <- plot(gg, layout = "kk")
@@ -153,6 +170,7 @@ test_that("plot.gg_udependent layout='kk' returns a ggplot", {
 })
 
 test_that("plot.gg_udependent empty graph -> stop with informative message", {
+  skip_on_cran()
   gg <- make_ggu(threshold = 999, .quiet = TRUE)
   expect_error(plot(gg), regexp = "no edges")
 })

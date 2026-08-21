@@ -48,7 +48,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
 ## ----rfsrc-fit----------------------------------------------------------------
 set.seed(42)
 rfsrc_iris <- rfsrc(Species ~ ., data = iris,
-                    ntree = 200, importance = TRUE, err.block = 5)
+                    ntree = 100, importance = TRUE, err.block = 5)
 rfsrc_iris
 
 
@@ -70,7 +70,7 @@ md_iris <- max.subtree(rfsrc_iris)
 
 ## ----shap-fit-----------------------------------------------------------------
 set.seed(43)
-gg_shp <- gg_shap(rfsrc_iris, bg_n = 50, which.class = 3)
+gg_shp <- gg_shap(rfsrc_iris, bg_n = 30, which.class = 3)
 
 
 ## ----shap-importance-plot, fig.cap="Mean absolute SHAP value per predictor, virginica probability."----

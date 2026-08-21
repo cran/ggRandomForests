@@ -69,7 +69,7 @@ ggplot(dta, aes(x = medv, y = value, color = chas)) +
 
 ## ----rfsrc-fit----------------------------------------------------------------
 rfsrc_Boston <- rfsrc(medv ~ ., data = Boston, # nolint: object_name_linter
-                      ntree = 200, importance = TRUE, err.block = 5)
+                      ntree = 100, importance = TRUE, err.block = 5)
 rfsrc_Boston
 
 
@@ -99,8 +99,8 @@ xvar <- md_Boston$topvars
 
 ## ----shap-fit-----------------------------------------------------------------
 set.seed(42)
-shap_sample <- Boston[sample(nrow(Boston), 40), setdiff(colnames(Boston), "medv")]
-gg_shp <- gg_shap(rfsrc_Boston, newdata = shap_sample, bg_n = 50)
+shap_sample <- Boston[sample(nrow(Boston), 25), setdiff(colnames(Boston), "medv")]
+gg_shp <- gg_shap(rfsrc_Boston, newdata = shap_sample, bg_n = 30)
 
 
 ## ----shap-importance-plot, fig.cap="Mean absolute SHAP value per predictor."----
@@ -178,7 +178,7 @@ plot(gg_v, xvar = "rm", alpha = 0.5) +
 
 
 ## ----surface-data, cache=TRUE-------------------------------------------------
-rm_grid <- quantile_pts(rfsrc_Boston$xvar$rm, groups = 10)
+rm_grid <- quantile_pts(rfsrc_Boston$xvar$rm, groups = 6)
 
 surface_list <- lapply(rm_grid, function(rm_val) {
   newx <- rfsrc_Boston$xvar

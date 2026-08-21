@@ -165,13 +165,13 @@ plot(gg_survival(interval = "years", censor = "status",
 # Step 1: impute missing values via random forest proximity
 pbc_imputed <- impute.rfsrc(Surv(years, status) ~ .,
                              data    = pbc_trial,
-                             ntree   = 100,
+                             ntree   = 50,
                              nimpute = 2)
 
 # Step 2: grow the survival forest on the complete imputed data
 rfsrc_pbc <- rfsrc(Surv(years, status) ~ .,
                    data      = pbc_imputed,
-                   ntree     = 150,
+                   ntree     = 100,
                    nsplit    = 10,
                    tree.err  = TRUE,
                    importance = TRUE)
@@ -316,7 +316,7 @@ plot(gg_v1, xvar = "bili", alpha = 0.5) +
 ## ----surface-data, error=TRUE, cache=FALSE------------------------------------
 try({
 # Create grid of albumin values
-alb_grid <- quantile_pts(pbc_trial$albumin, groups = 8)
+alb_grid <- quantile_pts(pbc_trial$albumin, groups = 5)
 
 # For each albumin value, compute partial dependence on bili at ~1 year
 surface_list <- lapply(alb_grid, function(alb_val) {
