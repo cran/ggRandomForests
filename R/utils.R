@@ -46,40 +46,64 @@ shift <- function(x, shift_by = 1) {
 }
 
 # --------------------------------------------------------------------------- #
-# Internal helper: label a survfit tbl with stratum group names.
+# Internal helpers: stratify a survfit() call on `by` and label its rows.
 #
-# survfit() concatenates strata end-to-end in ascending-time order. Stratum
-# boundaries are detected by finding rows where the time column resets
-# (i.e. time[i] < time[i-1]).
-#
-# @param tbl     data.frame produced from survfit output (must have $time col)
-# @param data    original data.frame passed to kaplan()/nelson()
-# @param by      character; name of the grouping column in data
+# kaplan() and nelson() fit on the factor .strata_factor() returns, bound to
+# the name `grp`, so survfit() names each stratum "grp=<level>" and the labels
+# can be read back from the fit. They cannot be taken from the data: an option
+# passed through `...` (subset, start.time) can drop a whole group from the
+# fit, and survfit() reports only the groups it kept.
+
+# The `by` values as a factor whose levels are the values themselves, sorted
+# (a factor keeps its own level order). vals holds them in their own type.
+.strata_factor <- function(by_col) {
+  vals <- if (is.factor(by_col)) levels(by_col) else sort(unique(by_col))
+  vals <- vals[!is.na(vals)]
+  list(grp = factor(by_col, levels = vals), vals = vals)
+}
+
+# The rows a survfit() call on `srv` used: complete, and inside any `subset`
+# passed through `...`. The subscript is applied to the row numbers, so it
+# means what it means to survfit(): a logical vector, positive indices, or
+# negative ones that exclude rows.
+.fit_rows <- function(srv, subset = NULL) {
+  kept <- !is.na(srv)
+  if (is.logical(subset)) {
+    kept <- kept & subset %in% TRUE
+  } else if (!is.null(subset)) {
+    kept <- kept & seq_along(kept) %in% seq_along(kept)[subset]
+  }
+  kept
+}
+
+# @param tbl     data.frame produced from survfit output, one row per time
+# @param srv_tab the survfit object tbl was built from, fitted on `grp`
+# @param strat   the list .strata_factor() returned
+# @param kept    logical, the rows of the data that the fit used; read only
+#   when `subset` left a single stratum, which survfit() does not name (one
+#   left by start.time keeps its name)
 #
 # @return tbl with an additional $groups column containing the group label
-#   for each row.
-.label_strata <- function(tbl, data, by) {
-  # Use levels() for factors to respect the existing ordering; fall back to
-  # unique() (in order of first appearance) for character/numeric vectors.
-  by_col <- data[[by]]
-  lbls <- if (is.factor(by_col)) levels(by_col) else unique(by_col)
-
-  # Single stratum or fewer than 2 rows: label everything with first group
-  if (nrow(tbl) < 2L) {
-    tbl$groups <- lbls[1L]
-    return(tbl)
-  }
-
-  # Detect stratum boundaries where the time column resets
-  tm_splits <- which(c(FALSE, sapply(seq(2L, nrow(tbl)), function(ind) {
-    tbl$time[ind] < tbl$time[ind - 1L]
-  })))
-
-  tbl$groups <- lbls[1L]
-  if (length(tm_splits) > 0L) {
-    for (ind in seq_along(tm_splits)) {
-      tbl$groups[tm_splits[ind]:nrow(tbl)] <- lbls[ind + 1L]
+#   for each row, in the type of the `by` column (levels, for a factor).
+.label_strata <- function(tbl, srv_tab, strat, kept) {
+  counts <- srv_tab$strata
+  if (is.null(counts)) {
+    present <- unique(as.character(strat$grp[kept & !is.na(strat$grp)]))
+    if (length(present) != 1L) {
+      stop("the fit kept a single stratum, and it cannot be matched to one ",
+           "'by' group. Subset 'data' instead of passing the filter to ",
+           "survfit().", call. = FALSE)
     }
+    keys <- present
+    counts <- nrow(tbl)
+  } else {
+    keys <- sub("^grp=", "", names(counts))
   }
+  idx <- match(keys, as.character(strat$vals))
+  if (anyNA(idx)) {
+    stop("could not match the fitted strata to the 'by' groups.",
+         call. = FALSE)
+  }
+  tbl$groups <- rep(strat$vals[idx], times = counts)
   tbl
 }

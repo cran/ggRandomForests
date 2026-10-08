@@ -23,21 +23,30 @@ contains.
 }
 \details{
 For a standard regression or classification forest, continuous predictors
-are drawn as line plots and categorical predictors as bar charts, both
-faceted by variable name -- the same arrangement as
-\code{\link{plot.gg_partial}}.
+are drawn as line plots and categorical predictors as box plots, both
+faceted by variable name, the same arrangement as
+\code{\link{plot.gg_partial}}.  The categorical data hold one prediction
+per training observation per level, not their average, so each box shows
+the spread of the prediction at that level and its middle line the median.
+For a survival forest the boxes are filled by time horizon, and with
+\code{xvar2.name} by the level of the second variable.  When a survival
+forest has both, the fill is the time horizon and each level of the second
+variable gets its own panel.
 
 For a survival forest, each call to \code{partial.rfsrc} returns a predicted
 quantity (survival probability, cumulative hazard function, or mortality) at
 one or more chosen time horizons.  When a \code{time} column is present in
 the data, each horizon becomes a separate colored curve over the predictor's
-value, still faceted by variable.  The y-axis label (\dQuote{Predicted
+value, still faceted by variable.  Mortality has no time horizon, so it is
+drawn as a single curve.  The y-axis label (\dQuote{Predicted
 Survival}, \dQuote{Predicted CHF}, or \dQuote{Predicted Mortality}) tracks
 the \code{partial.type} attribute set by \code{gg_partial_rfsrc()}.
 
 For a two-variable interaction surface (when \code{xvar2.name} was supplied
 to \code{gg_partial_rfsrc}), the secondary variable's levels become
-separate colored lines, faceted by the primary predictor.
+separate colored lines, faceted by the primary predictor.  On a survival
+forest the color is already the time horizon, so each level of the secondary
+variable gets its own panel instead, as in the categorical panel.
 }
 \examples{
 ## ------------------------------------------------------------

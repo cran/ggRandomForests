@@ -422,6 +422,111 @@ test_that("gg_partial_rfsrc survival: returns correct column names", {
   expect_true(all(c("x", "yhat", "name", "time") %in% colnames(result$continuous)))
 })
 
+test_that("gg_partial_rfsrc survival: mortality carries no time column", {
+  # Mortality is summed over every event time, so partial.rfsrc() returns one
+  # value per x whatever partial.time holds. Stamping the (default three)
+  # time points onto it was an error: "replacement has 3 rows, data has 23".
+  rf <- make_veteran_rf()
+  ti <- rf$time.interest
+
+  result <- gg_partial_rfsrc(rf, xvar.names = c("age", "trt"),
+                             partial.type = "mort", n_eval = 6)
+
+  expect_false("time" %in% colnames(result$continuous))
+  expect_false("time" %in% colnames(result$categorical))
+  expect_equal(nrow(result$continuous), 6L)
+  # One prediction per training observation per level of trt.
+  expect_equal(nrow(result$categorical), 2L * rf$n)
+  expect_equal(attr(result, "partial.type"), "mort")
+
+  # The horizon asked for does not change the answer.
+  early <- gg_partial_rfsrc(rf, xvar.names = "age", partial.type = "mort",
+                            partial.time = ti[2], n_eval = 6)
+  expect_false("time" %in% colnames(early$continuous))
+  expect_equal(early$continuous$yhat, result$continuous$yhat)
+})
+
+test_that("plot.gg_partial_rfsrc labels mortality in both panels", {
+  rf <- make_veteran_rf()
+  result <- gg_partial_rfsrc(rf, xvar.names = c("age", "trt"),
+                             partial.type = "mort", n_eval = 6)
+
+  cont <- result
+  cont$categorical <- cont$categorical[0, ]
+  expect_equal(plot(cont)$labels$y, "Predicted Mortality")
+
+  cat_only <- result
+  cat_only$continuous <- cat_only$continuous[0, ]
+  expect_equal(plot(cat_only)$labels$y, "Predicted Mortality")
+
+  # With xvar2.name the panels take the grp branch; the label must follow.
+  grouped <- gg_partial_rfsrc(rf, xvar.names = "age", xvar2.name = "trt",
+                              partial.type = "mort", n_eval = 6)
+  gg <- plot(grouped)
+  expect_equal(gg$labels$y, "Predicted Mortality")
+  expect_equal(gg$labels$colour, "Group")
+})
+
+test_that("plot.gg_partial_rfsrc continuous panel keeps time and grp apart", {
+  # A survival forest with xvar2.name carries both columns. Grouping the lines
+  # by time alone joins every level of the second variable into one zigzag.
+  rf <- make_veteran_rf()
+  result <- gg_partial_rfsrc(rf, xvar.names = "age", xvar2.name = "trt",
+                             n_eval = 6)
+  n_time <- length(unique(result$continuous$time))
+
+  built <- ggplot2::ggplot_build(plot(result))$data[[1]]
+  # One panel per level of trt, one line per time point in each.
+  expect_equal(length(unique(built$PANEL)), 2L)
+  lines <- split(built, list(built$PANEL, built$group), drop = TRUE)
+  expect_equal(length(lines), 2L * n_time)
+  for (line in lines) {
+    expect_equal(nrow(line), 6L)
+    expect_false(anyDuplicated(line$x) > 0)
+  }
+})
+
+test_that("gg_partial_rfsrc accepts a factor xvar2.name", {
+  # partial.rfsrc() wants a factor's integer codes; the labels were passed,
+  # and it stopped with "partial values for 'trt' must be a nonempty finite
+  # numeric vector".
+  skip_if_not_installed("randomForestSRC")
+  skip_if_not_installed("survival")
+  veteran <- survival::veteran
+  Surv    <- survival::Surv # nolint: object_name_linter
+  veteran$trt_f <- factor(veteran$trt, labels = c("standard", "test"))
+  set.seed(42)
+  rf <- randomForestSRC::rfsrc(Surv(time, status) ~ trt_f + karno + age,
+                               data = veteran, ntree = 30, nsplit = 5)
+
+  result <- gg_partial_rfsrc(rf, xvar.names = "age", xvar2.name = "trt_f",
+                             partial.time = rf$time.interest[20], n_eval = 6)
+
+  grp <- result$continuous$grp
+  expect_s3_class(grp, "factor")
+  expect_equal(levels(grp), c("standard", "test"))
+  expect_equal(as.vector(table(grp)), c(6L, 6L))
+
+  # The codes reach partial.rfsrc() as the levels they stand for: each group
+  # matches a direct call holding trt_f at that code.
+  xval <- unique(result$continuous$x)
+  for (code in 1:2) {
+    direct <- randomForestSRC::get.partial.plot.data(
+      randomForestSRC::partial.rfsrc(
+        rf, partial.xvar = "age", partial.values = xval,
+        partial.xvar2 = "trt_f", partial.values2 = code,
+        partial.time = rf$time.interest[20], partial.type = "surv"
+      )
+    )
+    expect_equal(result$continuous$yhat[as.integer(grp) == code],
+                 as.numeric(direct$yhat))
+  }
+  expect_false(isTRUE(all.equal(result$continuous$yhat[grp == "standard"],
+                                result$continuous$yhat[grp == "test"])))
+
+  expect_s3_class(plot(result), "ggplot")
+})
+
 # ---- yhat scale / ylabel provenance (issue #15) ---------------------------
 
 test_that("gg_partial passes yhat through unscaled", {
@@ -470,4 +575,111 @@ test_that("plot.gg_partial falls back to 'Partial Effect' with no ylabel", {
 
   gg <- plot(gg_partial(mock_dta))
   expect_equal(gg[[1]]$labels$y, "Partial Effect")
+})
+
+## ---- categorical panels draw the per-observation spread (issue #299) -------
+
+# The categorical frame holds one prediction per observation per level, so a
+# bar with stat = "identity" stacked them and the axis read as their sum.
+cat_mock <- function(cls) {
+  dta <- data.frame(
+    x    = factor(rep(c("a", "b"), each = 4)),
+    yhat = c(0.2, 0.4, 0.6, 0.8, 0.1, 0.2, 0.3, 0.4),
+    name = "g"
+  )
+  structure(list(continuous = NULL, categorical = dta), class = cls)
+}
+
+cat_mock_by <- function(cls, col, values) {
+  base <- cat_mock(cls)$categorical
+  dta <- do.call(rbind, lapply(values, function(val) {
+    base[[col]] <- val
+    base
+  }))
+  structure(list(continuous = NULL, categorical = dta), class = cls)
+}
+
+test_that("categorical partial panels are boxplots on the response scale", {
+  for (cls in c("gg_partial", "gg_partial_rfsrc")) {
+    gg <- plot(cat_mock(cls))
+    expect_s3_class(gg$layers[[1]]$geom, "GeomBoxplot")
+    built <- ggplot2::ggplot_build(gg)$data[[1]]
+    expect_equal(built$middle, c(0.5, 0.25))
+    # Nothing is drawn above the largest single prediction.
+    expect_lte(max(built$ymax_final), 0.8)
+  }
+})
+
+test_that("plot.gg_partial_rfsrc splits categorical boxes by time and by grp", {
+  by_time <- plot(cat_mock_by("gg_partial_rfsrc", "time", c(30, 90)))
+  built <- ggplot2::ggplot_build(by_time)$data[[1]]
+  expect_equal(nrow(built), 4L)
+  expect_equal(length(unique(built$fill)), 2L)
+  expect_equal(by_time$labels$fill, "Time")
+
+  by_grp <- plot(cat_mock_by("gg_partial_rfsrc", "grp", c(1, 2)))
+  built <- ggplot2::ggplot_build(by_grp)$data[[1]]
+  expect_equal(nrow(built), 4L)
+  expect_equal(by_grp$labels$fill, "Group")
+})
+
+test_that("plot.gg_partial splits categorical boxes by model", {
+  # A numeric label is a continuous fill unless it is made a factor, and a
+  # continuous fill does not split the boxes.
+  for (models in list(c("tuned", "default"), c(1, 2))) {
+    gg <- plot(cat_mock_by("gg_partial", "model", models))
+    built <- ggplot2::ggplot_build(gg)$data[[1]]
+    expect_equal(nrow(built), 4L)
+    expect_equal(length(unique(built$fill)), 2L)
+  }
+})
+
+test_that("plot.gg_partial_rfsrc keeps time and grp apart when both are present", {
+  # A survival forest with xvar2.name carries both columns.
+  mock <- cat_mock_by("gg_partial_rfsrc", "time", c(30, 90))
+  both <- do.call(rbind, lapply(c(1, 2), function(val) {
+    mock$categorical$grp <- val
+    mock$categorical
+  }))
+  mock$categorical <- both
+  built <- ggplot2::ggplot_build(plot(mock))$data[[1]]
+  # 2 levels x 2 time points x 2 groups, the groups in separate panels.
+  expect_equal(nrow(built), 8L)
+  expect_equal(length(unique(built$PANEL)), 2L)
+  expect_equal(length(unique(built$fill)), 2L)
+})
+
+test_that("gg_partial_rfsrc labels factor levels by the model's coding, not newx's", {
+  # partial.rfsrc() imposes a level by its code in the fitted model. Codes were
+  # taken from newx's levels, so re-levelling a factor in newx swapped the
+  # labels on both xvar.names and xvar2.name.
+  set.seed(42)
+  dta <- data.frame(x = rnorm(120), g = factor(rep(c("lo", "hi"), 60),
+                                               levels = c("lo", "hi")))
+  dta$y <- dta$x + 3 * (dta$g == "hi") + rnorm(120, sd = 0.1)
+  rf <- randomForestSRC::rfsrc(y ~ x + g, data = dta, ntree = 50)
+  swapped <- rf$xvar
+  swapped$g <- factor(as.character(swapped$g), levels = c("hi", "lo"))
+
+  by_level <- function(pd, frame, col) {
+    tapply(pd[[frame]]$yhat, as.character(pd[[frame]][[col]]), mean)
+  }
+  as_fit <- gg_partial_rfsrc(rf, xvar.names = "g")
+  as_new <- gg_partial_rfsrc(rf, xvar.names = "g", newx = swapped)
+  expect_equal(by_level(as_new, "categorical", "x"),
+               by_level(as_fit, "categorical", "x"))
+  expect_gt(by_level(as_fit, "categorical", "x")[["hi"]],
+            by_level(as_fit, "categorical", "x")[["lo"]])
+
+  grp_fit <- gg_partial_rfsrc(rf, xvar.names = "x", xvar2.name = "g", n_eval = 4)
+  grp_new <- gg_partial_rfsrc(rf, xvar.names = "x", xvar2.name = "g",
+                              newx = swapped, n_eval = 4)
+  expect_equal(by_level(grp_new, "continuous", "grp"),
+               by_level(grp_fit, "continuous", "grp"))
+
+  # A level the forest never saw is an error, not a silent relabel.
+  unseen <- rf$xvar
+  unseen$g <- factor(ifelse(unseen$g == "hi", "mid", "lo"))
+  expect_error(gg_partial_rfsrc(rf, xvar.names = "g", newx = unseen),
+               "not trained on")
 })

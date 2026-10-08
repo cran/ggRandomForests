@@ -1,5 +1,84 @@
 Package: ggRandomForests
-Version: 3.5.3
+Version: 3.5.4
+
+ggRandomForests v3.5.4
+======================
+* `gg_udependent()` no longer fails with "Adjacency matrices must be
+  square" on mixed-type data (#320). `varPro::get.beta.entropy()` returns
+  one row per variable that released but one column per one-hot predictor
+  column, so any factor level that never released, or any variable the
+  pre-filter dropped, made the matrix non-square. The matrix is now padded
+  to square with zeros, and edges between levels of the same factor are
+  dropped, since those levels are mutually exclusive by construction.
+* `nelson()` now returns the Nelson-Aalen estimate in `cum_haz`, and its
+  `weight` argument now does something. Until now `nelson()` returned
+  `-log(S(t))` from the Kaplan-Meier fit, so it matched `kaplan()` column for
+  column, and `weight` was read and then dropped. `cum_haz` is now the sum of
+  events over the number at risk, restarting in each `by =` stratum. `weight`
+  weights the events over an unweighted risk set, as `hzr_nelson(weight = )`
+  does in 'TemporalHazard', so a censored observation's weight has no effect.
+  The two estimates are close while the risk set is large and diverge in the
+  tail: on `survival::veteran` the last value was `Inf`, because the last
+  observation is a death and Kaplan-Meier reaches zero, and is now 5.29.
+  `surv`, its standard error and limits, and the columns derived from `surv`
+  are still Kaplan-Meier and do not move. This reaches
+  `gg_survival(type = "nelson")` and `plot.gg_survival(type = "cum_haz")`
+  (#304).
+* `kaplan(by = )` and `nelson(by = )` now restart `hazard`, `density`,
+  `mid_int`, `life` and `proplife` in every stratum. The lags behind those
+  columns were taken after the strata were stacked, so the first interval of
+  each later group was measured from the last event time of the group before
+  it, and `life` carried on from that group's total. On `survival::veteran`
+  by `trt`, the second arm's `life` started at -148.8 and ended at -16.9; it
+  now runs from 0.99 to 132.9, as it does when that arm is fitted alone. The
+  first stratum was always right, as were `surv`, `cum_haz` and the confidence
+  limits. This reaches `gg_survival(by = )` and `plot.gg_survival()` with any
+  of those five `type` values (#303).
+* `kaplan(by = )` and `nelson(by = )` now take the strata from the fit. They
+  were told apart by a drop in the stacked event times, so a group whose
+  times all followed the previous group's was folded into it, and the labels
+  were handed out in the row order of `data`, while `survfit()` sorts the
+  groups. A character or numeric `by` column whose first row was not its
+  smallest value had its `groups` labels swapped. A factor `by` was labelled
+  correctly unless it carried a level with no rows ahead of one with rows.
+  The labels are read back from the fitted strata themselves, so an option
+  passed through `...` that drops a whole group, such as `subset` or
+  `start.time`, labels the groups that are left. 3.5.3 relabelled them as the
+  first groups in `data`.
+* `plot.gg_partial_rfsrc()` and `plot.gg_partial()` now draw a categorical
+  predictor as box plots, one box per level. The categorical data hold one
+  prediction per training observation per level, and the panel was a bar
+  chart with `stat = "identity"`, which stacks them: a class probability for
+  a 0/1 predictor on 400 rows read in the hundreds, and a survival forest
+  stacked every time horizon into the same bar. The boxes sit on the response
+  scale and show how the prediction varies across the training data at each
+  level. On a survival forest they are filled by time horizon and the axis
+  carries the same `partial.type` label as the continuous panel; with
+  `xvar2.name` they are filled by its level (a survival forest with
+  `xvar2.name` keeps the time fill and gives each level its own panel), and in
+  `plot.gg_partial()` by `model` when one was given. The returned data are
+  unchanged; average `yhat` within `x` for the partial dependence value
+  itself (#299).
+* `gg_partial_rfsrc(partial.type = "mort")` no longer stops with
+  "replacement has 3 rows, data has 23" under the default `partial.time`.
+  Mortality is summed over every event time, so `partial.rfsrc()` returns one
+  value per `x` whatever `partial.time` holds; the returned data now carry no
+  `time` column for it, and `plot.gg_partial_rfsrc()` draws a single curve
+  labelled "Predicted Mortality" in both panels.
+* `plot.gg_partial_rfsrc()` on a survival forest with `xvar2.name` now gives
+  each level of the second variable its own panel in the continuous panel
+  too, one line per time horizon. The lines were grouped by time alone, which
+  joined every level into a single zigzag.
+* `gg_partial_rfsrc(xvar2.name = )` now accepts a factor. Its labels were
+  handed to `partial.rfsrc()`, which wants the integer codes and stopped with
+  "partial values for 'trt' must be a nonempty finite numeric vector". `grp`
+  comes back as a factor holding the labels, in the model's level order (#309).
+* `gg_partial_rfsrc()` now codes factor levels by the fitted forest, not by
+  `newx`. `partial.rfsrc()` imposes a level by its integer code in the model,
+  and the codes were taken from `newx`'s own levels, which are checked only by
+  column name. A factor re-levelled in `newx` therefore passed one level's code
+  under the other's label, for `xvar.names` and `xvar2.name` alike, with no
+  warning. A level the forest was not trained on is now an error.
 
 ggRandomForests v3.5.3
 ======================
