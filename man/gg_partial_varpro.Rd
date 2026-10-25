@@ -51,11 +51,14 @@ or the survival scales \code{"rmst"} / \code{"surv"} / \code{"mortality"} /
 \code{scale = "rmst"} (the RMST horizon \eqn{\tau}), where it now
 \emph{drives} the partial computation through an RMST(\eqn{\tau})
 learner (see \strong{Details}), not just the axis label.  Optional when
-\code{scale \%in\% c("surv","chf")}: if supplied it is snapped to the
-nearest value in \code{object\$rf\$time.interest} and used for both
-computation and axis labeling; if \code{NULL}, three quartile time
-points from \code{time.interest} are used (see
-\code{\link{gg_partial_rfsrc}}).}
+\code{scale = "surv"}: it is the horizon \eqn{\tau} of the
+\eqn{S(\tau)} learner, read at the nearest value in
+\code{object\$rf\$time.interest}; if \code{NULL}, \eqn{\tau} defaults
+to the median follow-up time, with a message.  Optional when
+\code{scale = "chf"}: if supplied it is snapped to the nearest value in
+\code{object\$rf\$time.interest} and used for both computation and
+axis labeling; if \code{NULL}, three quartile time points from
+\code{time.interest} are used (see \code{\link{gg_partial_rfsrc}}).}
 
 \item{nvars}{Integer; how many variables (list elements) to process.
 Defaults to every variable in \code{part_dta}.}
@@ -222,7 +225,12 @@ predicted probability, not the probability of the mean log-odds.  The
 
 \strong{Survival probability (scale = "surv"):} \code{scale = "surv"} (the
 survival default) computes \eqn{S(\tau \mid x)} through \code{partialpro}
-(the same UVT engine as mortality and RMST), bounded in \eqn{[0, 1]}.  When
+(the same UVT engine as mortality and RMST), bounded in \eqn{[0, 1]}.
+\code{partialpro} smooths each case's \eqn{S(\tau)} with an unbounded
+polynomial, so where survival is near 1 the averaged curve can run slightly
+past it; the curve is clamped to \eqn{[0, 1]} after averaging, and the
+categorical frame per value.  The curve is still the average of the smoothed
+per-case \eqn{S(\tau)}, with only impossible values changed.  When
 \code{time} is not supplied, \eqn{\tau} defaults to the \strong{median
 follow-up time} of the fit -- a data-driven horizon that is always in the
 model's own time units, so it cannot be mis-specified the way a hand-typed
@@ -298,10 +306,11 @@ one row per grid point with the column means of \code{yhat.par},
 variable at or below \code{cat_limit} goes into \code{$categorical},
 one row per observation per category level, carrying the same three
 columns unaveraged so the plot method can draw boxplots. Path C
-(\code{scale \%in\% c("surv","chf")}) takes a different route: we
-hand the underlying \code{rfsrc} forest to \code{gg_partial_rfsrc} so
-you get a survival-probability or cumulative-hazard curve on the
-usual rfsrc scale instead.
+(\code{scale = "chf"}) takes a different route: we hand the
+underlying \code{rfsrc} forest to \code{gg_partial_rfsrc} so you get a
+cumulative-hazard curve on the usual rfsrc scale instead.
+\code{scale = "surv"} stays on the \code{partialpro} path, through an
+\eqn{S(\tau)} learner (see \strong{Details}).
 }
 
 \section{What you use this for}{

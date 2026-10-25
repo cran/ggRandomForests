@@ -1,5 +1,79 @@
 Package: ggRandomForests
-Version: 3.5.4
+Version: 3.5.5
+
+ggRandomForests v3.5.5
+======================
+* `gg_ivarpro()` no longer fails with "replacement has 1 row, data has 0"
+  when every local-importance value for a class is nonfinite. The empty
+  per-class frame now takes its `class` column without error: a fit where
+  every class is empty returns an empty `gg_ivarpro`, and one where only some
+  are drops those classes. Reported by Udaya Kogalur.
+* `gg_ivarpro()` on a binary classification forest labelled its profile
+  with the wrong class. `varPro::ivarpro()` explains one class there, the
+  first factor level (its `target` attribute says so), and `gg_ivarpro()`
+  filed that profile under the last level, the default. Every binary
+  `gg_ivarpro()` plot therefore showed the first class's slopes, sign
+  included, under the second class's name. Because the two class
+  probabilities sum to one, the second class's slopes are the first's
+  negated, so `gg_ivarpro()` now derives it exactly and both levels are
+  available through `which_class`. The default stays the last level, now
+  with the right values. Under `use.abs = TRUE` the two profiles are equal.
+* `gg_ivarpro()` mirrors a binary profile into the second class only when it
+  explains the forest's own probability of the first level. A `y.external`
+  target named after a class is any numeric response, not a class
+  probability, and is kept as a single profile, as before.
+* `varPro` (>= 3.3.0) is now required, up from 3.1.0. `ivarpro()` records
+  the class it explains (its `target` attribute) only from 3.2.1, and the
+  corrected binary `gg_ivarpro()` depends on it; 3.3.0 is the version tested
+  and the one on CRAN.
+* `gg_partial_varpro()` labelled categorical partials in the wrong order.
+  Each column of `varPro::partialpro()`'s output belongs to one value of
+  `$xvirtual` (sorted values, or factor levels), but the labels were taken
+  from the order values first appear in the sampled cases, so a 0/1 variable
+  could have "0" and "1" swapped and a multi-level variable had its levels
+  shifted, whenever the two orders differed. On the PBC data this made stage
+  4 and severe edema look protective. Categorical partials are now labelled
+  by `$xvirtual`, in the factor's own level order (and ordered status) when
+  `part_dta` carries factor-valued `xorg`.
+  The precomputed varpro vignette objects are rebuilt, so the Boston `rad`
+  and PBC `edema` panels now carry the right labels.
+* `gg_varpro(conditional = TRUE)` on a binary classification forest now
+  labels its classes with the outcome's own level names. varPro recodes a
+  binary outcome to 0/1 internally and names its conditional columns after
+  those codes, so the facets read `0` and `1` instead of, say, `N` and `R`.
+  `gg_ivarpro()` already mapped them back; `gg_varpro()` now does the same,
+  and `$conditional$class` is a factor in the outcome's level order.
+  Multiclass outcomes, which varPro does not recode, are unchanged, including
+  ones whose own labels are `"0"`, `"1"`, ...
+* `plot.gg_varpro()` draws no bar for an undefined class-conditional z
+  instead of a zero bar that reads as "tested and unimportant". The z is
+  0/0 when too few trees tested a variable for that class, which happens
+  with default settings because `gg_varpro()` calls `varPro::importance()`
+  with `local.std = FALSE`. The variable keeps its row, including one varPro
+  leaves out of every class, every class keeps its facet, and the caption
+  says the z is undefined (#344).
+* `gg_partial_varpro(scale = "surv")` no longer returns survival above 1.
+  `partialpro()` smooths each case's S(tau) with an unbounded polynomial, so
+  where survival is near 1 (early horizons, before most events) the averaged
+  curve ran up to about a percentage point past it. The curve is now clamped
+  to [0, 1] after averaging, and the categorical frame per value. Only the
+  impossible values change; everything in range is exactly as before.
+  Smoothing on the logit scale was tried and rejected: `partialpro()` replaces
+  each case's intercept with the cohort mean, so on that scale the curve's
+  level depends on how S = 0 and S = 1 are clamped. A precomputed `part_dta`
+  labelled `"surv"` passes through unchanged.
+  The varpro vignette's precomputed PBC partial is rebuilt: its `edema`
+  panel had 60 values below 0, now 0.
+* `?gg_partial_varpro` no longer says that `scale = "surv"` is computed
+  through `gg_partial_rfsrc()`. Only `scale = "chf"` takes that route;
+  `"surv"` uses the `partialpro()` S(tau) learner, and its `time` is the
+  horizon tau, defaulting to the median follow-up time.
+* Two tests no longer depend on the `randomForestSRC` random-number stream.
+  The live `gg_sdependent()` test computes its beta fit once and gives it to
+  both sides, and the `plot.gg_varpro()` test for a class with no defined z
+  sets that z by hand. Both failed against the `randomForestSRC` development
+  release, whose new seed generator grows a different forest from the same
+  seed.
 
 ggRandomForests v3.5.4
 ======================

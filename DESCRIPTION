@@ -1,10 +1,10 @@
 Package: ggRandomForests
 Type: Package
 Title: Visually Exploring Random Forests
-Version: 3.5.4
-Date: 2026-09-30
+Version: 3.5.5
+Date: 2026-10-24
 Authors@R: person("John", "Ehrlinger",
-  role = c("aut", "cre"),
+  role = c("aut", "cre", "cph"),
   email = "john.ehrlinger@gmail.com",
   comment = c(ORCID = "0000-0002-5340-5154"))
 License: MIT + file LICENSE
@@ -20,7 +20,7 @@ Description: Graphic elements for exploring Random Forests using the
     <doi:10.1023/A:1010933404324> and Ishwaran, Kogalur, Blackstone, and
     Lauer (2008) <doi:10.1214/08-AOAS169>.
 Depends: R (>= 4.4.0)
-Imports: randomForestSRC (>= 3.4.0), randomForest, varPro (>= 3.1.0),
+Imports: randomForestSRC (>= 3.4.0), randomForest, varPro (>= 3.3.0),
         igraph, survival, tidyr, dplyr, ggplot2, patchwork, stringr
 Suggests: bookdown, callr, covr, datasets, ggraph, kernelshap, knitr,
         lintr, magick, MASS, pkgdown, pkgload, quarto, ragg,
@@ -28,9 +28,9 @@ Suggests: bookdown, callr, covr, datasets, ggraph, kernelshap, knitr,
 VignetteBuilder: quarto
 Config/roxygen2/version: 8.1.0
 NeedsCompilation: no
-Packaged: 2026-10-07 16:02:43 UTC; ehrlinj
-Author: John Ehrlinger [aut, cre] (ORCID:
+Packaged: 2026-10-24 15:36:21 UTC; ehrlinj
+Author: John Ehrlinger [aut, cre, cph] (ORCID:
     <https://orcid.org/0000-0002-5340-5154>)
 Maintainer: John Ehrlinger <john.ehrlinger@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-10-08 12:50:07 UTC
+Date/Publication: 2026-10-25 14:30:08 UTC
