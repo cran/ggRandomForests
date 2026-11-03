@@ -40,6 +40,10 @@ NULL
 #'   \item{\code{gg_roc}}{ROC curve}
 #'   \item{\code{gg_survival}}{Survival / cumulative hazard curves}
 #'   \item{\code{gg_brier}}{Time-resolved Brier score and CRPS}
+#'   \item{\code{gg_rhf}}{Random Hazard Forest hazard curves}
+#'   \item{\code{gg_tune_rhf}}{Random Hazard Forest tuning path}
+#'   \item{\code{gg_auct}}{Random Hazard Forest time-varying AUC}
+#'   \item{\code{gg_rhf_importance}}{Random Hazard Forest variable priority}
 #'   \item{\code{gg_shap}}{SHAP explanations}
 #' }
 #'
@@ -127,6 +131,30 @@ autoplot.gg_brier <- function(object, ...) {
 
 #' @rdname autoplot.gg
 #' @export
+autoplot.gg_rhf <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_tune_rhf <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_auct <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_rhf_importance <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
 autoplot.gg_varpro <- function(object, ...) {
   plot(object, ...)
 }
@@ -146,5 +174,17 @@ autoplot.gg_isopro <- function(object, ...) {
 #' @rdname autoplot.gg
 #' @export
 autoplot.gg_shap <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_ale_rfsrc <- function(object, ...) {
+  plot(object, ...)
+}
+
+#' @rdname autoplot.gg
+#' @export
+autoplot.gg_ale_interaction <- function(object, ...) {
   plot(object, ...)
 }

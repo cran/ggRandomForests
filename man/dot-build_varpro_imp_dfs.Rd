@@ -11,9 +11,14 @@
   cutoff,
   nvar,
   faithful,
-  local.std,
-  conditional
+  conditional,
+  coverage = NULL,
+  trim = 0.1,
+  annotate = NULL
 )
+}
+\value{
+A list with elements \code{imp}, \code{imp_tree}, \code{stats} and \code{conditional}.
 }
 \description{
 Build the tidy importance data structures from importance() output

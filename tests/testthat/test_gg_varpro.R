@@ -50,11 +50,11 @@ test_that("gg_varpro returns gg_varpro class", {
   expect_s3_class(gg_varpro(vp), "gg_varpro")
 })
 
-test_that("gg_varpro$imp has variable, z, selected columns", {
+test_that("gg_varpro$imp has variable, z, selected, coverage, tested columns", {
   skip_on_cran()
   vp <- make_vp_regr()
   gg <- gg_varpro(vp)
-  expect_named(gg$imp, c("variable", "z", "selected"))
+  expect_named(gg$imp, c("variable", "z", "selected", "coverage", "tested"))
   expect_s3_class(gg$imp$variable, "factor")
   expect_type(gg$imp$z, "double")
   expect_type(gg$imp$selected, "logical")
@@ -116,7 +116,7 @@ test_that("gg_varpro conditional names binary classes, not varPro's 0/1 codes", 
   vb <- .varpro_iris_binary()
   # varPro recodes a binary outcome internally; y.org keeps the names.
   expect_identical(levels(vb$y), c("0", "1"))
-  gg <- gg_varpro(vb, conditional = TRUE)
+  gg <- gg_varpro(vb, conditional = TRUE, local.std = FALSE)
   expect_identical(levels(gg$conditional$class), levels(vb$y.org))
   .expect_conditional_matches_codes(vb, gg)
 })
@@ -127,7 +127,7 @@ test_that("gg_varpro conditional binary: a tie codes the first level as 1", {
   vb <- .varpro_iris_binary()
   expect_equal(as.vector(table(vb$y.org)), c(50L, 50L))
   expect_identical(unique(as.character(vb$y[vb$y.org == "versicolor"])), "1")
-  .expect_conditional_matches_codes(vb, gg_varpro(vb, conditional = TRUE))
+  .expect_conditional_matches_codes(vb, gg_varpro(vb, conditional = TRUE, local.std = FALSE))
 })
 
 test_that("gg_varpro conditional binary: a minority first level is coded 1", {
@@ -138,14 +138,14 @@ test_that("gg_varpro conditional binary: a minority first level is coded 1", {
   d <- d[c(which(d$Species == "versicolor")[1:20], which(d$Species == "virginica")), ]
   v <- varPro::varpro(Species ~ ., data = d, ntree = 30)
   expect_identical(unique(as.character(v$y[v$y.org == "versicolor"])), "1")
-  .expect_conditional_matches_codes(v, gg_varpro(v, conditional = TRUE))
+  .expect_conditional_matches_codes(v, gg_varpro(v, conditional = TRUE, local.std = FALSE))
 })
 
 test_that("gg_varpro conditional binary: no pairing keeps varPro's codes", {
   skip_on_cran()
   vb <- .varpro_iris_binary()
   vb$y.org <- NULL
-  gg <- gg_varpro(vb, conditional = TRUE)
+  gg <- gg_varpro(vb, conditional = TRUE, local.std = FALSE)
   expect_setequal(as.character(unique(gg$conditional$class)), c("0", "1"))
 })
 
@@ -163,7 +163,7 @@ test_that("gg_varpro conditional leaves multiclass labels that look like codes",
   d <- iris
   d$Species <- factor(as.integer(d$Species) - 1L, levels = c(2, 0, 1))
   v <- varPro::varpro(Species ~ ., data = d, ntree = 30)
-  gg <- gg_varpro(v, conditional = TRUE)
+  gg <- gg_varpro(v, conditional = TRUE, local.std = FALSE)
   z <- varPro::importance(v, local.std = FALSE)$conditional.z
   for (k in c("2", "0", "1")) {
     rows <- gg$conditional[gg$conditional$class == k, ]
@@ -230,34 +230,102 @@ test_that("gg_varpro nvar larger than p returns all variables", {
 
 test_that("gg_varpro local.std=FALSE stats equal raw-column medians", {
   skip_on_cran()
-  ## Mechanistic check: verify each path against the actual column computation.
-  ## faithful=TRUE forces local.std=FALSE (coercion tested above); imp.tree
-  ## gives the ground-truth raw importance matrix for both assertions.
+  set.seed(42L)
   vp <- make_vp_regr(ntree = 50L)
   suppressMessages(gg_raw <- gg_varpro(vp, local.std = FALSE, faithful = TRUE))
   mat   <- gg_raw$imp.tree          # ntree x p raw importance matrix
   vname <- colnames(mat)[[1L]]      # pick any variable by name, not position
-
-  ## local.std = FALSE: stats$median == median of raw column
   expect_equal(
     gg_raw$stats$median[as.character(gg_raw$stats$variable) == vname],
     stats::median(mat[, vname], na.rm = TRUE),
     tolerance = 1e-10
   )
-
-  ## local.std = TRUE: stats$median == median of z-normalized column
-  gg_z <- gg_varpro(vp, local.std = TRUE)
-  sd_j <- apply(mat, 2L, stats::sd, na.rm = TRUE)
-  sd_j[sd_j < .Machine$double.eps] <- 1
-  z_med <- stats::median(mat[, vname] / sd_j[[vname]], na.rm = TRUE)
-  expect_equal(
-    gg_z$stats$median[as.character(gg_z$stats$variable) == vname],
-    z_med,
-    tolerance = 1e-10
-  )
 })
 
-## ── Z-scale alignment ─────────────────────────────────────────────────────────
+## ── Same trees for boxes, z and coverage (#340) ──────────────────────────────
+
+test_that("gg_varpro: default z is varPro::importance()'s default z", {
+  skip_on_cran()
+  vp <- make_vp_regr(ntree = 50L)
+  set.seed(1L)
+  gg <- gg_varpro(vp)
+  set.seed(1L)
+  imp <- varPro::importance(vp, plot.it = FALSE)
+  z <- stats::setNames(gg$imp$z, as.character(gg$imp$variable))
+  expect_equal(unname(z[rownames(imp)]), imp$z)
+})
+
+test_that("gg_varpro: local.std=FALSE z is varPro::importance(local.std=FALSE)'s z", {
+  skip_on_cran()
+  set.seed(42L)
+  vp <- make_vp_regr(ntree = 50L)
+  gg <- gg_varpro(vp, local.std = FALSE)
+  imp <- varPro::importance(vp, local.std = FALSE, plot.it = FALSE)
+  imp <- imp[is.finite(imp$z), , drop = FALSE]
+  z <- stats::setNames(gg$imp$z, as.character(gg$imp$variable))
+  expect_equal(unname(z[rownames(imp)]), imp$z)
+})
+
+test_that("gg_varpro: z is the winsorised mean of the boxed per-tree values", {
+  skip_on_cran()
+  set.seed(42L)
+  vp <- varPro::varpro(mpg ~ ., data = mtcars, ntree = 50L, max.tree = 20L)
+  for (args in list(list(), list(local.std = FALSE), list(local.std = FALSE, max.tree = 50L))) {
+    set.seed(7L)
+    gg <- do.call(gg_varpro, c(list(vp, faithful = TRUE), args))
+    mat <- gg$imp.tree
+    v <- as.character(gg$imp$variable)
+    wm <- apply(mat[, v, drop = FALSE], 2L, varPro:::winsorize.mean, trim = 0.1)
+    if (isFALSE(args$local.std)) {
+      wm <- wm / apply(mat[, v, drop = FALSE], 2L, varPro:::winsorize.sd, trim = 0.1)
+    }
+    ok <- is.finite(gg$imp$z)
+    expect_equal(gg$imp$z[ok], unname(wm[ok]))
+  }
+  ## max.tree reaches the rules the boxes are drawn from, not only z
+  expect_identical(attr(gg, "provenance")$max.tree, 50L)
+  expect_gt(nrow(mat), vp$max.tree)
+})
+
+test_that("gg_varpro: coverage and tested flag untested variables", {
+  skip_on_cran()
+  set.seed(20261014L)
+  d <- mtcars
+  for (j in 1:6) d[[paste0("noise", j)]] <- sample(d$wt)
+  set.seed(20261014L)
+  vp <- varPro::varpro(mpg ~ ., data = d, ntree = 50, split.weight = FALSE, mtry = 3)
+  set.seed(3L)
+  gg <- gg_varpro(vp)
+  expect_true(all(c("coverage", "tested") %in% names(gg$imp)))
+  expect_true(all(c("coverage", "tested") %in% names(gg$stats)))
+  expect_true(all(gg$imp$coverage >= 0 & gg$imp$coverage <= 1))
+  expect_identical(gg$imp$tested, gg$imp$coverage >= 0.1)
+  ## local.std = FALSE: an untested variable's z is 0/0, reported as NA, not 0
+  set.seed(3L)
+  gg_f <- gg_varpro(vp, local.std = FALSE, trim = 0.3)
+  expect_true(all(is.na(gg_f$imp$z) <= !gg_f$imp$tested))
+  expect_false(any(gg_f$imp$selected & is.na(gg_f$imp$z)))
+  p <- plot(gg_f)
+  expect_s3_class(p, "ggplot")
+  if (!all(gg_f$stats$tested)) expect_match(p$labels$caption, "untested")
+})
+
+test_that("gg_varpro: arguments varPro does not take are an error, not ignored", {
+  skip_on_cran()
+  set.seed(42L)
+  vp <- make_vp_regr()
+  expect_error(gg_varpro(vp, y.external = 1), "unused argument")
+  expect_error(gg_varpro(vp, trim = 0.6), "trim")
+})
+
+test_that("plot.gg_varpro conditional: no type message unless type was passed", {
+  skip_on_cran()
+  set.seed(42L)
+  vp <- make_vp_class()
+  gg <- gg_varpro(vp, conditional = TRUE, local.std = FALSE)
+  expect_silent(plot(gg))
+  expect_message(plot(gg, type = "raw"), "ignores type")
+})
 
 test_that("plot.gg_varpro conditional: an undefined z gets no bar, not a zero bar (#344)", {
   skip_on_cran()
@@ -270,9 +338,7 @@ test_that("plot.gg_varpro conditional: an undefined z gets no bar, not a zero ba
   gg <- gg_varpro(vp, conditional = TRUE, local.std = FALSE, trim = 0.3)
   defined <- is.finite(gg$conditional$z)
   expect_true(any(!defined))
-  ## 3.5.x plot() resolves type = "raw" for a local.std = FALSE extract and then
-  ## says the conditional view ignores it; that message is not this fix.
-  expect_no_warning(p <- suppressMessages(plot(gg)))
+  expect_silent(p <- plot(gg))
   built <- ggplot2::ggplot_build(p)
   ## one drawn bar per defined z, and no zero-height bar standing in for NA
   y <- built$data[[1L]]$y
@@ -300,33 +366,19 @@ test_that("plot.gg_varpro conditional: a class with no defined z keeps its facet
 test_that("plot.gg_varpro conditional: no undefined-z caption when every z is defined", {
   skip_on_cran()
   set.seed(42L)
-  ## gg_varpro() always asks importance() for local.std = FALSE, so on this fit
-  ## Sepal.Width is undefined for every class; nvar = 2 shows only the two
-  ## petal variables, whose z are all defined.
-  gg <- gg_varpro(make_vp_class(), conditional = TRUE, nvar = 2)
-  expect_true(all(is.finite(gg$conditional$z[gg$conditional$variable %in%
-                                                levels(gg$imp$variable)])))
+  gg <- gg_varpro(make_vp_class(), conditional = TRUE)
+  expect_true(all(is.finite(gg$conditional$z)))
   expect_false(grepl("undefined", plot(gg)$labels$caption))
 })
 
-test_that("gg_varpro: z-normalisation mean(z_ij) == aggregate z_j", {
+test_that("gg_varpro: a fit without its forest needs local.std = FALSE", {
   skip_on_cran()
-  # varPro's importance() computes z_j = mean(imp_ij) / sd_j (no sqrt(ntree)).
-  # So .varpro_imp_stats uses z_ij = imp_ij / sd_j, giving mean(z_ij) == z_j.
-  # Verify by recomputing from imp.tree (faithful=TRUE).
-  vp <- make_vp_regr(ntree = 50L)
-  gg <- gg_varpro(vp, faithful = TRUE)
-  mat <- gg$imp.tree  # ntree x p raw importance matrix
-  sd_j <- apply(mat, 2L, stats::sd, na.rm = TRUE)
-  sd_j[sd_j < .Machine$double.eps] <- 1
-  z_mat <- sweep(mat, 2L, sd_j, FUN = "/")  # z_ij = imp_ij / sd_j
-  z_means <- colMeans(z_mat, na.rm = TRUE)
-  # Column means should equal aggregate z from importance()
-  agg_z <- setNames(gg$imp$z, as.character(gg$imp$variable))
-  common <- intersect(names(z_means), names(agg_z))
-  expect_gt(length(common), 0L)
-  expect_equal(z_means[common], agg_z[common], tolerance = 0.1,
-               info = "mean per-tree z should approximate aggregate z within 0.1")
+  set.seed(42L)
+  vp <- make_vp_regr()
+  vp$rf <- NULL
+  expect_error(gg_varpro(vp), "no forest")
+  expect_error(gg_varpro(vp, local.std = FALSE, max.tree = 10L), "no forest")
+  expect_s3_class(gg_varpro(vp, local.std = FALSE), "gg_varpro")
 })
 
 ## ── Plot smoke tests ─────────────────────────────────────────────────────────
@@ -447,12 +499,56 @@ test_that("print.gg_varpro output contains selected/total counts", {
   expect_true(any(grepl("selected", out, ignore.case = TRUE)))
 })
 
+test_that("print.gg_varpro names the family once", {
+  skip_on_cran()
+  vp  <- make_vp_regr()
+  set.seed(1)
+  gg  <- gg_varpro(vp)
+  out <- paste(capture.output(print(gg)), collapse = "\n")
+  expect_identical(lengths(regmatches(out, gregexpr("family:", out))), 1L)
+})
+
 test_that("summary.gg_varpro returns summary.gg_varpro class", {
   skip_on_cran()
   vp <- make_vp_regr()
   gg <- gg_varpro(vp)
   s  <- summary(gg)
   expect_s3_class(s, "summary.gg_varpro")
+})
+
+test_that("summary.gg_varpro reports an unavailable z range when every z is NA", {
+  skip_if_not(exists("make_mock_gg_varpro"), "no gg_varpro fixture available")
+  obj <- make_mock_gg_varpro()
+  obj$imp$z <- NA_real_
+  obj$imp$selected <- FALSE
+  expect_silent(out <- capture.output(print(summary(obj))))
+  expect_true(any(grepl("z range: unavailable", out)))
+  expect_false(any(grepl("Inf", out)))
+})
+
+test_that("plot.gg_varpro labels the variable axis", {
+  skip_if_not(exists("make_mock_gg_varpro"), "no gg_varpro fixture available")
+  obj <- make_mock_gg_varpro()
+  p <- plot(obj, labels = c(bpd = "BP Diastole"))
+  built <- ggplot2::ggplot_build(p)
+  expect_true(any(grepl("BP Diastole",
+                        unlist(lapply(built$layout$panel_params,
+                                      function(pp) as.character(pp$y$get_labels()))))))
+})
+
+test_that("plot.gg_varpro conditional labels the variable axis", {
+  skip_if_not(exists("make_mock_gg_varpro"), "no gg_varpro fixture available")
+  # Regression test: conditional path must honour labels argument, not ignore it.
+  # When x$conditional is non-NULL, lab_lookup is computed and passed to
+  # .plot_varpro_conditional(), which applies scale_x_discrete labelling.
+  obj <- make_mock_gg_varpro(conditional = TRUE)
+  p <- plot(obj, labels = c(bpd = "BP Diastole"))
+  built <- ggplot2::ggplot_build(p)
+  # Conditional plots facet by class; each panel has a discrete x scale.
+  # After coord_flip(), variable categories are on the y-scale.
+  labels_all <- unlist(lapply(built$layout$panel_params,
+                              function(pp) as.character(pp$y$get_labels())))
+  expect_true(any(grepl("BP Diastole", labels_all)))
 })
 
 test_that(".varpro_binary_code_map returns NULL unless the pairing is one-to-one", {
@@ -467,4 +563,136 @@ test_that(".varpro_binary_code_map returns NULL unless the pairing is one-to-one
   ## lengths differ, or a side is missing
   expect_null(map(list(y.org = factor("a"), y = factor(c("0", "1")))))
   expect_null(map(list(y = factor(c("0", "1")))))
+})
+
+## ── Noise bar ────────────────────────────────────────────────────────────────
+
+# Unguided fit on simulated data (signal x1, x2 and level b of g) with a
+# continuous and a categorical permuted copy. mtcars is too small: its
+# categorical noise is almost never tested. Here both kinds are, so the two
+# kinds get different bars and the plot draws one tick per row.
+make_vp_noise <- function() {
+  if (is.null(.varpro_cache$noise)) {
+    set.seed(20261029L)
+    d <- data.frame(x1 = rnorm(150), x2 = rnorm(150), x3 = rnorm(150),
+                    g = factor(sample(c("a", "b", "c"), 150, TRUE)))
+    d$y <- d$x1 + 0.5 * d$x2 + (d$g == "b") + rnorm(150)
+    d$noise_x1 <- sample(d$x1)
+    d$noise_g <- sample(d$g)
+    set.seed(20261029L)
+    .varpro_cache$noise <- varPro::varpro(y ~ ., data = d, ntree = 50L,
+                                          split.weight = FALSE, mtry = 2L)
+  }
+  .varpro_cache$noise
+}
+
+test_that("gg_varpro: noise selects against tested noise of the same kind", {
+  vp <- make_vp_noise()
+  set.seed(1)
+  gg <- gg_varpro(vp, noise = "^noise")
+  imp <- gg$imp
+  expect_true(all(c("noise", "kind", "noise_cut") %in% names(imp)))
+  expect_setequal(unique(imp$kind), c("categorical", "continuous"))
+  ## both kinds of noise were tested, so neither bar is a fallback
+  expect_setequal(unique(imp$kind[imp$noise & imp$tested]), c("categorical", "continuous"))
+  expect_true(all(c("x1", "x2") %in% as.character(imp$variable[imp$selected])))
+  expect_false(any(imp$selected & imp$noise))
+  expect_true(all(imp$tested[imp$selected]))
+  expect_true(all(imp$z[imp$selected] > imp$noise_cut[imp$selected]))
+  expect_identical(attr(gg, "provenance")$noise, "^noise")
+})
+
+test_that("gg_varpro: the noise bar matches varpro_coverage() on the same rules", {
+  vp <- make_vp_noise()
+  set.seed(2)
+  gg <- gg_varpro(vp, noise = "^noise")
+  set.seed(2)
+  cv <- varpro_coverage(vp, noise = "^noise")
+  imp <- gg$imp
+  m <- match(as.character(imp$variable), cv$term)
+  expect_false(anyNA(m))
+  expect_equal(imp$noise_cut, cv$noise_cut[m])
+  expect_identical(imp$noise_ref, cv$noise_ref[m])
+  expect_identical(imp$selected, cv$selected[m])
+})
+
+test_that("gg_varpro: at trim = 0 unscored noise sets no bar and unscored rows are not selected (PR #381 review)", {
+  vp <- make_vp_noise()
+  ## Which variables a seeded draw scores moves with randomForestSRC, so drop
+  ## the scores of the noise columns and of x3 rather than hunt for a seed.
+  real_score <- .varpro_score_rules
+  local_mocked_bindings(.varpro_score_rules = function(object, ...) {
+    ext <- real_score(object, ...)
+    res <- ext$scored$results
+    res$imp[grepl("^noise|^x3$", object$xvar.names[res$variable])] <- NA
+    ext$scored$results <- res
+    ext
+  })
+  set.seed(6)
+  expect_warning(gg <- gg_varpro(vp, noise = "^noise", trim = 0, max.tree = 20L,
+                                 max.rules.tree = 1L),
+                 "no noise variable was tested")
+  imp <- gg$imp
+  expect_true(all(imp$tested))                      # trim = 0: everything passes trim
+  expect_false(any(imp$noise & imp$coverage > 0))   # but no noise was scored
+  expect_true(all(is.na(imp$noise_ref)))
+  expect_true(any(!imp$noise & imp$coverage == 0))
+  expect_false(any(imp$selected & imp$coverage == 0))
+  expect_match(plot(gg)$labels$caption, "no noise tested")
+})
+
+test_that("gg_varpro: a bar borrowed from the other kind is reported (PR #381 review)", {
+  vp <- make_vp_noise()
+  set.seed(7)
+  expect_warning(gg <- gg_varpro(vp, noise = "^noise_x1$"),
+                 "categorical variables are judged against the continuous noise bar")
+  imp <- gg$imp
+  expect_true(all(imp$noise_ref[imp$kind == "categorical"] == "continuous"))
+  expect_true(all(imp$noise_ref[imp$kind == "continuous"] == "continuous"))
+  expect_match(plot(gg)$labels$caption, "categorical [0-9.]+ from continuous noise")
+})
+
+test_that("gg_varpro: the noise bar is judged before nvar truncation", {
+  vp <- make_vp_noise()
+  set.seed(3)
+  full <- gg_varpro(vp, noise = "^noise")
+  set.seed(3)
+  top <- gg_varpro(vp, noise = "^noise", nvar = 3L)
+  expect_lte(nrow(top$imp), 3L)
+  m <- match(as.character(top$imp$variable), as.character(full$imp$variable))
+  expect_equal(top$imp$noise_cut, full$imp$noise_cut[m])
+})
+
+test_that("gg_varpro: noise draws a tick per row when the kinds differ", {
+  vp <- make_vp_noise()
+  set.seed(4)
+  gg <- gg_varpro(vp, noise = "^noise")
+  p <- plot(gg)
+  geoms <- vapply(p$layers, function(l) class(l$geom)[1], character(1))
+  expect_gt(length(unique(gg$imp$noise_cut)), 1L)
+  expect_true("GeomErrorbar" %in% geoms)
+  expect_false("GeomHline" %in% geoms)
+  expect_match(p$labels$caption, "best tested noise z")
+  expect_output(print(gg), "above tested noise")
+})
+
+test_that("gg_varpro: one noise bar is a line, and no noise keeps the cutoff line", {
+  stats_df <- data.frame(variable = factor(c("a", "b")), noise_cut = c(0.2, 0.2))
+  expect_s3_class(.varpro_cut_layer(stats_df, 0.79, TRUE)$geom, "GeomHline")
+  expect_identical(.varpro_cut_layer(stats_df, 0.79, TRUE)$data$yintercept, 0.2)
+  expect_identical(.varpro_cut_layer(stats_df, 0.79, FALSE)$data$yintercept, 0.79)
+  stats_df$noise_cut <- c(0.2, 0.05)
+  expect_s3_class(.varpro_cut_layer(stats_df, 0.79, TRUE)$geom, "GeomErrorbar")
+})
+
+test_that("gg_varpro: noise inputs are checked", {
+  vp <- make_vp_noise()
+  expect_error(gg_varpro(vp, noise = 1), "'noise' must be")
+  expect_error(gg_varpro(vp, noise = "^noise", local.std = FALSE), "local.std = TRUE")
+  set.seed(5)
+  expect_warning(gg_varpro(vp, noise = "^nothing_matches"), "no variable name matches")
+  set.seed(5)
+  gg <- gg_varpro(vp)
+  expect_false(any(c("noise", "kind", "noise_cut") %in% names(gg$imp)))
+  expect_null(attr(gg, "provenance")$noise)
 })

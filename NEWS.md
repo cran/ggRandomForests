@@ -1,5 +1,517 @@
 Package: ggRandomForests
-Version: 3.5.5
+Version: 4.0.0
+
+ggRandomForests v4.0.0
+======================
+
+* Articles on the pkgdown site put the table of contents on the left and use
+  the full width of the window, through `pkgdown/extra.css`. The installed
+  vignettes are unchanged: the Quarto vignette engine renders them in its own
+  minimal format, which has no sidebar layout.
+
+* `gg_udependent()` gains two arguments. `pre.filter` is passed to
+  `varPro::get.beta.entropy()`, so a variable the pre-filter would drop can
+  reach the graph, and `beta.mat` takes a precomputed matrix so repeated calls
+  skip the computation.
+* `gg_partial_varpro()` accepts the unavailable fits that varPro 3.3.1
+  reports. `partialpro()` there returns a case whose local fit failed as a
+  row of `NA` instead of a flat curve; that case is left out of the
+  averaged curve on every scale. A variable with no available curve at all
+  now gets a warning naming it, rather than an empty panel that reads like
+  a flat effect.
+* `gg_vimp(nvar = )` on a multi-class `rfsrc` forest now keeps the `nvar`
+  most important variables. The importance matrix arrives in predictor order
+  and was trimmed before it was sorted, so `nvar = 2` on `iris` returned
+  `Sepal.Length` and `Sepal.Width`, the two least important. Variables are now
+  ranked by the overall (`all`) column first, as `which.outcome = 0` selects.
+  The `randomForest` method already did this.
+* `plot.gg_partial_varpro()` now draws only the `parametric` and
+  `nonparametric` curves by default. `causal` is a centered contrast that
+  starts at zero, so on a shared axis with the level curves it squeezed them
+  into a thin band; on a regression fit the levels sat near the response mean
+  and the contrast near 0. Ask for it with `type = "causal"` (or include it in
+  `type`), on an unbounded scale as before.
+* `gg_partial_varpro(scale = "prob")` now restores each subject's level
+  before averaging, so the curve is the expected proportion it is documented
+  as. `partialpro()` fits each subject's curve separately but returns every
+  row at the cohort-mean intercept, keeping only the subject's slope. That put
+  every subject at the average log-odds, so `"prob"` nearly matched
+  `"prob_typical"` and missed the proportion it claims to estimate. Each
+  subject's curve is now shifted to pass through its own out-of-bag log-odds
+  at its observed value, and the shape `partialpro()` fitted is kept. On
+  simulated data with widely spread subjects, this cut the error against the
+  true partial dependence from 0.105 to 0.033 (8 of 8 seeds). **`"prob"`
+  curves change**, most on heterogeneous cohorts. The restoration needs
+  `object`; without it `"prob"` warns and returns the old curve. It is also
+  skipped when `...` passes a custom `learner` or `newdata`, and for binary
+  variables, which `partialpro()` already returns per subject. The provenance
+  records `anchored`.
+* `gg_partial_varpro()` drops its own warning about requested `xvar.names` the
+  fit cannot reach. From varPro 3.3.0 `partialpro()` warns and names them
+  itself, so the warning arrived twice and still called the loss silent.
+  `?gg_partial_varpro` and the varPro vignette now say the warning is
+  upstream's.
+* The survival vignette loses its "Known issue" callout saying
+  `partial.rfsrc()` fails for survival forests. That section renders live and
+  works on current `randomForestSRC`, and four `gg_partial_rfsrc()` survival
+  tests no longer turn an error into a skip, so a regression now fails.
+* `?gg_partial_varpro` now separates varPro versions in its missing-data and
+  RMST-horizon notes. Before varPro 3.2.2, `varpro()` deletes incomplete cases
+  silently and drops unrecognised arguments such as `na.action`, and
+  `partialpro()` drops a horizon passed through `...`. From 3.2.2
+  (kogalur/varPro#7), `varpro()` warns with the omitted count and records it in
+  `model.info$observations`, and both functions stop with an error on an
+  argument they do not recognise. `partialpro()` still has no horizon
+  argument, so `scale = "rmst"` keeps supplying its own RMST(tau) learner.
+  Documentation only; no function changed.
+* `gg_vimp()` drops code that was meant to add a `rel_vimp` column but could
+  never run: every fit, single-outcome included, takes the pivot branch, so no
+  forest with stored importance ever returned it, and their output is
+  unchanged. The
+  `@return` now lists the columns actually returned (`vars`, `set`, `vimp`,
+  `positive`), and the `NA` placeholder for a `randomForest` fit without
+  stored importance no longer carries an all-`NA` `rel_vimp` column.
+* New `gg_ale_rfsrc()` computes Accumulated Local Effects (Apley and Zhu,
+  2020) for regression and classification forests, as a counterpart to
+  `gg_partial_rfsrc()`. Partial dependence averages the forest's prediction
+  over the joint distribution of the other predictors, which evaluates the
+  forest at predictor combinations that never occur together when predictors
+  are correlated. ALE only ever perturbs a predictor inside local
+  neighbourhoods of its own observed values, so it does not extrapolate into
+  those regions. Supplying `xvar2.name` returns the second-order (interaction)
+  surface for a pair of continuous predictors, which is zero everywhere when
+  the two act additively. Survival forests are not supported, the same
+  limitation `gg_shap()` carries. For a categorical predictor each step from
+  one level to the next averages the prediction change over the observations
+  at both levels, as Apley and Zhu define it. All the modified frames for a
+  variable, or for an interaction surface, go to the forest in one `predict()`
+  call.
+
+  `plot()` and `autoplot()` methods draw the first-order curves as lines and
+  bars faceted by variable, matching `plot.gg_partial_rfsrc()`'s layout so the
+  two can be read side by side, and the interaction surface as a heatmap.
+* `plot.gg_vimp(relative = TRUE)` now plots relative VIMP: each variable's
+  VIMP divided by the largest VIMP in its `set`, so the top variable reads 1
+  (per class for classification). The argument was documented but never read,
+  so it silently plotted raw VIMP. It now defaults to `FALSE`. A set with no
+  positive VIMP is scaled by its largest absolute VIMP, never divided by zero.
+* `plot.gg_vimp(nvar = )` now keeps the top `nvar` variables rather than the
+  top `nvar` rows, so a classification plot no longer loses class panels.
+* `gg_partial_varpro()` gains `scale = "prob_typical"`. `partialpro()` returns
+  per-subject log-odds, and collapsing them to a curve takes an average and a
+  back-transform; the ORDER is a modelling choice. `"prob"` (still
+  the classification default) transforms per observation then averages, giving
+  the mean predicted probability -- the expected proportion of the cohort.
+  `"prob_typical"` averages on the log-odds scale then transforms once, giving
+  the probability for a subject at the mean log-odds.
+
+  They are different estimands and they disagree. The inverse logit is concave
+  above zero and convex below it, so by Jensen `"prob"` is pulled toward 0.5 at
+  both ends, by more the more heterogeneous the cohort. In a simulation with
+  per-subject log-odds SD near 4, a point reading 0.13 under `"prob_typical"`
+  reads 0.35 under `"prob"` (true value 0.38) -- large enough to change how a
+  figure is read, so the choice should be deliberate. A figure captioned as a
+  percentage of patients wants `"prob"`. `?gg_partial_varpro` sets out both.
+
+  The distinction applies only to the `continuous` frame; the `categorical`
+  frame keeps values unaveraged, so both scales return the same numbers there.
+* `plot.gg_partial_varpro()` gains `ylim`, pinning the shared y range across
+  panels. It could not be set from outside: on the `panels` route a
+  `coord_cartesian()` added with `&` replaces the per-panel coordinate system
+  and silently takes the per-panel x ranges with it (0-50 collapsed to the
+  data's 0-46), while `scale_y_continuous(limits = )` is overridden by that
+  same coordinate system. `ylim = c(0, 1)` now pins a probability axis so a
+  flat curve reads as flat instead of filling the panel.
+* `plot.gg_partial_varpro()` now defaults `palette` to `"black"`. These figures
+  are made for manuscripts, and `linetype` is mapped to the effect type as
+  well, so the three estimators stay legible as solid, dotted and dashed with
+  no colour at all. Pass any ColorBrewer name (`palette = "Set1"`) for the
+  colour scale, which separates two or three overlaid estimators faster on
+  screen. `"mono"` is a synonym for black and `"grey"`/`"gray"` give a flat
+  grey. **This changes rendered output**: five vdiffr baselines were
+  regenerated.
+* `plot.gg_partial_varpro()` gains `complement`, plotting 1 - p and prefixing
+  the y label with `1 - `. It reads a fit that targets one class as the
+  probability of the other -- a weaning-failure model shown as probability of
+  successful weaning -- without recomputing `partialpro()` against the other
+  target. Requires a probability scale (`prob` or `surv`); on the additive,
+  multiplicative and unbounded scales 1 - x has no referent, so it errors
+  rather than drawing something unreadable.
+* `plot.gg_partial_varpro()` now warns, naming them, when arguments reach `...`
+  that it does not use. Its own arguments sit after `...` and match by exact
+  name, so a typo (or an argument from a newer version than the one installed)
+  previously vanished without a word and left the default plot looking like a
+  correct answer.
+* `plot.gg_partial_varpro()` gains per-panel scale control. `facet_wrap(scales =
+  "free_x")` gives each variable its own x *range* but a single shared x
+  *scale*, so per-panel breaks, limits and axis titles were unreachable and a
+  manuscript figure had to be hand-built one `ggplot()` per variable. A new
+  `panels` data frame -- one row per panel, keyed by `name`, with optional
+  `xlab`, `xmin`, `xmax`, `xby` and `span` columns -- switches rendering to
+  patchwork, where the x scale can vary between panels. `panels = NULL`
+  (the default) is unchanged.
+* `plot.gg_partial_varpro()` gains `which`, to return the continuous or
+  categorical frame alone as a bare `ggplot`. With both frames populated the
+  method returns a patchwork, where `+` reaches only the last panel, so adding
+  a scale or theme silently modified the categorical plot. `which` is the
+  supported way to get one plot to modify.
+* `plot.gg_partial_varpro()` gains `points`, `smooth`, `palette`, `ncol`,
+  `point_size`, `point_alpha` and `linewidth`. `palette` takes a ColorBrewer
+  name and goes through ggplot2's brewer scales, so `RColorBrewer` stays
+  in `Suggests`. All default to the previous rendering.
+* The survival vignette's variable-dependence figure passed `time.labels` where
+  `gg_variable()` reads `time_labels`. The dotted name matched nothing and was
+  dropped without a warning, so the facet strips rendered as bare "1" and "3"
+  instead of the intended "1 Year" and "3 Years". Corrected; the figure now
+  carries the labels its code always asked for.
+* The survival vignette described `attr(gg_brier(rf), "crps_integrated")` as a
+  time-normalised score on the 0 to 0.25 Brier scale, then printed 1.44. The
+  attribute is `get.brier.survival()$crps`, the raw area under the Brier
+  curve in time units, and always has been. The vignette now says so and shows
+  the normalised value (`crps.std`, and the right edge of the running CRPS
+  curve); the `gg_brier()` help says the same. No change to any returned value.
+* `gg_brier()` gains a `crps_std` attribute, `get.brier.survival()$crps.std`:
+  the integrated CRPS divided by the largest event time, so it reads on the
+  Brier scale. `print()` and `summary()` now report it as
+  "CRPS (time-normalized)", and `summary()` labels the raw `crps_integrated`
+  as "integrated CRPS (time units)". The value of `crps_integrated` is
+  unchanged.
+* The regression vignette's partial dependence surface was flat in `rm`. It
+  overwrote `newx$rm` and called `gg_partial_rfsrc()` once per `rm` value,
+  but `newx` only sets the evaluation grid and `partial.rfsrc()` always
+  averages over the training data, so all six curves were identical. It now
+  holds `rm` fixed through `xvar2.name`, and the prose describes what the
+  corrected figure shows: a modest interaction, not a strong one. The
+  `newx` and `xvar2.name` documentation now says what `newx` does and does
+  not control.
+* A Random Hazard Forests (RHF) visualization layer over the 'randomForestRHF'
+  package, added to Suggests: `gg_rhf()` tidies a forest's per-case hazard and
+  cumulative hazard over time, and `gg_auct()`, `gg_rhf_importance()` and
+  `gg_tune_rhf()` are described below. `gg_auct()` and `gg_rhf_importance()`
+  call 'randomForestRHF' only when no precomputed fit is supplied, and check
+  `requireNamespace()` first; the other entry points read the object they are
+  given. Called on an `auct.rhf` or `importance.rhf` result rather than on the
+  forest, they say to pass it as `auct_fit =` or `importance_fit =`.
+  `plot.gg_rhf()` gives each case its own colour and legend key only while
+  there are at most 10 cases, and draws more as one translucent bundle with no
+  legend. Each run of defined values in a case's start-stop path is drawn as
+  its own line, so an internal gap shows as a gap. No change for users who do
+  not install 'randomForestRHF'.
+* The consistency sweep distinguishes current CRAN software versions from
+  supported minimum versions and standardizes the three package-qualified fit
+  calls and object classes: `randomForestSRC::rfsrc()` -> `rfsrc`,
+  `randomForestRHF::rhf()` -> `rhf`, and `varPro::varpro()` -> `varpro`.
+* Add a longitudinal RHF vignette covering `gg_rhf()`, `gg_auct()`,
+  `gg_rhf_importance()`, and `gg_tune_rhf()` from one saved analysis.
+* `gg_auct()` / `plot.gg_auct()`: tidy wrapper and plot for time-varying
+  AUC from `randomForestRHF::auct.rhf()` (RHF Phase 2). Returns a long
+  frame `time / auc / se / lower / upper / marker` with an `iauc`
+  attribute (Uno + standardized integrated AUC); `plot.gg_auct()` draws
+  AUC(t) with a bootstrap CI ribbon when available and a 0.5 reference
+  line. `gg_auct.rhf(object, marker, auct_fit = NULL, method)` computes
+  `auct.rhf()` internally or reuses a cached fit. `method` chooses the
+  cumulative/dynamic (default) or incident/dynamic AUC; the result records it
+  as `attr(, "method")` and the plot names it on the y axis, since the two
+  curves otherwise look alike. A cached `auct_fit` decides the method, and a
+  `method` that contradicts it now warns rather than being dropped.
+  `...` is forwarded to `auct.rhf()`, so `bootstrap.rep` gives the confidence
+  ribbon without precomputing the fit, and `?gg_auct` carries a note on
+  choosing between the two definitions, which estimate different targets
+  rather than better and worse versions of one.
+* `gg_rhf_importance()` / `plot.gg_rhf_importance()`: tidy wrapper and point
+  matrix for time-localized variable priority from
+  `randomForestRHF::importance.rhf()` (RHF Phase 3). It returns
+  `variable / time_window / time / time_index / start / stop / midpoint /
+  n_risk / n_rules / priority`, accepts a supplied `importance_fit` or
+  calculates one when absent, and orders variables by their q90 priority over
+  time windows. Priority is a ranking score, not a z-score; no selection
+  cutoff is applied.
+  `plot.gg_rhf_importance()` takes `labels`, as the plot methods below do; its
+  variable axis is `y`, so the labelled scale is the y scale, and
+  `autoplot.gg_rhf_importance()` forwards it.
+* `gg_tune_rhf()` / `plot.gg_tune_rhf()`: supplied-object-only inspection of a
+  `tune.treesize.rhf` tree-size tuning path. The five returned columns are
+  `treesize / metric / value / se / selected`; the plot marks the selected
+  size and draws an iAUC standard-error ribbon only when finite supplied iAUC
+  standard errors are available. `gg_tune_rhf()` never recalculates tuning.
+* `randomForestRHF (>= 2.0.3)` is required in Suggests; earlier releases
+  inverted the cumulative/dynamic `auct.rhf()` curve
+  (kogalur/randomForestRHF#1). The pointwise hazard is defined only where a
+  grid point falls inside one of the case's supplied `(start, stop]`
+  intervals, and is `NA` in gaps and after the final stop. The cumulative
+  hazard is `NA` after the final stop, and on 2.1.0 also from a case's first
+  internal gap onward, even where the hazard is defined. 'randomForestRHF'
+  documents it as flat through a gap; `?gg_rhf` and `?plot.gg_rhf` describe
+  what 2.1.0 returns. `auct.rhf()` can likewise return an `NA` AUC at the
+  final grid time, where the censoring-weight denominator is undefined once
+  the control set is nearly exhausted. `gg_rhf()` passes these `NA` values
+  through unchanged, and `plot.gg_rhf()` and `plot.gg_auct()` drop them before
+  drawing, so a curve ends with its case's follow-up. The tests fit a forest
+  whose cases have several start-stop rows with gaps between them. This
+  resolves issue #229, where an earlier reading (a small negative hazard,
+  specific to the macOS arm64 binary) was wrong on both counts.
+* `plot.gg_partial_varpro()`, `plot.gg_partial()`, `plot.gg_vimp()` and
+  `plot.gg_varpro()` gain a `labels` argument for human-readable variable
+  names. It accepts a named character vector, a labelled data frame (reading
+  `attr(col, "label")`), or a two-column `key`/`label` data frame. Variables
+  with no label keep their raw name. Labels apply at draw time only — the
+  returned object still carries raw variable names, so downstream consumers
+  are unaffected. The argument reaches every branch of these methods, not just
+  their default one: `plot.gg_varpro()` honours it on both the main panel and
+  the class-conditional panel, and `plot.gg_partial_varpro()` honours it on
+  survival path-C objects (those extracted with `scale = "surv"` or `"chf"`),
+  which are handed off to `plot.gg_partial_rfsrc()`.
+* `plot.gg_beta_varpro()`, `plot.gg_ivarpro()` and `plot.gg_beta_uvarpro()`
+  gain `labels` on the same terms, completing the varPro importance family.
+  These three had been dropping the argument in complete silence: each declares
+  `...` and does not use it, so `labels` was absorbed with no warning, no
+  error, and an unlabelled plot as the only symptom. Their facets are per class
+  rather than per variable, so the class strips are left alone and only the
+  variable axis is relabelled; in a faceted plot every panel is relabelled.
+* `plot.gg_shap()` and the three exported mode functions it dispatches to,
+  `shap_importance()`, `shap_beeswarm()` and `shap_dependence()`, gain
+  `labels`. Each of the three puts variable names somewhere different, so each
+  honours the argument differently: `shap_importance()` labels a flipped
+  discrete `x` scale, `shap_beeswarm()` labels `y` directly because it does not
+  flip, and `shap_dependence()` has no variable scale at all and substitutes
+  the label into both axis titles instead. In that last mode `xvar` still
+  matches on raw variable names, so the label is display only and passing a
+  label where a variable name belongs is still an error. As with the varPro
+  methods above, `labels` was previously accepted and discarded in silence.
+* `plot.gg_variable()` no longer declares `time` and `time_labels`, two formals
+  its body never read. They are parameters of `gg_variable()`, the extractor,
+  which bakes the horizon into the object before `plot()` runs, so the man page
+  had been promising a horizon selection the method never performed. Supplying
+  either now warns and names the call that works. ⚠️ `time_units` moved to
+  **after** `...` in the signature as part of this: R partial-matches argument
+  names only before `...`, so with `time_units` ahead of it a caller writing
+  `time = 1191` bound silently to `time_units` and died on its type check.
+  Past the dots, matching is exact. `time_units` always had to be named, so no
+  working call changes.
+* `plot.gg_variable()` sanity-checks `time_units` against the data it describes. A year-like
+  unit supplied against values above 150 warns, because that is almost always a
+  forest fit on a smaller unit and produces an axis title wrong by a factor of
+  365. It warns rather than errors, and only in that one direction: small values
+  labelled `"days"` is ordinary, so there is no signal to check. The package
+  still cannot derive the unit and does not try to. Scoped to
+  `plot.gg_variable()` for now: `plot.gg_rfsrc()` also takes `time_units`, but a
+  `gg_rfsrc` object has no `time` column (its time points live in `variable`,
+  which holds class names for a classification fit), so there is no unambiguous
+  column to check and extending it is not a one-line change.
+* `plot.gg_variable()`, `plot.gg_udependent()` and `plot.gg_sdependent()` gain
+  `labels`, which completes the argument across every plot method in the
+  package that renders variable names. `plot.gg_variable()` labels the facet strips in its panel
+  plot, through all three faceting branches, and the x axis title in its
+  individual plot; the `time` facet is untouched, because it facets by time
+  rather than by variable, and the multi-time survival panel scopes its
+  labeller to the variable dimension so a label key that collides with a time
+  value cannot reach the time strips. `plot.gg_udependent()` labels the node text of its dependency
+  network. There the display string is written to a separate vertex attribute
+  and the igraph `name` is left alone, because `name` is the key the
+  edge-weight backfill matches on and rewriting it would break edge weights on
+  graphs saved before those weights were stored. `plot.gg_sdependent()` is the
+  plain case, a flipped discrete axis like `plot.gg_vimp()`.
+* `plot.gg_vimp()`: `lbls` is **deprecated** in favour of `labels` and will be
+  removed in a future release. Its old `length(lbls) >= length(vars)` gate is
+  also gone, so a partial label set is now honoured, falling back to the raw
+  name per variable. Previously supplying fewer labels than variables silently
+  applied none.
+* `gg_partial_varpro()` orders variables by varPro importance
+  (`varPro::get.topvars()`) when `object` is supplied, and `name` is now a
+  **factor**, so facets follow importance order instead of being re-sorted
+  alphabetically. Variables absent from the ranking keep their incoming order
+  and are appended after the ranked block; none are dropped.
+* `gg_partial_varpro()`: **`nvars` now selects the top n by importance.** It
+  previously took the first n elements of the partial-dependence list before
+  any ranking was applied, returning an arbitrary subset with no symptom in
+  the output.
+* `gg_partial_varpro()` warns when `scale = "auto"` cannot be resolved because
+  no `object` was supplied, instead of silently falling back to the generic
+  "Partial Effect" axis. The fallback label itself was never wrong — it was
+  honest about an unknown scale — but the silence around it was, so the
+  fallback now says so.
+* The `labels` lookup now drops entries whose label or name is blank or `NA`,
+  so a variable given an empty label falls back to its raw name rather than
+  drawing blank axis or strip text. All three accepted input shapes now agree
+  on the same information; previously the labelled-data-frame arm dropped
+  blanks while a named vector or `key`/`label` frame kept them.
+* `gg_partial_varpro()` now rejects an unnamed `part_dta` with a clear error
+  instead of accepting it. The names of that list *are* the variable
+  identities; without them the constructor cannot build a `name` column at all,
+  and the omission used to surface two calls later as an opaque `facet_wrap()`
+  failure about a missing faceting variable. An empty `part_dta` remains legal.
+* The package's own vignettes (`ggRandomForests-regression.qmd`,
+  `ggRandomForests-survival.qmd`) are moved off the now-deprecated `lbls`
+  argument onto `labels`, so the shipped examples model the current API
+  rather than the one being phased out.
+* `plot.gg_variable()` and `plot.gg_rfsrc()` no longer hard-code a "year" time
+  unit in survival axis titles. The unit was never derived from the data, so a
+  fit measured in days -- `randomForestSRC::pbc`, this package's own canonical
+  survival example, among them -- rendered "Survival at 1191 year" for a horizon
+  of 1191 days. The titles now read "Survival at 1191" and "time" by default,
+  and a new `time_units` argument on both methods restores an explicit unit:
+  `time_units = "days"` gives "Survival at 1191 days" and "time (days)". Users
+  whose data really is in years should pass `time_units = "years"` to keep the
+  word.
+* `plot.gg_variable()`'s survival branch has visual regression cover for the
+  first time. The branch forks on `panel` and on whether the object carries one
+  time or several, and the four resulting paths differ in both faceting and
+  y-axis title; each now has a `vdiffr` baseline. The two single-time paths are
+  the ones that render a time unit into the axis title, so a change to that
+  title now surfaces as an SVG diff rather than resting on an `expect_equal()`
+  of `p$labels$y`, which cannot see the rest of the panel. Tests only.
+
+* `DESCRIPTION` now declares the Quarto command line tool in
+  `SystemRequirements`. The vignettes have always needed it to build; the
+  field makes that visible to installers and to `R CMD check`.
+
+* Add `varpro_coverage()`: for each term (or variable) of a varpro fit, the
+  share of trees in which a release rule scored it, next to its importance z,
+  so a term that was tested and found unimportant can be told from one that
+  was never or barely tested. It counts from the same release rules as
+  `gg_varpro()`, but scores every tree by default where `gg_varpro()` follows
+  the fit's `max.tree`, so the two can report different numbers on default
+  calls. Optional noise columns give a cutoff by variable kind that scales
+  with the fit, unlike the fixed 0.79. `max_untested` stops the call with an
+  error when more than that share of the real variables went untested, so a
+  screen that tested too little cannot pass for one that found no effect; for
+  that guard a factor counts as tested only when a single level was, while the
+  `tested` column for `by = "variable"` pools the levels, so the two can
+  disagree. The default, `NULL`, only reports. A help section, "The first-pass
+  filter", explains how `varpro()`'s default `split.weight = TRUE` and `nvar =
+  30` cut variables before any rule is built, and that `split.weight = FALSE`,
+  without `split.weight.custom`, keeps every variable eligible (#340).
+
+* `gg_varpro()` now scores the boxes, z and the new `coverage` column from
+  one set of release rules, the way `varPro::importance()` does, so they
+  always describe the same trees. Before, z followed `max.tree` passed
+  through `...` while the boxes stayed on the fit-time trees, and a
+  variable with rules only outside those trees was dropped without a
+  warning (#340)
+* `gg_varpro(local.std = )` now reaches varPro. It was always sent as
+  `FALSE`, so the default z was the winsorised mean over the winsorised SD
+  rather than `importance()`'s default. **The default z, and so the set of
+  variables above `cutoff = 0.79`, changes**, and with `local.std = TRUE`
+  it depends on the random number stream, as in varPro: call `set.seed()`
+  first. The boxes are no longer divided by a plain `sd()`; with
+  `local.std = TRUE` the per-tree values are already on z's scale. The
+  class-conditional z follows the same setting (#340)
+* `gg_varpro()` reports an undefined z (a variable tested in under `trim`
+  of the trees, with `local.std = FALSE`) as `NA` instead of 0, and adds
+  `coverage` and `tested` to `$imp` and `$stats`. `plot.gg_varpro()` draws
+  untested variables as open boxes with a caption, so a barely-tested
+  variable no longer reads as "no importance". `trim`, `max.tree` and
+  `max.rules.tree` are now arguments; any other argument in `...`, which
+  used to go to `importance()`, is an error (#340)
+* `plot.gg_varpro()` no longer says it "ignores type = 'raw'" on a
+  conditional plot when no `type` was passed
+* `summary()` of a `gg_varpro` object whose z values are all undefined
+  reports the z range as unavailable instead of `[Inf, -Inf]` with two
+  warnings (#340)
+
+* The varPro vignette explains the open boxes `gg_varpro()` draws for
+  untested variables (#340)
+
+* The README lists `varpro_coverage()` among the varPro functions
+* The `gg_varpro()` help page, its plot caption and the varPro vignette
+  say that coverage counts the trees in which a release rule for the
+  variable returned an importance value
+
+* Add the vignette "varPro on small or sparse data": which variables
+  varPro actually tested, what a z of zero means, how much the trim and
+  the 0.79 cutoff change the answer, checking a screen against noise, and
+  partial dependence on small data. Document the same points in
+  `?gg_varpro`, `?gg_partial_varpro` (a factor is partialled one level at
+  a time, by its one-hot names; the spread is not a confidence interval)
+  and `?gg_partial_rfsrc` (horizons before the first event all return the
+  first event's curve) (#351)
+
+* Tests now cover `varpro_coverage()` on a classification fit and its
+  error branches: an encoding map that misses a term, and a multivariate
+  regression fit (#347)
+
+* The help pages for `calc_roc()`, `gg_rfsrc()` and `gg_roc()` now show the
+  generic call in their usage section, not only the `rfsrc` method. R-devel's
+  `R CMD check` reports exported functions with no usage line as "Exported
+  functions without usage information", and these three were the only ones.
+  No argument or return value changed.
+
+* `Depends` now reads `R (>= 4.3.0)`, down from `R (>= 4.4.0)`. The old floor
+  was the internal hvtiR family's policy, not anything ggRandomForests needs.
+  The new one is the floor of `randomForestSRC` and `varPro`, the strictest of
+  the `Imports`; the package code itself needs nothing past R 4.1. A new
+  `R CMD check` leg on R 4.3 tests the floor on every push to `main`
+  (#326).
+
+* `gg_ivarpro()` files a binary `y.external` profile under its target's name
+  when that is a response level, rather than always under the last level, and
+  the binary default view shows it.
+
+* `gg_partial_varpro()` keeps each categorical variable's level order when
+  several are combined in `$categorical$variable`. The column is a factor
+  whose levels run through each variable's levels in turn, and it is ordered
+  when every categorical variable is an ordered factor. The plot keys each
+  panel's levels by their variable, so panels whose labels overlap, or whose
+  factors order the same labels differently, each keep their own order.
+
+* The survival vignette has a new section, "How far can these curves be
+  trusted?", on reading partial dependence when events are sparse: thin tails,
+  flattening at the ends of a predictor's range, how `nodesize` affects tree
+  growth, and what a forest grown on a single predictor returns.
+
+* The "varPro on small or sparse data" vignette has a new section, "What if
+  the events are rare?". A simulation with known signal, at 60 and 150 events,
+  shows that offering every variable (`split.weight = FALSE`) needs a smaller
+  `mtry` before binary predictors get tested, that more trees and rules pay
+  off only when there are events to use, that a real rare effect can score
+  near zero at 60 events while counting as tested, and that a noise variable
+  correlated with a signal scores like one. It ends with the settings we start
+  from on sparse survival data. The summaries are precomputed by
+  `vignettes/precompute_varpro_rare.R`.
+
+* The varPro vignette no longer calls `nvar` a red herring. On a guided fit
+  (`split.weight = TRUE`, the default) varPro keeps only the `nvar` heaviest
+  encoded columns, 30 by default, and builds no rule for the rest, so `nvar`
+  caps which predictors compete, not just how many are reported. A factor with
+  more than two levels takes one column per level, so it can fill several of
+  those places. The vignette also says that `sparse` does nothing once
+  `split.weight = FALSE` when no custom weights are given, that
+  `split.weight.custom` weights override that switch (and `sparse` then
+  reshapes them), that unguided fits try every predictor at every split
+  unless `mtry` is set, and that an eligible predictor is not necessarily a
+  tested one (`varpro_coverage()` tells them apart).
+
+* `gg_varpro()` gains `noise` and `kind_values`. Name the permuted noise
+  columns you added before fitting (for example `noise = "^noise"`), and a
+  variable is selected when it is tested and its z beats the best tested noise
+  of its own kind, categorical or continuous, the rule `varpro_coverage()`
+  uses. The bar comes from the same rules as the boxes and is judged before
+  `nvar` truncation. `plot()` then draws the noise bar in place of the 0.79
+  line: one line when there is a single bar, a dashed tick on each row when the
+  two kinds differ. Noise boxes are orange. `print()` and `summary()` say how
+  the selection was made. Without `noise`, nothing changes. The `cutoff` help
+  now says that varPro uses 0.79 only to highlight its plot.
+  Noise is judged only on rows scored in at least one tree, so `trim = 0`
+  cannot turn unscored noise into a bar at 0, here or in `varpro_coverage()`.
+  When one kind has no tested noise and borrows the other kind's bar, both
+  functions warn, a `noise_ref` column records which kind set each bar, and
+  the plot caption says "from continuous noise". When no noise at all is
+  tested, both warn and fall back to a bar at 0, with `noise_ref` set to `NA`,
+  so a variable selected then has beaten no observed noise, only zero.
+
+* `print()` on a `gg_varpro` object names the forest family once. The header
+  already carries it, and the method printed it a second time.
+
+* The vignettes restore the `mc.cores` and `rf.cores` options they set to keep
+  their fits to one core, as CRAN asks of vignettes that change options.
+
+* Two plot methods take their arguments in a new order, which matters only to
+  a call that passes them by position. In `plot.gg_variable()` the third
+  argument is now `panel`, where in 3.5.5 it was `time` and `panel` was fifth;
+  `oob` and `points` move up two places with it. In
+  `plot.gg_partial_varpro()` the third argument is now `labels`, where in 3.5.5
+  it fell into `...`. Calls that name their arguments, as the examples do, are
+  unchanged.
 
 ggRandomForests v3.5.5
 ======================

@@ -4,10 +4,16 @@
 \alias{shap_importance}
 \title{SHAP global importance bar chart}
 \usage{
-shap_importance(x, ...)
+shap_importance(x, labels = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{\link{gg_shap}} object.}
+
+\item{labels}{Optional variable labels. One of: a named character vector
+(\code{c(Temp = "Temperature")}); a labelled data frame, whose
+\code{attr(col, "label")} values are read; or a two-column
+\code{key}/\code{label} data frame. Variables with no label keep their raw
+name. Defaults to \code{NULL} (raw names).}
 
 \item{...}{Unused.}
 }
@@ -15,7 +21,7 @@ shap_importance(x, ...)
 A \code{ggplot} object.
 }
 \description{
-Bar chart of mean absolute SHAP value per variable -- the SHAP analog of
+Bar chart of mean absolute SHAP value per variable, the SHAP analog of
 \code{\link{plot.gg_vimp}}.
 }
 \seealso{

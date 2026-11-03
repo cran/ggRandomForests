@@ -1,8 +1,8 @@
 Package: ggRandomForests
 Type: Package
 Title: Visually Exploring Random Forests
-Version: 3.5.5
-Date: 2026-10-24
+Version: 4.0.0
+Date: 2026-11-02
 Authors@R: person("John", "Ehrlinger",
   role = c("aut", "cre", "cph"),
   email = "john.ehrlinger@gmail.com",
@@ -13,24 +13,30 @@ Language: en-US
 URL: https://github.com/ehrlinger/ggRandomForests,
         https://ehrlinger.github.io/ggRandomForests/
 BugReports: https://github.com/ehrlinger/ggRandomForests/issues
-Description: Graphic elements for exploring Random Forests using the
-    'randomForest' or 'randomForestSRC' package for survival, regression
-    and classification forests and 'ggplot2' package plotting. Implements
-    visualizations of the methods described in Breiman (2001)
-    <doi:10.1023/A:1010933404324> and Ishwaran, Kogalur, Blackstone, and
-    Lauer (2008) <doi:10.1214/08-AOAS169>.
-Depends: R (>= 4.4.0)
+Description: Graphic elements for exploring Random Forests using
+    'randomForestSRC' and 'randomForest' for survival, regression, and
+    classification forests, and 'varPro' for rule-based variable priority.
+    Suggests 'randomForestRHF' for hazards with time-dependent covariates.
+    Implements visualizations of the methods described in Breiman (2001)
+    <doi:10.1023/A:1010933404324>, Ishwaran, Kogalur, Blackstone, and Lauer
+    (2008) <doi:10.1214/08-AOAS169>, Lu and Ishwaran (2024)
+    <doi:10.48550/arXiv.2409.09003>, and Ishwaran, Hsich, Kogalur, and Lee (2026)
+    <doi:10.48550/arXiv.2608.21597>.
+Depends: R (>= 4.3.0)
 Imports: randomForestSRC (>= 3.4.0), randomForest, varPro (>= 3.3.0),
         igraph, survival, tidyr, dplyr, ggplot2, patchwork, stringr
 Suggests: bookdown, callr, covr, datasets, ggraph, kernelshap, knitr,
         lintr, magick, MASS, pkgdown, pkgload, quarto, ragg,
-        RColorBrewer, rmarkdown, testthat, vdiffr
+        randomForestRHF (>= 2.0.3), RColorBrewer, rmarkdown, testthat,
+        vdiffr, withr
 VignetteBuilder: quarto
+SystemRequirements: Quarto command line tool
+        (<https://github.com/quarto-dev/quarto-cli>)
 Config/roxygen2/version: 8.1.0
 NeedsCompilation: no
-Packaged: 2026-10-24 15:36:21 UTC; ehrlinj
+Packaged: 2026-11-03 17:40:26 UTC; ehrlinj
 Author: John Ehrlinger [aut, cre, cph] (ORCID:
     <https://orcid.org/0000-0002-5340-5154>)
 Maintainer: John Ehrlinger <john.ehrlinger@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-10-25 14:30:08 UTC
+Date/Publication: 2026-11-03 22:50:30 UTC

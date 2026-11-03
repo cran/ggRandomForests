@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   comment = "#>"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 
 
 ## ----packages-----------------------------------------------------------------
@@ -68,6 +68,7 @@ ggplot(dta, aes(x = medv, y = value, color = chas)) +
 
 
 ## ----rfsrc-fit----------------------------------------------------------------
+set.seed(42)
 rfsrc_Boston <- rfsrc(medv ~ ., data = Boston, # nolint: object_name_linter
                       ntree = 100, importance = TRUE, err.block = 5)
 rfsrc_Boston
@@ -86,7 +87,7 @@ plot(gg_rfsrc(rfsrc_Boston), alpha = 0.5) +
 
 
 ## ----vimp-plot, fig.cap="VIMP ranking. Longer blue bars indicate more important variables."----
-plot(gg_vimp(rfsrc_Boston), lbls = st_labs)
+plot(gg_vimp(rfsrc_Boston), labels = st_labs)
 
 
 ## ----varsel-------------------------------------------------------------------
@@ -115,7 +116,7 @@ plot(gg_shp, type = "beeswarm")
 plot(gg_shp, type = "dependence", xvar = "lstat")
 
 
-## ----vardep-panel, fig.cap="Variable dependence for top predictors (minimal depth rank order)."----
+## ----vardep-panel, fig.cap="Variable dependence for top predictors (minimal depth top variables)."----
 gg_v <- gg_variable(rfsrc_Boston)
 
 plot(gg_v, xvar = xvar, panel = TRUE, alpha = 0.5) +
@@ -177,25 +178,33 @@ plot(gg_v, xvar = "rm", alpha = 0.5) +
   facet_wrap(~lstat_grp)
 
 
-## ----surface-data, cache=TRUE-------------------------------------------------
+## ----surface-data-------------------------------------------------------------
 rm_grid <- quantile_pts(rfsrc_Boston$xvar$rm, groups = 6)
 
-surface_list <- lapply(rm_grid, function(rm_val) {
-  newx <- rfsrc_Boston$xvar
-  newx$rm <- rm_val
-  pd_rm <- gg_partial_rfsrc(rfsrc_Boston, xvar.names = "lstat", newx = newx)
-  df <- pd_rm$continuous
-  df$rm <- rm_val
-  df
-})
+# newx only sets the evaluation grid: the lstat quantile points, and the
+# distinct rm values to condition on through xvar2.name. The average itself
+# always runs over the training data, so overwriting newx$rm alone would
+# change nothing.
+newx <- rfsrc_Boston$xvar
+newx$rm <- rep_len(rm_grid, nrow(newx))
 
-surface_df <- bind_rows(surface_list)
+pd_surface <- gg_partial_rfsrc(rfsrc_Boston, xvar.names = "lstat",
+                               xvar2.name = "rm", newx = newx)
+surface_df <- pd_surface$continuous
+surface_df$rm <- surface_df$grp
 
 
-## ----pd-surface, fig.cap="Partial dependence surface: median home value as a function of lstat and rm. Fill color is the predicted median value."----
-ggplot(surface_df, aes(x = x, y = rm, fill = yhat)) +
-  geom_tile() +
-  scale_fill_viridis_c(name = "Median Value\n($1000s)") +
-  labs(x = "Lower Status (%)", y = "Rooms per Dwelling") +
+## ----pd-surface, fig.cap="Partial dependence of median home value on lstat, one line for each of six rm values held fixed across all tracts."----
+ggplot(surface_df, aes(x = x, y = yhat, color = factor(round(rm, 2)))) +
+  geom_line(linewidth = 1) +
+  scale_color_viridis_d(name = "Rooms per\nDwelling") +
+  labs(x = st_labs["lstat"], y = st_labs["medv"]) +
   theme_bw()
+
+
+## -----------------------------------------------------------------------------
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
 

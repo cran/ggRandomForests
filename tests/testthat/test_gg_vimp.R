@@ -354,11 +354,14 @@ test_that("gg_vimp regression", {
   names(st_labs) <- names(cls)
 
   ## Test plotting the rfsrc object
-  gg_plt <- plot.gg_vimp(
-    rfsrc_boston,
-    lbls = st_labs,
-    relative = TRUE,
-    bars = rfsrc_boston$xvar.names
+  expect_warning(
+    gg_plt <- plot.gg_vimp(
+      rfsrc_boston,
+      lbls = st_labs,
+      relative = TRUE,
+      bars = rfsrc_boston$xvar.names
+    ),
+    "deprecated"
   )
   expect_s3_class(gg_plt, "ggplot")
 
@@ -533,6 +536,19 @@ test_that("gg_vimp: randomForest classification nvar counts variables, not rows"
   expect_setequal(unique(as.character(gg$vars)), top2)
 })
 
+test_that("gg_vimp: rfsrc classification nvar keeps the top nvar, not the first", {
+  set.seed(1)
+  rf <- randomForestSRC::rfsrc(Species ~ ., iris, ntree = 100,
+                               importance = TRUE)
+  gg <- as.data.frame(gg_vimp(rf, nvar = 2))
+  ## rfsrc's importance matrix is in predictor order, so trimming it unsorted
+  ## returned the two least important variables. Rank by the overall "all"
+  ## column, which is what which.outcome = 0 selects.
+  top2 <- names(sort(rf$importance[, "all"], decreasing = TRUE))[1:2]
+  expect_setequal(unique(as.character(gg$vars)), top2)
+  expect_equal(nrow(gg), 2L * ncol(rf$importance))
+})
+
 test_that("gg_vimp: randomForest classification importance=FALSE falls back to
           node purity", {
   skip_on_cran()
@@ -545,4 +561,38 @@ test_that("gg_vimp: randomForest classification importance=FALSE falls back to
   expect_length(unique(gg$set), 1L)
   gini <- rf$importance[, "MeanDecreaseGini"]
   expect_equal(gg$vimp[1], unname(max(gini)))
+})
+
+make_mock_vimp <- function(vars = c("bpd", "vis", "age")) {
+  d <- data.frame(vars = factor(vars, levels = vars),
+                  vimp = c(0.3, 0.2, 0.1),
+                  positive = TRUE,
+                  stringsAsFactors = FALSE)
+  class(d) <- c("gg_vimp", "data.frame")
+  d
+}
+
+test_that("labels rename the variable axis", {
+  p <- plot(make_mock_vimp(), labels = c(bpd = "BP Diastole"))
+  built <- ggplot2::ggplot_build(p)
+  expect_true("BP Diastole" %in% as.character(built$layout$panel_params[[1]]$y$get_labels()))
+})
+
+test_that("a partial label set is honoured -- regression for the length gate", {
+  # Three variables, ONE label. The old code silently applied nothing.
+  p <- plot(make_mock_vimp(), labels = c(bpd = "BP Diastole"))
+  labs_out <- as.character(ggplot2::ggplot_build(p)$layout$panel_params[[1]]$y$get_labels())
+  expect_true("BP Diastole" %in% labs_out)
+  expect_true("vis" %in% labs_out)
+})
+
+test_that("lbls still works but warns about deprecation", {
+  expect_warning(plot(make_mock_vimp(), lbls = c(bpd = "BP Diastole")),
+                 "deprecated")
+})
+
+test_that("supplying both lbls and labels is an error", {
+  expect_error(plot(make_mock_vimp(),
+                    lbls = c(bpd = "A"), labels = c(bpd = "B")),
+               "both")
 })

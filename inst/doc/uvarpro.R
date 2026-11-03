@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   cache      = TRUE,
   cache.path = "uvarpro_cache/"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 
 
 ## ----libs---------------------------------------------------------------------
@@ -49,4 +49,11 @@ plot(gg_beta_uvarpro(u, beta_fit = beta_fit))
 
 ## ----sdep---------------------------------------------------------------------
 plot(gg_sdependent(u, beta_fit = beta_fit))
+
+
+## -----------------------------------------------------------------------------
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
 

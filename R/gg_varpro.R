@@ -4,7 +4,7 @@
 #' Pulls the per-tree importance scores out of a fitted \code{varpro} object
 #' and summarizes them into a data structure the plot method can draw as a
 #' boxplot.  The box hinges are the 15th and 85th percentiles and the
-#' whiskers run to the 5th and 95th -- not the usual Tukey 1.5 IQR whiskers.
+#' whiskers run to the 5th and 95th, not the usual Tukey 1.5 IQR whiskers.
 #' For a classification forest you can also keep the class-conditional
 #' importances.
 #'
@@ -24,12 +24,29 @@
 #'
 #' Because varpro builds importance from rules sampled over trees, every
 #' tree contributes its own importance value for each variable. Those are
-#' the per-tree scores we summarize here. With \code{local.std = TRUE}
-#' (the default) the per-tree values are standardized by their column
-#' standard deviation so the column mean equals the aggregate z-score
-#' returned by \code{varPro::importance()}; that z-score is the canonical
-#' "is this variable in or out?" statistic, and \code{cutoff = 0.79} is
-#' varpro's default selection threshold.
+#' the per-tree scores we summarize here, and the aggregate z comes from
+#' the same rules on the same trees, so the boxes and z always agree.
+#' \code{varPro::importance()} takes a winsorised mean over trees (trimmed
+#' by \code{trim}), counting a tree with no usable release rule for the
+#' variable as 0. With \code{local.std = TRUE} (the default, as in varPro)
+#' the release rules are re-sampled and scored by their local importance,
+#' the standard deviation is fixed at 1, and z is that winsorised mean, so
+#' the per-tree values already sit on z's scale. With \code{local.std =
+#' FALSE} the fit-time rules are used and z is the winsorised mean divided
+#' by the winsorised standard deviation. \code{cutoff = 0.79} is varpro's
+#' default selection threshold, but the scale of z depends on how many
+#' variables share each tree, so the same cutoff does not mean the same
+#' thing across settings.
+#'
+#' A variable scored in fewer than about \code{trim} of the trees (a tree
+#' scores it when one of its release rules for the variable returns an
+#' importance value) is \emph{untested}: its z is 0 (or undefined with
+#' \code{local.std = FALSE}) because every non-zero tree is winsorised
+#' away, not because it was tested and found unimportant. \code{coverage}
+#' and \code{tested} in the output say which variables those are, and the
+#' plot draws them as open boxes. \code{\link{varpro_coverage}} counts
+#' coverage the same way and adds a per-variable roll-up and a noise-based
+#' cutoff.
 #'
 #' For a classification forest, varpro also returns a class-conditional
 #' z table: the same importance computed restricting attention to rules
@@ -39,8 +56,9 @@
 #'
 #' @section What's in the output:
 #' \code{$imp} is the one-row-per-variable summary: aggregate z from
-#' \code{varPro::importance()}, plus a \code{selected} flag for
-#' \code{z > cutoff}. \code{$stats} holds the box quantiles
+#' varPro's importance aggregation, a \code{selected} flag for
+#' \code{z > cutoff}, and the variable's \code{coverage} and
+#' \code{tested} flag. \code{$stats} holds the box quantiles
 #' (5/15/50/85/95 percentiles, plus the raw mean) computed from the
 #' per-tree matrix; these are what the boxplot draws. \code{$imp.tree}
 #' is the per-tree matrix itself, kept only when \code{faithful = TRUE}
@@ -67,19 +85,51 @@
 #' data-driven cutoff rather than the 0.79 default, see
 #' \code{varPro::cv.varpro}.
 #'
+#' @section Reading the plot:
+#' Rows are ordered by the median tree, but the highlight follows z,
+#' varPro's winsorised mean across the trees, against \code{cutoff}. The
+#' two can disagree: a variable a few trees find very important and many
+#' find unimportant has a long box and a low median.
+#'
+#' A tree with no usable release rule for a variable contributes a zero, which
+#' pulls the lower whisker and box toward 0 as coverage falls; at high
+#' coverage the box need not reach 0. varPro
+#' winsorises the per-tree values (\code{trim = 0.1}: values beyond the 10th
+#' and 90th percentiles are pulled in to them), so a variable scored in fewer
+#' than about \code{trim} of the trees comes back with z exactly 0. That
+#' variable is untested, not unimportant; it is drawn as an open box, and
+#' \code{$imp$coverage} and \code{$imp$tested} say so.
+#'
+#' By default varPro scores a random sample of 150 trees, so on a large
+#' forest the plot can change from run to run. Pass
+#' \code{max.tree = object$rf$ntree} to score every tree. On small or sparse
+#' data the 0.79 cutoff decides a great deal; see
+#' \code{\link{varpro_coverage}} and
+#' \code{vignette("varpro-small-data", package = "ggRandomForests")}.
+#'
 #' @references
 #' Lu, M. and Ishwaran, H. (2024). Model-independent variable selection
 #' via the rule-based variable priority framework. \emph{arXiv preprint}
 #' \href{https://arxiv.org/abs/2409.09003}{arXiv:2409.09003}.
 #'
 #' @param object A fitted \code{varpro} object (required).
-#' @param local.std Logical; default \code{TRUE}.  When \code{TRUE} the
-#'   per-tree importances are put on the z-scale before the box statistics
-#'   are computed.  Set it \code{FALSE} to keep the raw importance scale,
-#'   which is what \code{type = "raw"} in \code{plot.gg_varpro} needs.
+#' @param local.std Logical; default \code{TRUE}.  Passed to varPro's
+#'   importance aggregation, with the same meaning as in
+#'   \code{varPro::importance()}: \code{TRUE} re-samples the release rules,
+#'   scores them by local importance and reports z as their winsorised mean,
+#'   so the boxes are on z's scale.  \code{FALSE} uses the fit-time rules and
+#'   standardises z by the winsorised standard deviation; the boxes are then
+#'   on the raw importance scale, which is what \code{type = "raw"} in
+#'   \code{plot.gg_varpro} needs.  With \code{TRUE} the result depends on
+#'   the random number stream, so call \code{set.seed()} first for a
+#'   reproducible z.
 #' @param cutoff Numeric; the z-score above which a variable is treated as
 #'   selected.  Default \code{0.79}.  A variable with aggregate z above the
-#'   cutoff is flagged \code{selected = TRUE} in \code{$imp}.
+#'   cutoff is flagged \code{selected = TRUE} in \code{$imp}.  varPro uses
+#'   0.79 only to highlight its plot; it is not a selection rule that carries
+#'   from one fit to another.  Prefer \code{noise}, or tune the cutoff with
+#'   \code{varPro::cv.varpro()}.  Ignored for selection when \code{noise} is
+#'   set; the conditional plot still draws it.
 #' @param faithful Logical; default \code{FALSE}.  When \code{TRUE},
 #'   \code{$imp.tree} is kept so \code{plot.gg_varpro} can scatter the
 #'   per-tree points over the box.
@@ -89,7 +139,32 @@
 #' @param nvar Integer; keep only the top \code{nvar} variables, ranked by
 #'   median per-tree z, after the cutoff filter has been applied.
 #'   \code{NULL} keeps all of them.
-#' @param ... Additional arguments passed to \code{varPro::importance()}.
+#' @param trim Winsorising fraction used for z, as in
+#'   \code{varPro::importance()}; default \code{0.1}.  A variable is
+#'   \code{tested} when its coverage is at least \code{trim}.
+#' @param max.tree,max.rules.tree Number of trees, and release rules per
+#'   tree, to score.  Default to the values stored in the fit.  Supplying
+#'   either one re-samples the rules even with \code{local.std = FALSE}, as
+#'   \code{varPro::importance()} does.  The boxes, z and coverage are always
+#'   computed from the same rules.
+#' @param noise \code{NULL} (the default), or a regular expression matching
+#'   the names of permuted noise columns in the fit's data (for example
+#'   \code{"^noise"}).  Selection then replaces \code{cutoff}: a variable is
+#'   selected when it is tested (and scored in at least one tree) and its z
+#'   beats the largest z among \emph{tested} noise of the same kind
+#'   (categorical or continuous), as in \code{\link{varpro_coverage}}.  A
+#'   kind with no tested noise borrows the other kind's bar, with a warning,
+#'   and \code{noise_ref} records which.  The plot draws that bar instead of
+#'   the \code{cutoff} line.  The bar is computed from the same rules as the
+#'   boxes and over every variable, before \code{nvar} truncation.  Needs
+#'   \code{local.std = TRUE}.  ggRandomForests does not add noise columns;
+#'   add them before fitting, and fit with \code{split.weight = FALSE} so
+#'   that varPro's first-pass filter does not cut them.
+#' @param kind_values With \code{noise}, a numeric variable with at most
+#'   this many distinct values counts as categorical.
+#' @param ... Not used.  Earlier versions passed it to
+#'   \code{varPro::importance()}; \code{trim}, \code{max.tree} and
+#'   \code{max.rules.tree} are now arguments, and anything else is an error.
 #'
 #' @return A named list of class \code{"gg_varpro"} with elements:
 #' \describe{
@@ -97,14 +172,23 @@
 #'     levels run least- to most-important by median per-tree z, so the
 #'     most-important variable sits at the top of the plot after
 #'     \code{coord_flip}), \code{z} (aggregate
-#'     z-score from \code{importance()}), \code{selected} (logical,
-#'     \code{z > cutoff}).}
+#'     z-score, \code{NA} when it is undefined), \code{selected} (logical,
+#'     \code{z > cutoff}), \code{coverage} (share of the scored trees in
+#'     which a release rule for the variable returned an importance value)
+#'     and \code{tested}
+#'     (\code{coverage >= trim}).  With \code{noise} set it adds
+#'     \code{noise} (logical), \code{kind}, \code{noise_cut} and
+#'     \code{noise_ref} (the kind of the noise that set \code{noise_cut},
+#'     \code{NA} when no noise was tested), and \code{selected} is a tested
+#'     non-noise variable, scored in at least one tree, whose z beats
+#'     \code{noise_cut}.}
 #'   \item{\code{$imp.tree}}{\code{NULL} when \code{faithful = FALSE};
 #'     otherwise an ntree x p matrix of per-tree importance values.}
 #'   \item{\code{$stats}}{Per-variable summary: \code{variable},
 #'     \code{median}, \code{q05}, \code{q15}, \code{q85}, \code{q95}
-#'     (on z-scale when \code{local.std = TRUE}, raw when \code{FALSE}),
-#'     plus \code{mean} (raw importance mean, always stored).}
+#'     of the per-tree values (on z's scale when \code{local.std = TRUE},
+#'     raw when \code{FALSE}), \code{mean} (their plain mean), and
+#'     \code{coverage} and \code{tested} as in \code{$imp}.}
 #'   \item{\code{$conditional}}{\code{NULL} when \code{conditional = FALSE};
 #'     otherwise a data frame with columns \code{variable}, \code{class},
 #'     \code{z} (one row per variable x class combination). \code{class} is
@@ -113,9 +197,11 @@
 #' }
 #' A \code{"provenance"} attribute carries \code{family}, \code{local.std},
 #' \code{cutoff}, \code{faithful}, \code{conditional}, \code{xvar.names},
-#' and \code{n}.
+#' \code{n}, \code{trim}, \code{max.tree} and \code{max.rules.tree}, and
+#' \code{noise} when it was set.
 #'
-#' @seealso \code{\link{plot.gg_varpro}}, \code{\link{gg_vimp}}
+#' @seealso \code{\link{plot.gg_varpro}}, \code{\link{varpro_coverage}},
+#'   \code{\link{gg_vimp}}
 #'
 #' @examples
 #' \donttest{
@@ -126,28 +212,52 @@
 #' plot(gg)
 #' }
 #'
-#' @importFrom varPro importance
+#' @importFrom varPro importance.varpro.workhorse
 #' @export
 gg_varpro <- function(object,
-                      local.std   = TRUE,
-                      cutoff      = 0.79,
-                      faithful    = FALSE,
-                      conditional = FALSE,
-                      nvar        = NULL,
+                      local.std      = TRUE,
+                      cutoff         = 0.79,
+                      faithful       = FALSE,
+                      conditional    = FALSE,
+                      nvar           = NULL,
+                      trim           = 0.1,
+                      max.tree       = object$max.tree,
+                      max.rules.tree = object$max.rules.tree,
+                      noise          = NULL,
+                      kind_values    = 5L,
                       ...) {
 
   ## ---- Validation + coercion ------------------------------------------------
-  local.std <- .validate_varpro_imp_inputs(object, local.std, faithful, conditional)
+  local.std <- .validate_varpro_imp_inputs(object, local.std, faithful, conditional,
+                                           trim, ...)
+  annotate <- .varpro_noise_annotator(object, noise, kind_values, local.std)
 
-  ## ---- Call importance (local.std=FALSE gives mean & std columns) -----------
-  imp_out <- varPro::importance(object, local.std = FALSE, ...)
+  ## ---- Score one set of rules, as varPro::importance() would (#340) ---------
+  ## z, the per-tree matrix and coverage all come from `scored$results`, so the
+  ## boxes and z describe the same trees.
+  scored <- object
+  if (local.std || !missing(max.tree) || !missing(max.rules.tree)) {
+    if (is.null(object$rf)) {
+      stop("gg_varpro(): this varpro fit has no forest ($rf), so its release ",
+           "rules cannot be re-sampled, which local.std = TRUE, max.tree and ",
+           "max.rules.tree all need. Use local.std = FALSE to score the ",
+           "fit-time rules.", call. = FALSE)
+    }
+    scored <- .varpro_score_rules(object, max.tree, max.rules.tree,
+                                  local.std = local.std)$scored
+  }
+  imp_out <- varPro::importance.varpro.workhorse(
+    scored, cutoff = cutoff, trim = trim, plot.it = FALSE, conf = TRUE,
+    sort = TRUE, ylab = "", local.std = local.std)
 
-  ## ---- Build per-tree importance matrix from object$results -----------------
-  imp_tree_mat <- .build_varpro_imp_tree(object)
+  imp_tree_mat <- .build_varpro_imp_tree(scored)
+  coverage     <- .varpro_imp_coverage(scored, rownames(imp_tree_mat))
 
   ## ---- Build tidy data structures ------------------------------------------
   dfs <- .build_varpro_imp_dfs(imp_out, imp_tree_mat, object$family,
-                                cutoff, nvar, faithful, local.std, conditional)
+                                cutoff, nvar, faithful, conditional,
+                                coverage = coverage, trim = trim,
+                                annotate = annotate)
 
   ## varPro recodes a binary outcome to 0/1 and names the conditional columns
   ## after those codes; report the original class names, as gg_ivarpro() does.
@@ -183,13 +293,39 @@ gg_varpro <- function(object,
     faithful    = faithful,
     conditional = conditional,
     xvar.names  = object$xvar.names,
-    n           = nrow(object$x)
+    n           = nrow(object$x),
+    trim        = trim,
+    max.tree       = scored$max.tree,
+    max.rules.tree = scored$max.rules.tree
   )
+  if (!is.null(noise)) attr(result, "provenance")$noise <- noise
 
   result
 }
 
 ## ---- Internal helpers -------------------------------------------------------
+
+#' Check \code{noise} and build the step that judges \code{$imp} against it
+#'
+#' Returns \code{NULL} without \code{noise}; otherwise a function applied to
+#' the full importance table, before \code{nvar} truncation, so the noise bar
+#' is judged on every variable.
+#' @return \code{NULL}, or a function that takes and returns the importance data frame.
+#' @keywords internal
+.varpro_noise_annotator <- function(object, noise, kind_values, local.std) {
+  if (is.null(noise)) return(NULL)
+  if (!is.character(noise) || length(noise) != 1L || is.na(noise)) {
+    stop("'noise' must be NULL or a single regular expression.", call. = FALSE)
+  }
+  if (!isTRUE(local.std)) {
+    stop("'noise' needs local.std = TRUE: only then is z on the boxes' scale, ",
+         "so the noise bar can be drawn against them.", call. = FALSE)
+  }
+  function(d) {
+    vars <- unname(.varpro_coverage_map(object, d$variable))
+    .varpro_noise_judge(d, vars, object, noise, kind_values)
+  }
+}
 
 ## varPro codes a binary outcome by frequency, not by level: the minority
 ## class is 1 and the majority 0, and on a tie which.min() makes the FIRST
@@ -216,7 +352,17 @@ gg_varpro <- function(object,
 }
 
 #' @keywords internal
-.validate_varpro_imp_inputs <- function(object, local.std, faithful, conditional) {
+.validate_varpro_imp_inputs <- function(object, local.std, faithful, conditional,
+                                        trim = 0.1, ...) {
+  if (...length() > 0L) {
+    stop("gg_varpro(): unused argument(s): ",
+         paste(names(list(...)), collapse = ", "),
+         ". Only trim, max.tree and max.rules.tree are passed to varPro.",
+         call. = FALSE)
+  }
+  if (!is.numeric(trim) || length(trim) != 1L || trim < 0 || trim >= 0.5) {
+    stop("'trim' must be a single number in [0, 0.5).", call. = FALSE)
+  }
   if (missing(object) || is.null(object)) {
     stop("'object' must be a fitted varpro object.", call. = FALSE)
   }
@@ -235,6 +381,7 @@ gg_varpro <- function(object,
 #' Reconstructs the ntree x p per-tree importance matrix from
 #' \code{object$results}, replicating the aggregation performed internally
 #' by \code{varPro:::.importance.varpro.workhorse}.
+#' @return A numeric matrix of per-tree importance, trees by variables.
 #' @keywords internal
 .build_varpro_imp_tree <- function(object) {
   dta        <- object$results
@@ -271,33 +418,41 @@ gg_varpro <- function(object,
   sweep(imp_tree, 2L, wt.vec, `*`)
 }
 
+#' Share of scored trees with a usable release rule, per variable
+#'
+#' A rule is usable when varPro scored it (non-missing \code{imp}).  The
+#' denominator is the trees in \code{scored$results}, the same trees the
+#' per-tree matrix and z are built from.
+#' @return A numeric vector of coverage shares, named by variable.
+#' @keywords internal
+.varpro_imp_coverage <- function(scored, trees) {
+  dta  <- scored$results
+  used <- !is.na(dta$imp)
+  vars <- scored$xvar.names[dta$variable[used]]
+  n    <- tapply(dta$tree[used], vars, function(t) length(unique(t)))
+  stats::setNames(as.numeric(n) / length(trees), names(n))
+}
+
 #' Compute per-variable box statistics from a per-tree importance matrix
 #'
-#' When \code{local.std = TRUE} the columns of \code{mat} are standardized
-#' to unit variance before computing quantiles so that the display scale
-#' matches the aggregate z-score.  The \code{mean} column always stores raw
-#' (unstandardized) column means.
+#' Quantiles of the per-tree values as they are.  With varPro's
+#' \code{local.std = TRUE} those values are already on z's scale (z is their
+#' winsorised mean); with \code{FALSE} they are raw importances.
+#' @return A data frame with one row per variable: \code{variable},
+#'   \code{median}, \code{q05}, \code{q15}, \code{q85}, \code{q95} and \code{mean}.
 #' @keywords internal
-.varpro_imp_stats <- function(mat, local.std = TRUE) {
-  if (local.std) {
-    sd_j <- apply(mat, 2L, stats::sd, na.rm = TRUE)
-    sd_j[sd_j < .Machine$double.eps] <- 1   # guard zero-variance columns
-    # z_ij = imp_ij / sd_j so that mean(z_ij) == aggregate z_j from importance()
-    display_mat <- sweep(mat, 2L, sd_j, FUN = "/")
-  } else {
-    display_mat <- mat
-  }
+.varpro_imp_stats <- function(mat) {
   data.frame(
     variable = colnames(mat),
-    median   = apply(display_mat, 2L, stats::quantile, probs = 0.50,
+    median   = apply(mat, 2L, stats::quantile, probs = 0.50,
                      na.rm = TRUE),
-    q05      = apply(display_mat, 2L, stats::quantile, probs = 0.05,
+    q05      = apply(mat, 2L, stats::quantile, probs = 0.05,
                      na.rm = TRUE),
-    q15      = apply(display_mat, 2L, stats::quantile, probs = 0.15,
+    q15      = apply(mat, 2L, stats::quantile, probs = 0.15,
                      na.rm = TRUE),
-    q85      = apply(display_mat, 2L, stats::quantile, probs = 0.85,
+    q85      = apply(mat, 2L, stats::quantile, probs = 0.85,
                      na.rm = TRUE),
-    q95      = apply(display_mat, 2L, stats::quantile, probs = 0.95,
+    q95      = apply(mat, 2L, stats::quantile, probs = 0.95,
                      na.rm = TRUE),
     mean     = colMeans(mat, na.rm = TRUE),
     stringsAsFactors = FALSE,
@@ -306,9 +461,11 @@ gg_varpro <- function(object,
 }
 
 #' Build the tidy importance data structures from importance() output
+#' @return A list with elements \code{imp}, \code{imp_tree}, \code{stats} and \code{conditional}.
 #' @keywords internal
 .build_varpro_imp_dfs <- function(imp_out, imp_tree_mat, family, cutoff, nvar,
-                                   faithful, local.std, conditional) {
+                                   faithful, conditional, coverage = NULL,
+                                   trim = 0.1, annotate = NULL) {
   is_class <- identical(family, "class")
 
   ## Unpack importance() data frame: different shapes per family
@@ -341,23 +498,32 @@ gg_varpro <- function(object,
          call. = FALSE)
   }
 
-  ## Replace NaN z with 0 for sorting/selection
-  z_vec[!is.finite(z_vec)] <- 0
+  ## An undefined z (0/0 for an untested variable when local.std = FALSE) is
+  ## reported as NA, not 0: "untested" is not "tested and unimportant" (#340).
+  z_vec <- as.numeric(z_vec)
+  z_vec[!is.finite(z_vec)] <- NA_real_
 
   ## $imp: one row per variable
   imp_df <- data.frame(
     variable = vars_raw,
-    z        = as.numeric(z_vec),
-    selected = as.numeric(z_vec) > cutoff,
+    z        = z_vec,
+    selected = !is.na(z_vec) & z_vec > cutoff,
     stringsAsFactors = FALSE
   )
+  cov_j           <- unname(coverage[vars_raw])
+  imp_df$coverage <- if (is.null(coverage)) NA_real_ else ifelse(is.na(cov_j), 0, cov_j)
+  imp_df$tested   <- imp_df$coverage >= trim
+  if (!is.null(annotate)) imp_df <- annotate(imp_df)
 
   ## Keep only columns present in both imp_df and imp_tree_mat
   keep_vars  <- imp_df$variable[imp_df$variable %in% colnames(imp_tree_mat)]
   imp_tree_k <- imp_tree_mat[, keep_vars, drop = FALSE]
 
   ## $stats: box quantiles per variable (full set before nvar truncation)
-  stats_df <- .varpro_imp_stats(imp_tree_k, local.std = local.std)
+  stats_df <- .varpro_imp_stats(imp_tree_k)
+  stats_df <- cbind(stats_df,
+                    imp_df[match(stats_df$variable, imp_df$variable),
+                           c("coverage", "tested")])
 
   ## Apply nvar truncation by median z (spec: "top-nvar by median z")
   if (!is.null(nvar)) {

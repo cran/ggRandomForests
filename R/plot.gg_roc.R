@@ -30,8 +30,8 @@
 #'   \code{which_outcome}: given a multi-class forest and
 #'   \code{which_outcome = NULL} it calls \code{\link{gg_roc}} once per class
 #'   and overlays the one-vs-rest curves, where \code{gg_roc(x)} alone returns
-#'   a single curve -- a macro-average for \code{randomForest}, or class 1
-#'   with a warning for \code{rfsrc}. Prefer
+#'   a single curve (a macro-average for \code{randomForest}, or class 1
+#'   with a warning for \code{rfsrc}). Prefer
 #'   \code{plot(gg_roc(x, which_outcome))}, which is explicit about both the
 #'   class and the engine. Issue #72 tracks reconciling the entry points.
 #' @param which_outcome Integer; for multi-class problems, the index of the
@@ -61,8 +61,8 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R,
 #' Rnews, 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-#' Regression and Classification. R package version >= 3.4.0.
+#' Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+#' Regression, and Classification (RF-SRC). R package version 3.6.2.
 #' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #' @examples

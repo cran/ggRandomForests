@@ -90,6 +90,15 @@
 #'   degree \eqn{\ge} \code{min.degree} are kept in \code{$nodes},
 #'   \code{$edges}, and \code{$graph}.
 #' @param ... Additional arguments forwarded to \code{varPro::sdependent()}.
+#' @param pre.filter Logical; forwarded to \code{varPro::get.beta.entropy()}.
+#'   \code{TRUE} (default) restricts the lasso fits to the variables that pass
+#'   varPro's importance pre-filter. \code{FALSE} uses every variable, so one
+#'   the pre-filter drops (an outcome column, say) can still reach the graph.
+#'   Ignored when \code{beta.mat} is supplied.
+#' @param beta.mat Optional precomputed dependency matrix, as returned by
+#'   \code{varPro::get.beta.entropy(object, ...)}, with row and column names.
+#'   Supply it to reuse one expensive computation across several calls.
+#'   \code{NULL} (default) computes it from \code{object}.
 #'
 #' @return A named list of class \code{"gg_udependent"} with elements:
 #' \describe{
@@ -104,7 +113,9 @@
 #'     detected.}
 #' }
 #' A \code{"provenance"} attribute carries \code{threshold}, \code{q.signal},
-#' \code{directed}, \code{min.degree}, \code{xvar.names}, and \code{n}.
+#' \code{directed}, \code{min.degree}, \code{pre.filter} (\code{NA} when
+#' \code{beta.mat} was supplied, since it was not used),
+#' \code{beta.mat.supplied}, \code{xvar.names}, and \code{n}.
 #'
 #' @seealso \code{\link{plot.gg_udependent}}
 #'
@@ -124,11 +135,13 @@ gg_udependent <- function(object,
                            q.signal   = 0.75,
                            directed   = TRUE,
                            min.degree = NULL,
-                           ...) {
+                           ...,
+                           pre.filter = TRUE,
+                           beta.mat   = NULL) {
   .validate_udep_inputs(object, threshold, directed)
 
   ## ---- Compute cross-variable dependency matrix ----------------------------
-  imp_mat <- .udep_square(varPro::get.beta.entropy(object),
+  imp_mat <- .udep_square(.udep_beta(object, beta.mat, pre.filter),
                           attr(object$x, "xvar.map"))
 
   ## ---- Helper: build and return an empty gg_udependent result ---------------
@@ -149,7 +162,8 @@ gg_udependent <- function(object,
       class = c("gg_udependent", "list")
     )
     attr(result, "provenance") <- .udep_provenance(object, threshold, q.signal,
-                                                     directed, min.degree)
+                                                     directed, min.degree,
+                                                     pre.filter, beta.mat)
     result
   }
 
@@ -265,7 +279,8 @@ gg_udependent <- function(object,
     class = c("gg_udependent", "list")
   )
   attr(result, "provenance") <- .udep_provenance(object, threshold, q.signal,
-                                                   directed, min.degree)
+                                                   directed, min.degree,
+                                                   pre.filter, beta.mat)
   result
 }
 
@@ -288,6 +303,20 @@ gg_udependent <- function(object,
   invisible(NULL)
 }
 
+## Return the user's precomputed matrix after checking it, or compute one.
+#' @keywords internal
+.udep_beta <- function(object, beta_mat, pre_filter) {
+  if (is.null(beta_mat)) {
+    return(varPro::get.beta.entropy(object, pre.filter = pre_filter))
+  }
+  if (!is.matrix(beta_mat) || !is.numeric(beta_mat) ||
+      is.null(rownames(beta_mat)) || is.null(colnames(beta_mat))) {
+    stop("'beta.mat' must be a numeric matrix with row and column names, ",
+         "as returned by varPro::get.beta.entropy().", call. = FALSE)
+  }
+  beta_mat
+}
+
 ## Pad the (usually non-square) get.beta.entropy() matrix to square over the
 ## union of its row and column names, filling with 0, and zero the entries
 ## between one-hot levels of the same factor. xvar.map maps each one-hot
@@ -305,12 +334,16 @@ gg_udependent <- function(object,
 }
 
 #' @keywords internal
-.udep_provenance <- function(object, threshold, q.signal, directed, min.degree) {
+.udep_provenance <- function(object, threshold, q.signal, directed, min.degree,
+                             pre_filter, beta_mat) {
+  supplied <- !is.null(beta_mat)
   list(
     threshold  = threshold,
     q.signal   = q.signal,
     directed   = directed,
     min.degree = min.degree,
+    pre.filter = if (supplied) NA else pre_filter,
+    beta.mat.supplied = supplied,
     xvar.names = object$xvar.names,
     n          = nrow(object$x)
   )

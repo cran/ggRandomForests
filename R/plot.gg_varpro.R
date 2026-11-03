@@ -14,12 +14,20 @@
 #' per-tree scores, the center line is the median, and the whiskers run
 #' out to the 5th and 95th percentile, not the usual Tukey 1.5 IQR
 #' whiskers. The dashed vertical line is the selection \code{cutoff}
-#' (default \code{0.79}). On the default z-score axis
+#' (default \code{0.79}), or, when \code{gg_varpro()} was given
+#' \code{noise}, the noise bar: the largest z among tested noise of the
+#' variable's kind, or of the other kind when its own has none (the caption
+#' then says \dQuote{from continuous noise}, say).  With both a categorical and a continuous bar each row
+#' gets its own dashed tick, and noise variables are drawn in orange.  The
+#' conditional plot always draws \code{cutoff}. On the default z-score axis
 #' (\code{local.std = TRUE}) that line is a z; on the raw-importance
 #' axis (\code{local.std = FALSE}, \code{type = "raw"}) it is the same
 #' numeric value but in raw-importance units. Boxes whose aggregate
 #' value sits above the line are colored blue and flagged
-#' \code{selected = TRUE}, the rest are gray. A
+#' \code{selected = TRUE}, the rest are gray. A variable with a usable
+#' release rule in fewer than \code{trim} of the trees (\code{tested =
+#' FALSE}) is drawn as an open box, usually a flat line at zero: it was
+#' barely tested, which is not the same as tested and found unimportant. A
 #' selected variable with a tight, high box is a variable the forest
 #' agrees on across trees. A selected variable with a wide box that
 #' straddles the cutoff is one to look at twice before relying on it.
@@ -51,6 +59,11 @@
 #'   TRUE} (the default), \code{"raw"} when \code{local.std = FALSE}.
 #'   Asking for a scale that the extract step did not prepare raises an
 #'   error.
+#' @param labels Optional variable labels for the variable axis.  One of: a named
+#'   character vector (\code{c(bpd_last = "BP Diastole")}); a labelled data frame,
+#'   whose \code{attr(col, "label")} values are read; or a two-column
+#'   \code{key}/\code{label} data frame.  Variables with no label keep their raw
+#'   name.  Defaults to \code{NULL} (raw names).
 #' @param ... Not currently used.
 #'
 #' @details
@@ -69,10 +82,9 @@
 #' (\code{$conditional}) are shown as a faceted bar chart
 #' (\code{facet_wrap(~class, nrow = 1)}).  Variables keep the sort order set
 #' by the unconditional median z in \code{$stats}, so the facets line up.
-#' A variable whose class-conditional z is undefined (0/0, which
-#' \code{varPro::importance()} can return because \code{gg_varpro()} calls it
-#' with \code{local.std = FALSE}) gets no bar in that facet, and the caption
-#' says so; a zero bar would read as a measured zero.  0/0 arises when too few
+#' A variable whose class-conditional z is undefined (0/0, possible only with
+#' \code{local.std = FALSE}) gets no bar in that facet, and the caption says
+#' so; a zero bar would read as a measured zero.  0/0 arises when too few
 #' trees tested the variable, but also when every tree scored it exactly 0,
 #' so the plot does not say which.  Every class keeps its facet, even one
 #' with no defined z.
@@ -95,11 +107,13 @@
 #' @importFrom ggplot2 scale_fill_manual labs theme_minimal
 #' @importFrom tidyr pivot_longer
 #' @export
-plot.gg_varpro <- function(x, type, ...) {
+plot.gg_varpro <- function(x, type, labels = NULL, ...) {
   prov <- attr(x, "provenance")
 
   ## ---- Auto-detect type from provenance when not supplied ------------------
-  if (missing(type)) {
+  ## Recorded before the assignment below, after which missing() is FALSE.
+  type_given <- !missing(type)
+  if (!type_given) {
     type <- if (isTRUE(prov$local.std)) "z" else "raw"
   } else {
     type <- match.arg(type, c("z", "raw"))
@@ -115,35 +129,50 @@ plot.gg_varpro <- function(x, type, ...) {
          call. = FALSE)
   }
 
+  ## ---- Compute labels once for both paths --------------------------------
+  lab_lookup <- .forest_labels(labels)
+
   ## ---- Conditional view ---------------------------------------------------
   if (!is.null(x$conditional)) {
-    if (!missing(type) && !identical(type, "z")) {
+    if (type_given && !identical(type, "z")) {
       message("Conditional plot ignores type = '", type,
               "'; showing class-conditional z scores.")
     }
-    return(.plot_varpro_conditional(x, prov))
+    return(.plot_varpro_conditional(x, prov, lab_lookup))
   }
 
   ## ---- Default / faithful view --------------------------------------------
-  .plot_varpro_main(x, type, prov)
+  .plot_varpro_main(x, type, prov, lab_lookup)
 }
 
 ## ---- Internal renderers ----------------------------------------------------
 
 #' @keywords internal
-.plot_varpro_main <- function(x, type, prov) {
+.plot_varpro_main <- function(x, type, prov, lab_lookup = NULL) {
   stats_df <- x$stats
   # Merge selected flag
-  sel_df <- unique(x$imp[, c("variable", "selected")])
-  stats_df <- merge(stats_df, sel_df, by = "variable", all.x = TRUE)
+  sel_df <- unique(x$imp[, intersect(c("variable", "selected", "noise", "noise_cut"),
+                                     names(x$imp))])
+  stats_df <- merge(stats_df[, setdiff(names(stats_df), "selected")], sel_df,
+                    by = "variable", all.x = TRUE)
+  ## Objects built before #340 carry no `tested` column; treat them as tested.
+  tested <- if (is.null(stats_df$tested)) TRUE else stats_df$tested
+  stats_df$box_fill <- ifelse(tested, as.character(stats_df$selected), "untested")
+  noise_bar <- !is.null(stats_df$noise_cut)
+  if (noise_bar) stats_df$box_fill[tested & stats_df$noise] <- "noise"
 
   faithful  <- isTRUE(prov$faithful)
   cutoff    <- prov$cutoff %||% 0.79
-  fill_vals <- c("TRUE" = "#4e8fcd", "FALSE" = "#888888")
+  fill_vals <- c("TRUE" = "#4e8fcd", "FALSE" = "#888888", "untested" = "white",
+                 "noise" = "#e8b58a")
   cap_text  <- paste0(
     "Hinges: 15th/85th percentiles; whiskers: 5th/95th. ",
     if (faithful) "Points show per-tree importance. " else "",
-    "Not a Tukey boxplot."
+    "Not a Tukey boxplot.",
+    if (all(tested)) "" else paste0("\nOpen boxes: scored in fewer than ",
+                                    100 * (prov$trim %||% 0.1),
+                                    "% of trees (untested)."),
+    if (noise_bar) .varpro_noise_caption(x$imp) else ""
   )
 
   p <- ggplot2::ggplot(stats_df,
@@ -153,13 +182,12 @@ plot.gg_varpro <- function(x, type, ...) {
                       middle = .data[["median"]],
                       upper  = .data[["q85"]],
                       ymax   = .data[["q95"]],
-                      fill   = factor(.data[["selected"]]))) +
+                      fill   = .data[["box_fill"]])) +
     ggplot2::geom_boxplot(stat = "identity",
                           alpha = if (faithful) 0.4 else 0.85) +
     ggplot2::coord_flip() +
     ggplot2::scale_fill_manual(values = fill_vals, guide = "none") +
-    ggplot2::geom_hline(yintercept = cutoff,
-                        linetype = "dashed", color = "#e74c3c", linewidth = 0.7) +
+    .varpro_cut_layer(stats_df, cutoff, noise_bar) +
     ggplot2::labs(x = NULL,
                   y = .varpro_imp_ylabel(type, prov),
                   caption = cap_text) +
@@ -178,20 +206,11 @@ plot.gg_varpro <- function(x, type, ...) {
     long_df <- long_df[!is.na(long_df$variable), , drop = FALSE]
 
     ## Overlay y-values match the box scale (type-aware) --------------------
-    if (identical(type, "z")) {
-      ## z_ij = imp_ij / sd_j  (same formula as .varpro_imp_stats)
-      sd_j <- tapply(long_df$imp_raw, long_df$variable,
-                     stats::sd, na.rm = TRUE)
-      sd_j[sd_j < .Machine$double.eps] <- 1
-      long_df$overlay  <- long_df$imp_raw / sd_j[long_df$variable]
-      mean_df          <- stats_df
-      mean_df$overlay_mean <- mean_df$mean / sd_j[as.character(mean_df$variable)]
-    } else {
-      ## raw scale: imp_raw as-is; mean column is already raw
-      long_df$overlay      <- long_df$imp_raw
-      mean_df              <- stats_df
-      mean_df$overlay_mean <- mean_df$mean
-    }
+    ## The box is drawn from the per-tree values as they are (z's scale with
+    ## local.std = TRUE, raw otherwise), so the overlay uses them unchanged.
+    long_df$overlay      <- long_df$imp_raw
+    mean_df              <- stats_df
+    mean_df$overlay_mean <- mean_df$mean
 
     p <- p +
       ggplot2::geom_jitter(data = long_df,
@@ -209,11 +228,54 @@ plot.gg_varpro <- function(x, type, ...) {
                           size = 2.5)
   }
 
+  ## Variable names sit on a discrete x scale here (the plot coord_flip()s), so
+  ## relabelling goes through scale_x_discrete, not a facet labeller.
+  if (!is.null(lab_lookup)) {
+    p <- p +
+      ggplot2::scale_x_discrete(
+        labels = function(v) .apply_forest_labels(v, lab_lookup)
+      )
+  }
+
   p
 }
 
+#' The dashed selection line: the cutoff, or the noise bar
+#'
+#' One noise bar (a single kind, or both kinds at the same z) is a line
+#' across the plot; two are a dashed tick on each variable's row.
+#' @return A ggplot2 layer: \code{geom_hline()} for one bar, \code{geom_errorbar()} for one per row.
 #' @keywords internal
-.plot_varpro_conditional <- function(x, prov) {
+.varpro_cut_layer <- function(stats_df, cutoff, noise_bar) {
+  cuts <- if (noise_bar) unique(stats_df$noise_cut) else cutoff
+  if (length(cuts) == 1L) {
+    return(ggplot2::geom_hline(yintercept = cuts, linetype = "dashed",
+                               color = "#e74c3c", linewidth = 0.7))
+  }
+  ggplot2::geom_errorbar(data = stats_df,
+                         ggplot2::aes(x = .data[["variable"]],
+                                      ymin = .data[["noise_cut"]],
+                                      ymax = .data[["noise_cut"]]),
+                         inherit.aes = FALSE, width = 0.9, linetype = "dashed",
+                         color = "#e74c3c", linewidth = 0.7)
+}
+
+#' Caption line naming the noise bar for each kind
+#' @return A single character string.
+#' @keywords internal
+.varpro_noise_caption <- function(imp) {
+  bars <- unique(imp[, c("kind", "noise_cut", "noise_ref")])
+  bars <- bars[order(bars$kind), , drop = FALSE]
+  lab <- ifelse(is.na(bars$noise_ref), sprintf("%s 0, no noise tested", bars$kind),
+                sprintf("%s %.3g", bars$kind, bars$noise_cut))
+  borrowed <- !is.na(bars$noise_ref) & bars$noise_ref != bars$kind
+  lab[borrowed] <- paste0(lab[borrowed], " from ", bars$noise_ref[borrowed], " noise")
+  paste0("\nDashed: best tested noise z per kind (", paste(lab, collapse = ", "),
+         "). Orange boxes: noise.")
+}
+
+#' @keywords internal
+.plot_varpro_conditional <- function(x, prov, lab_lookup = NULL) {
   ## Class-conditional z-scores as faceted bar chart.
   cond_df   <- x$conditional
   cond_df$variable <- factor(cond_df$variable, levels = levels(x$imp$variable))
@@ -223,23 +285,22 @@ plot.gg_varpro <- function(x, type, ...) {
   ## Drop conditional rows for variables outside the displayed set (same
   ## truncation as the faithful overlay) so no phantom "NA" bar appears.
   cond_df <- cond_df[!is.na(cond_df$variable), , drop = FALSE]
-  ## An undefined z (0/0; gg_varpro() calls importance() with
-  ## local.std = FALSE) gets no bar rather than a zero bar (#344). Its row
-  ## stays on the axis (drop = FALSE) and its class keeps its facet. 0/0 has
-  ## more than one cause -- too few trees tested, or every tree scoring
-  ## exactly 0 -- so the plot does not name one. varPro leaves out a variable
-  ## undefined for every class, so a variable missing from the table is
-  ## undefined too. Undefined rows stay in the data as NA, which
-  ## geom_col(na.rm = TRUE) skips, so every class keeps a facet.
+  ## An undefined z (0/0, local.std = FALSE only) gets no bar rather than a
+  ## zero bar (#344). Its row stays on the axis (drop = FALSE) and its class
+  ## keeps its facet. 0/0 has more than one cause -- too few trees
+  ## tested, or every tree scoring exactly 0 -- so the plot does not name one.
+  ## varPro leaves out a variable undefined for every class, so a variable
+  ## missing from the table is undefined too. Undefined rows stay in the data
+  ## as NA, which geom_col(na.rm = TRUE) skips, so every class keeps a facet.
   cond_df$z[!is.finite(cond_df$z)] <- NA_real_
   undefined <- sum(!is.na(cond_df$z)) <
     length(levels(cond_df$variable)) * nlevels(cond_df$class)
   cutoff    <- prov$cutoff %||% 0.79
 
-  ggplot2::ggplot(cond_df,
-                  ggplot2::aes(x    = .data[["variable"]],
-                               y    = .data[["z"]],
-                               fill = .data[["z"]] > cutoff)) +
+  p <- ggplot2::ggplot(cond_df,
+                       ggplot2::aes(x    = .data[["variable"]],
+                                    y    = .data[["z"]],
+                                    fill = .data[["z"]] > cutoff)) +
     ## position_identity: the default stacking turns an NA height into 0.
     ggplot2::geom_col(position = "identity", na.rm = TRUE) +
     ggplot2::coord_flip() +
@@ -258,9 +319,18 @@ plot.gg_varpro <- function(x, type, ...) {
                                    if (undefined) {
                                      "\nNo bar: z undefined for that class."
                                    })) +
-    ## Variable names sit on a discrete x scale here (the plot coord_flip()s).
-    ggplot2::scale_x_discrete(drop = FALSE) +
     ggplot2::theme_minimal()
+
+  ## Variable names sit on a discrete x scale here (the plot coord_flip()s), so
+  ## relabelling goes through scale_x_discrete, not a facet labeller.
+  p <- p +
+    ggplot2::scale_x_discrete(
+      drop   = FALSE,
+      labels = if (is.null(lab_lookup)) ggplot2::waiver() else
+        function(v) .apply_forest_labels(v, lab_lookup)
+    )
+
+  p
 }
 
 #' @keywords internal

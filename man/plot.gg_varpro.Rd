@@ -4,7 +4,7 @@
 \alias{plot.gg_varpro}
 \title{Plot a \code{gg_varpro} variable importance object}
 \usage{
-\method{plot}{gg_varpro}(x, type, ...)
+\method{plot}{gg_varpro}(x, type, labels = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{gg_varpro} object from \code{\link{gg_varpro}}.}
@@ -14,6 +14,12 @@ from \code{provenance$local.std}: \code{"z"} when \code{local.std =
 TRUE} (the default), \code{"raw"} when \code{local.std = FALSE}.
 Asking for a scale that the extract step did not prepare raises an
 error.}
+
+\item{labels}{Optional variable labels for the variable axis.  One of: a named
+character vector (\code{c(bpd_last = "BP Diastole")}); a labelled data frame,
+whose \code{attr(col, "label")} values are read; or a two-column
+\code{key}/\code{label} data frame.  Variables with no label keep their raw
+name.  Defaults to \code{NULL} (raw names).}
 
 \item{...}{Not currently used.}
 }
@@ -43,10 +49,9 @@ marks the mean.
 (\code{$conditional}) are shown as a faceted bar chart
 (\code{facet_wrap(~class, nrow = 1)}).  Variables keep the sort order set
 by the unconditional median z in \code{$stats}, so the facets line up.
-A variable whose class-conditional z is undefined (0/0, which
-\code{varPro::importance()} can return because \code{gg_varpro()} calls it
-with \code{local.std = FALSE}) gets no bar in that facet, and the caption
-says so; a zero bar would read as a measured zero.  0/0 arises when too few
+A variable whose class-conditional z is undefined (0/0, possible only with
+\code{local.std = FALSE}) gets no bar in that facet, and the caption says
+so; a zero bar would read as a measured zero.  0/0 arises when too few
 trees tested the variable, but also when every tree scored it exactly 0,
 so the plot does not say which.  Every class keeps its facet, even one
 with no defined z.
@@ -59,12 +64,20 @@ For each variable the box spans the 15th to 85th percentile of the
 per-tree scores, the center line is the median, and the whiskers run
 out to the 5th and 95th percentile, not the usual Tukey 1.5 IQR
 whiskers. The dashed vertical line is the selection \code{cutoff}
-(default \code{0.79}). On the default z-score axis
+(default \code{0.79}), or, when \code{gg_varpro()} was given
+\code{noise}, the noise bar: the largest z among tested noise of the
+variable's kind, or of the other kind when its own has none (the caption
+then says \dQuote{from continuous noise}, say).  With both a categorical and a continuous bar each row
+gets its own dashed tick, and noise variables are drawn in orange.  The
+conditional plot always draws \code{cutoff}. On the default z-score axis
 (\code{local.std = TRUE}) that line is a z; on the raw-importance
 axis (\code{local.std = FALSE}, \code{type = "raw"}) it is the same
 numeric value but in raw-importance units. Boxes whose aggregate
 value sits above the line are colored blue and flagged
-\code{selected = TRUE}, the rest are gray. A
+\code{selected = TRUE}, the rest are gray. A variable with a usable
+release rule in fewer than \code{trim} of the trees (\code{tested =
+FALSE}) is drawn as an open box, usually a flat line at zero: it was
+barely tested, which is not the same as tested and found unimportant. A
 selected variable with a tight, high box is a variable the forest
 agrees on across trees. A selected variable with a wide box that
 straddles the cutoff is one to look at twice before relying on it.

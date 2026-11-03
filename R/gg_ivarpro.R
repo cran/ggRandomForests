@@ -38,28 +38,29 @@
 #' importance and NOT a SHAP value. **Sign carries direction** of the
 #' local response shift inside the rule's region. **Magnitude is on
 #' the response scale** when `scale = "global"`, or unit-free when
-#' `scale = "local"` (the default). The matrix is **heavily sparse** -
+#' `scale = "local"` (the default). The matrix is **heavily sparse**:
 #' an observation contributes only to rules that retain it as OOB; on
 #' real data, per-variable NA fractions of 50-95% are common.
 #' Comparison with `gg_varpro()` (aggregate split-strength) and
 #' `gg_beta_varpro()` (per-rule lasso beta) is diagnostic: a variable
 #' that's important globally but has low per-observation contribution
-#' for a specific case is interesting; the inverse - high local but
-#' low global - flags a regime-specific signal.
+#' for a specific case is interesting; the inverse (high local but
+#' low global) flags a regime-specific signal.
 #'
 #' @section What's in the output:
 #' Long-format tidy frame. Regression has columns `obs`, `variable`,
 #' `local_imp`, `selected`. Classification adds a `class` column
 #' (factor in response-level order). `variable` is a factor whose
-#' levels are set by `mean(|local_imp|)` descending across all rows;
+#' levels run in ascending `mean(|local_imp|)` across all rows, so the
+#' most important variable is the last level and plots at the top;
 #' for classification that aggregate is across all (obs, class) so
 #' every facet / panel shows variables in the same row order. NA
-#' cells are filtered out - the source matrix is sparse, and the
+#' cells are filtered out; the source matrix is sparse, and the
 #' tidy frame only carries the cells where local importance is
 #' defined.
 #'
 #' Provenance attribute carries `source`, `family`, `ntree`, `cutoff`
-#' (named numeric vector - length 1 named `"regr"` for regression,
+#' (named numeric vector: length 1 named `"regr"` for regression,
 #' length K named with class levels for classification),
 #' `cutoff_default`, `use.loo`, `scale`, `n_train`, `n_obs`, `n_var`,
 #' `precomputed`, `xvar.names`, `class_levels` (classification only),
@@ -93,12 +94,15 @@
 #' attribute and by default the first factor level. Because the two
 #' class probabilities sum to one, the wrapper derives the other class
 #' exactly, as the negated local slopes (or the same values under
-#' `use.abs = TRUE`), so both levels are available. The wrapper
+#' `use.abs = TRUE`), so both levels are available. A `y.external`
+#' profile is not a class probability and is not mirrored: it is kept
+#' as a single class, under its target's name when that is a level and
+#' under the last level otherwise. The wrapper
 #' stacks per-class frames into a long-format frame with a `class`
 #' column. `which_class = NULL` returns all classes (binary defaults
 #' to the last factor level, the positive-class convention used by
 #' `glm` and `gg_roc`); `which_class = "<name>"` filters to a single
-#' class. `cutoff` polymorphism mirrors [gg_beta_varpro()] - `NULL`
+#' class. `cutoff` polymorphism mirrors [gg_beta_varpro()]: `NULL`
 #' is per-class mean(|local_imp|), a scalar broadcasts, a named
 #' numeric vector overrides per class with fallback to that class's
 #' mean.
@@ -110,9 +114,8 @@
 #' per-rule LOO subsampling can drift across separate calls. Reuse
 #' `ivarpro_fit` when reproducibility matters.
 #'
-#' @note Multivariate regression (`regr+`) and survival families are
-#'   out of scope for this release. The non-regression / non-class
-#'   path errors with a message naming v3.1.0 as the tracker.
+#' @note Multivariate regression (`regr+`) and survival fits are not
+#'   supported. The unsupported-family path reports the family it received.
 #'
 #' @param object A `varpro` fit from [varPro::varpro()] (regression or
 #'   classification family).
@@ -120,11 +123,12 @@
 #'   ignored otherwise (with a warning). Documented forwardables:
 #'   `adaptive`, `cut`, `cut.max`, `ncut`, `nmin`, `nmax`, `noise.na`,
 #'   `max.rules.tree`, `max.tree`, `use.loo`, `use.abs`, `scale`.
-#' @param which_obs Optional integer scalar - 1-based row index into the
+#' @param which_obs Optional integer scalar; 1-based row index into the
 #'   training data. `NULL` (default) returns the aggregate view.
 #' @param which_class Optional response level name. `NULL` default on a
 #'   binary classification fit resolves to the last factor level
-#'   (positive-class convention). Ignored with a warning on regression
+#'   (positive-class convention), or to the one level that has a profile
+#'   when the fit was not mirrored. Ignored with a warning on regression
 #'   fits.
 #' @param cutoff Selection threshold on `|local_imp|`. `NULL` (default)
 #'   resolves to the per-class `mean(|local_imp|)` (or per-frame mean
@@ -137,8 +141,8 @@
 #' @return A `data.frame` of class `c("gg_ivarpro", "data.frame")`.
 #'   Regression: columns `obs / variable / local_imp / selected`.
 #'   Classification: long-format with an extra `class` column.
-#'   `variable` is a factor whose levels are set by
-#'   `mean(|local_imp|)` descending across all rows (the unified
+#'   `variable` is a factor whose levels run in ascending
+#'   `mean(|local_imp|)` across all rows, most important last (the unified
 #'   ranking axis shared across facets / panels).
 #'
 #' @seealso [gg_varpro()], [gg_vimp()], [gg_beta_varpro()], [varPro::ivarpro()].
@@ -177,9 +181,8 @@ gg_ivarpro.varpro <- function(object, ..., which_obs = NULL,
   fam <- object$family
   if (!fam %in% c("regr", "class")) {
     stop(sprintf(
-      paste0("gg_ivarpro currently supports varpro regression and ",
-             "classification forests only; got family = '%s'. regr+ and ",
-             "survival are tracked for v3.1.0 (see NEWS)."),
+      paste0("gg_ivarpro supports varPro regression and classification ",
+             "fits only; got family = '%s'."),
       fam
     ), call. = FALSE)
   }
@@ -247,9 +250,11 @@ gg_ivarpro.varpro <- function(object, ..., which_obs = NULL,
       iv <- stats::setNames(list(iv, iv_oth), c(target, other))[cls_levels]
     } else {
       # Not the forest's own class probability (e.g. a y.external column):
-      # there is no class to mirror, so keep the single profile under the
-      # last level.
-      iv <- stats::setNames(list(iv), cls_levels[length(cls_levels)])
+      # there is no class to mirror, so keep the single profile under its
+      # target's name when that is a level, else under the last level.
+      key <- if (length(target) == 1L && target %in% cls_levels) target else
+        cls_levels[length(cls_levels)]
+      iv <- stats::setNames(list(iv), key)
     }
   }
   iv
@@ -503,7 +508,10 @@ gg_ivarpro.varpro <- function(object, ..., which_obs = NULL,
       ), call. = FALSE)
     }
   } else if (n_cls == 2L) {
-    which_class <- cls[n_cls]   # binary default = last factor level
+    # binary default = last factor level that has a profile (a y.external
+    # profile is filed under its own target and is not mirrored)
+    present <- cls[cls %in% long$class]
+    which_class <- present[length(present)]
   }
 
   # Per-class mean(|local_imp|) for cutoff resolution

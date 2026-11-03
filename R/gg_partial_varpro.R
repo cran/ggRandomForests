@@ -22,12 +22,12 @@
 #' curve is the one restricted to the data manifold.
 #'
 #' That isolation forest is worth one note. \code{partialpro} grows it with
-#' \code{varPro::isopro}, whose \code{method} defaults to \code{"unsupv"} --
+#' \code{varPro::isopro}, whose \code{method} defaults to \code{"unsupv"},
 #' a forest with no outcome. \code{randomForestSRC} then passes a zero-length
 #' \code{yvar.wt} into its native code and decrements that pointer
 #' (\code{entry.c:184}), which is undefined behaviour and is reported by
-#' UBSAN builds. It is benign in practice -- the pointer is formed but never
-#' dereferenced -- and it is an upstream issue rather than one this package
+#' UBSAN builds. It is benign in practice (the pointer is formed but never
+#' dereferenced), and it is an upstream issue rather than one this package
 #' can fix (\code{ggRandomForests} is pure R); it is tracked as
 #' \code{kogalur/randomForestSRC} issue #477. Passing \code{method = "rnd"}
 #' through to \code{partialpro} avoids the unsupervised grow entirely, which
@@ -78,6 +78,24 @@
 #' estimator, not a structural causal claim about the data-generating
 #' process.
 #'
+#' @section Factors, bands and small data:
+#' varPro one-hot encodes a factor, so a factor \code{stage} becomes the
+#' terms \code{stage1}, \code{stage2}, ..., and \code{partialpro()} looks
+#' terms up by those names (pass \code{xvar.names = "stage4"}, not
+#' \code{"stage"}). Each level is partialled on its own, every case set to 0
+#' and to 1 on that level. \code{partialpro()} leaves the factor's other level
+#' columns as they were, so for a factor with three or more levels some of
+#' those cases hold two levels at once; this is upstream behaviour in
+#' \code{varPro::partialpro()}. Two-level factors, stored as a single 0/1
+#' column, are not affected. To check a multi-level factor, use
+#' \code{\link{gg_partial_rfsrc}}, which sets the factor itself to each level.
+#'
+#' The spread across cases is not a confidence interval. It shows how much
+#' cases differ under one fitted forest; varPro's is narrower still because
+#' \code{partialpro()} gives every case the cohort-mean intercept. To see
+#' how uncertain the curve is, refit on subsamples. The
+#' \code{varpro-small-data} vignette shows both.
+#'
 #' @param part_dta Partial plot data from \code{varPro::partialpro}.  Each
 #'   element must contain \code{xvirtual}, \code{xorg}, \code{yhat.par},
 #'   \code{yhat.nonpar}, and \code{yhat.causal}.  Supply at least one of
@@ -88,7 +106,8 @@
 #'   \code{varPro::partialpro(object)} for you.  Required when
 #'   \code{scale \%in\% c("surv","chf")}.
 #' @param scale Character; the y-axis scale.  One of \code{"auto"} (default),
-#'   the classification scales \code{"prob"} / \code{"odds"} / \code{"logodds"},
+#'   the classification scales \code{"prob"} / \code{"prob_typical"} /
+#'   \code{"odds"} / \code{"logodds"},
 #'   or the survival scales \code{"rmst"} / \code{"surv"} / \code{"mortality"} /
 #'   \code{"chf"}.  With \code{"auto"}: classification fits resolve to
 #'   \code{"prob"} (probability of the target class) and survival fits to
@@ -106,8 +125,11 @@
 #'   \code{object\$rf\$time.interest} and used for both computation and
 #'   axis labeling; if \code{NULL}, three quartile time points from
 #'   \code{time.interest} are used (see \code{\link{gg_partial_rfsrc}}).
-#' @param nvars Integer; how many variables (list elements) to process.
-#'   Defaults to every variable in \code{part_dta}.
+#' @param nvars Integer; how many variables to keep, selected as the top
+#'   \code{nvars} \strong{by varPro importance} when \code{object} is
+#'   supplied (falling back to the incoming \code{part_dta} list order
+#'   otherwise).  Defaults to every variable in \code{part_dta}.  See
+#'   \strong{Details}.
 #' @param cat_limit Integer; a variable with
 #'   \code{length(xvirtual) <= cat_limit} is treated as categorical.
 #'   Default \code{10}.
@@ -115,14 +137,14 @@
 #'   combining results from several models in one figure.
 #' @param ... Forwarded to \code{\link[varPro]{partialpro}} on the
 #'   object-driven path (when \code{part_dta} is \code{NULL}).  Use this to
-#'   control which variables are computed -- e.g. \code{xvar.names} or
-#'   \code{nvar} -- or to tune the isolation-forest UVT step (\code{cut},
+#'   control which variables are computed (e.g. \code{xvar.names} or
+#'   \code{nvar}) or to tune the isolation-forest UVT step (\code{cut},
 #'   \code{nsmp}).  Without it, \code{partialpro} falls back to
 #'   \code{varPro::get.topvars(object)}, which can return few or no variables
 #'   for some fits (yielding empty \code{continuous}/\code{categorical}
 #'   frames).  A name you pass in \code{xvar.names} that the fit cannot reach
-#'   is dropped by \code{partialpro} without comment, so you can ask for twelve
-#'   variables and get ten; we warn and name the missing ones.  See
+#'   is dropped by \code{partialpro}, so you can ask for twelve variables and
+#'   get ten; \code{partialpro} warns and names the missing ones.  See
 #'   \strong{Details}.  Ignored, with a warning, when \code{part_dta} is
 #'   supplied.  With \code{scale = "chf"} the work goes through
 #'   \code{\link{gg_partial_rfsrc}} rather than \code{partialpro}, so
@@ -135,7 +157,7 @@
 #' predictors are worth guiding the trees with, and what survives it lands in
 #' \code{object$xvar.names}; \code{varPro::get.topvars} then ranks a shorter
 #' list out of that.  So the design matrix, the reachable set, and the default
-#' list are three different sizes -- a fit on 45 predictors might carry 26 in
+#' list are three different sizes; a fit on 45 predictors might carry 26 in
 #' \code{object$xvar.names} and 15 in \code{get.topvars}.  \code{partialpro}
 #' can only reach the middle one.  How much gets screened off depends on the
 #' data and the fit, so check rather than assume: \code{length(object$xvar.names)}
@@ -143,17 +165,17 @@
 #'
 #' This bites when you bring a variable list in from somewhere else, say the
 #' top names off an \code{rfsrc} VIMP ranking.  \code{partialpro} intersects
-#' your \code{xvar.names} with what it can reach and keeps the overlap without
-#' remarking on it, so a request for twelve variables can come back with ten
-#' and nothing in the result says so.  It is the intermittent kind of trap: a
-#' top-10 list may come back whole while a top-12 list quietly loses two.  We
-#' compare the two sets before calling \code{partialpro} and warn, naming what
-#' was dropped.  A quick \code{setdiff(my_names, object$xvar.names)} answers
-#' the same question before you spend the computation.
+#' your \code{xvar.names} with what it can reach and keeps the overlap, so a
+#' request for twelve variables can come back with ten.  It is the
+#' intermittent kind of trap: a top-10 list may come back whole while a top-12
+#' list loses two.  \code{partialpro} warns and names what it dropped, but only
+#' after the isolation-forest work is done.  A quick
+#' \code{setdiff(my_names, object$xvar.names)} answers the same question
+#' before you spend the computation.
 #'
 #' For a complete view, fit with both screens off:
 #' \code{varPro::varpro(..., sparse = FALSE, split.weight = FALSE)}.
-#' \code{split.weight = FALSE} is the one that lifts the ceiling -- it puts
+#' \code{split.weight = FALSE} is the one that lifts the ceiling. It puts
 #' every predictor in \code{object$xvar.names}, so partial dependence can reach
 #' them all, and it leaves a strong variable's curve where it was.
 #' \code{sparse = FALSE} does the smaller thing, deepening
@@ -161,31 +183,37 @@
 #' the screened top.  Both are \pkg{varPro}'s own arguments, and its defaults
 #' (both \code{TRUE}) go the other way, toward the screened set; keep the
 #' defaults when that sparser set is what you want.  \code{nvar} is not the
-#' knob here -- it only caps how much gets reported.
+#' knob here; it only caps how much gets reported.
 #'
 #' **Which rows you actually get:** \pkg{varPro} has no imputation.  Every
 #' entry point opens by growing a one-node stump through
 #' \code{randomForestSRC::rfsrc} to settle the family and hand back cleaned
 #' data, and that call takes \code{rfsrc}'s default \code{na.action =
-#' "na.omit"}.  Any case with a missing value -- in a predictor or in the
-#' outcome -- is deleted before the fit, with no warning and no message.
-#' Passing \code{na.action = "na.impute"} to \code{varPro::varpro} does not
-#' change this: it lands in \code{...}, never reaches the stump, and is
-#' discarded without remark (varPro 3.1.0).
+#' "na.omit"}.  Any case with a missing value, in a predictor or in the
+#' outcome, is deleted before the fit.  What you are told about it depends on
+#' the \pkg{varPro} version.  Before 3.2.2 the deletion is silent: no warning,
+#' no message, and \code{na.action = "na.impute"} passed to
+#' \code{varPro::varpro} lands in \code{...}, never reaches the stump, and is
+#' discarded without remark.  From 3.2.2, \code{varpro} warns with the input,
+#' omitted and retained counts, records them in
+#' \code{object$model.info$observations}, and stops with an error on
+#' \code{na.action} (or any other argument it does not recognise) instead of
+#' ignoring it.  The rows are deleted either way; 3.2.2 makes the deletion
+#' visible.
 #'
 #' The loss compounds across predictors rather than adding up.  At 5% missing
-#' per column, independently, retention is \eqn{0.95^p} -- 60% of rows at 10
+#' per column, independently, retention is \eqn{0.95^p}: 60% of rows at 10
 #' predictors, 36% at 20, 8% at 50.  On a wide clinical frame a little
-#' missingness everywhere can delete most of the cohort.  Nothing in the fit
-#' records it: \code{object$rf$n} is the count \emph{after} deletion and no
-#' original is kept, so neither you nor this package can recover the number
-#' from the object.  Check before you fit -- \code{nrow(dta)} against
-#' \code{sum(complete.cases(dta))}.
+#' missingness everywhere can delete most of the cohort.  Before 3.2.2 nothing
+#' in the fit records it: \code{object$rf$n} is the count \emph{after}
+#' deletion and no original is kept, so neither you nor this package can
+#' recover the number from the object.  On any version, check before you fit:
+#' \code{nrow(dta)} against \code{sum(complete.cases(dta))}.
 #'
 #' **Imputing first, without inventing outcomes:** \code{varPro::roughfix}
 #' does mean and modal fill, \code{randomForestSRC::impute} does the
 #' forest-based job, and varPro's own help pages use the latter.  Both fill
-#' \strong{every} column they are handed, the outcome included -- so where the
+#' \strong{every} column they are handed, the outcome included, so where the
 #' outcome is itself missing they manufacture it, and the release rules are
 #' then fit partly to invented responses.  Put the observed outcome back and
 #' drop the cases that never had one:
@@ -203,23 +231,40 @@
 #' missing outcomes; the imputation matters whenever a \emph{predictor} is
 #' missing.  Two cautions.  Imputing with the outcome stamps its signal into
 #' the filled predictor cells, which is right for a single fit but crosses
-#' fold boundaries in \code{varPro::cv.varpro} -- impute inside the folds if
+#' fold boundaries in \code{varPro::cv.varpro}; impute inside the folds if
 #' the selection error has to mean anything.  And a completed frame is one
 #' dataset, not many, so the curves here carry no uncertainty from the
 #' imputation; read them as conditional on it.
 #'
+#' **\code{nvars} selects by importance, not by list position:** when
+#' \code{object} is supplied, the variables in \code{part_dta} are first
+#' reordered by their rank in \code{varPro::get.topvars(object)}, and
+#' \code{nvars} then keeps the top \code{nvars} of \emph{that} ordering,
+#' not the first \code{nvars} elements as they arrived.
+#' \code{get.topvars()} typically ranks far fewer variables than
+#' \code{part_dta} contains; any variable it does not rank keeps its
+#' incoming order and is appended after the ranked block, so nothing is
+#' ever dropped from consideration, only reordered.  The returned
+#' \code{continuous$name} / \code{categorical$name} column is a
+#' \code{factor} whose levels follow this same importance order (raw list
+#' order when no \code{object} was supplied), so facet panels and legend
+#' entries sort by importance rather than alphabetically.
+#'
 #' **Scale detection:** with \code{scale = "auto"} and an \code{object} in
-#' hand, the scale resolves to \code{"mortality"} for a survival forest and
-#' \code{"generic"} for a regression or classification forest.  The RMST
-#' horizon \eqn{\tau} is \emph{not} stored in the \code{varpro} object
-#' (varPro 3.1.0), so RMST output requires you to pass
-#' \code{scale = "rmst", time = tau} explicitly.
+#' hand, the scale resolves to \code{"surv"} for a survival forest,
+#' \code{"prob"} for a classification forest and \code{"generic"} for a
+#' regression forest.  We do not
+#' read an RMST horizon \eqn{\tau} off the \code{varpro} object.  Before
+#' \pkg{varPro} 3.2.2 there is none to read; from 3.2.2 one is recorded only
+#' when \code{varpro} itself was fit with an \code{rmst} horizon.  So RMST
+#' output requires you to pass \code{scale = "rmst", time = tau} explicitly.
 #'
 #' **RMST partial dependence (scale = "rmst"):** \code{varPro::partialpro}
 #' has no time argument, so its default survival learner returns ensemble
-#' mortality at every horizon -- passing a horizon through \code{...} is
-#' silently dropped, and multi-horizon plots built that way differ only by
-#' Monte-Carlo noise, not by \eqn{\tau}.  To get a genuine RMST(\eqn{\tau})
+#' mortality at every horizon.  Before \pkg{varPro} 3.2.2 a horizon passed
+#' through \code{...} is silently dropped, and multi-horizon plots built that
+#' way differ only by Monte-Carlo noise, not by \eqn{\tau}; from 3.2.2
+#' \code{partialpro} stops with an error instead.  To get a genuine RMST(\eqn{\tau})
 #' curve, \code{scale = "rmst"} supplies \code{partialpro} a \code{learner}
 #' that returns \eqn{\mathrm{RMST}(\tau)=\int_0^\tau S(t)\,dt} from the
 #' survival forest, so the curve actually depends on \eqn{\tau}.  This path
@@ -235,9 +280,73 @@
 #' back-transforms to probability \eqn{P(Y = \mathrm{target})}, \code{"odds"} to
 #' the odds, and \code{"logodds"} keeps the raw scale.  The back-transform is
 #' applied per observation \emph{before} averaging, so the curve is the mean
-#' predicted probability, not the probability of the mean log-odds.  The
+#' predicted probability, not the probability of the mean log-odds.
+#'
+#' **Restoring each subject's level (scale = "prob"):** \code{partialpro} fits
+#' each subject's curve separately but returns every row at the cohort-mean
+#' intercept, keeping only the subject's own slope. On the log-odds scale that
+#' sets every subject to the average log-odds, and averaging per-subject
+#' probabilities then no longer gives the expected proportion. So for
+#' \code{"prob"}, \code{gg_partial_varpro} shifts each subject's curve to pass
+#' through that subject's own out-of-bag log-odds at its observed value of the
+#' variable, and then back-transforms and averages. The shape
+#' \code{partialpro} fitted is unchanged. This needs \code{object}, the
+#' classification fit, and is recorded as \code{anchored} in the provenance.
+#' Without \code{object}, or when \code{...} passes \code{partialpro} a custom
+#' \code{learner} or \code{newdata}, the curve is left as \code{partialpro}
+#' returned it (with a warning when \code{object} is missing). A precomputed
+#' \code{part_dta} is anchored whenever \code{object} is supplied, which
+#' assumes it came from \code{partialpro(object)} with its default learner; a
+#' \code{part_dta} built with your own learner should be passed with
+#' \code{scale = "logodds"} instead. A subject that was never out of bag takes
+#' its in-bag prediction as its anchor. Binary variables
+#' are never shifted, because \code{partialpro} already returns per-subject
+#' levels for them.  The
 #' \code{causal} contrast is shown only on \code{"logodds"} (see
 #' \code{\link{plot.gg_partial_varpro}}).
+#'
+#' **Two probability scales, and why they disagree (scale = "prob" vs
+#' "prob_typical"):** \code{partialpro} returns a matrix of per-subject
+#' log-odds, one row per observation and one column per grid point. Collapsing
+#' it to a curve takes an average and a back-transform, and the \emph{order}
+#' of those two steps is a modelling choice, not a detail:
+#'
+#' \deqn{\mathrm{prob}(x) = \frac{1}{n}\sum_i \mathrm{logit}^{-1}(z_i(x))
+#'   \qquad
+#'   \mathrm{prob\_typical}(x) = \mathrm{logit}^{-1}\!\left(
+#'   \frac{1}{n}\sum_i z_i(x)\right)}
+#'
+#' \code{"prob"} (the classification default) transforms per observation and
+#' then averages, so the curve is the \strong{mean predicted probability},
+#' the expected proportion of this cohort, and the standard partial dependence
+#' quantity on a probability scale. \code{"prob_typical"} averages on the
+#' log-odds scale and then transforms once, giving the probability for a
+#' \strong{subject sitting at the mean log-odds}.
+#'
+#' These are different estimands and they do not agree.
+#' \eqn{\mathrm{logit}^{-1}} is concave above zero and convex below it, so by
+#' Jensen's inequality \code{"prob"} is pulled toward \eqn{0.5} relative to
+#' \code{"prob_typical"}, at both ends of the curve. The gap widens with the
+#' spread of per-subject log-odds, and on a heterogeneous cohort it is not
+#' small. In a simulation where a second variable spreads the subjects'
+#' log-odds to an SD near 4, one point reads \eqn{0.13} under
+#' \code{"prob_typical"} and \eqn{0.35} under \code{"prob"}, against a true
+#' partial dependence of \eqn{0.38}. Before the level restoration described
+#' above, \code{"prob"} read \eqn{0.14} there: with every subject at the mean
+#' log-odds, the two scales nearly coincide. \code{"prob_typical"} uses
+#' \code{partialpro}'s values as returned.
+#'
+#' Which to report is a question about the claim, not about the code. If the
+#' sentence is "what fraction of these patients would wean", that is
+#' \code{"prob"}. If it is "what would we predict for a typical patient", that
+#' is \code{"prob_typical"}, while remembering that the mean-log-odds
+#' subject need not resemble anyone in the data. A figure captioned as a
+#' percentage of patients wants \code{"prob"}.
+#'
+#' The distinction applies only to the \code{continuous} frame. The
+#' \code{categorical} frame keeps its values unaveraged so the plot method can
+#' draw boxplots, so there is no averaging order to choose and the two scales
+#' return the same numbers there.
 #'
 #' **Survival probability (scale = "surv"):** \code{scale = "surv"} (the
 #' survival default) computes \eqn{S(\tau \mid x)} through \code{partialpro}
@@ -248,7 +357,7 @@
 #' categorical frame per value.  The curve is still the average of the smoothed
 #' per-case \eqn{S(\tau)}, with only impossible values changed.  When
 #' \code{time} is not supplied, \eqn{\tau} defaults to the \strong{median
-#' follow-up time} of the fit -- a data-driven horizon that is always in the
+#' follow-up time} of the fit, a data-driven horizon that is always in the
 #' model's own time units, so it cannot be mis-specified the way a hand-typed
 #' \eqn{\tau} can.  The resolved \eqn{\tau} is reported in a message and the
 #' axis label; pass \code{time = tau} to choose another.  \code{scale =
@@ -317,7 +426,15 @@
 #'     yhat.causal = matrix(rnorm(n_obs * 2), nrow = n_obs)
 #'   )
 #' )
-#' result <- gg_partial_varpro(mock_data)
+#' ## The two probability scales differ by the ORDER of averaging and
+#' ## back-transform, and disagree whenever subjects are heterogeneous.
+#' ## Mock data has no fit, so "prob" cannot restore subject levels and warns.
+#' pa <- suppressWarnings(gg_partial_varpro(mock_data, scale = "prob"))
+#' pt <- gg_partial_varpro(mock_data, scale = "prob_typical")
+#' head(data.frame(prob = pa$continuous$parametric,
+#'                 prob_typical = pt$continuous$parametric))
+#'
+#' result <- gg_partial_varpro(mock_data, scale = "logodds")
 #' head(result$continuous)
 #' head(result$categorical)
 #'
@@ -338,9 +455,9 @@
 #' wanted <- c("wt", "hp", "qsec", "vs")
 #' setdiff(wanted, vp$xvar.names)
 #'
-#' ## Ask anyway and we warn, naming what partialpro() would have dropped
-#' ## in silence.  (method = "rnd" is passed through to partialpro(); see
-#' ## the note on isolation-forest method in Details.)
+#' ## Ask anyway and partialpro() warns, naming what it dropped.
+#' ## (method = "rnd" is passed through to partialpro(); see the note on
+#' ## isolation-forest method in Details.)
 #' pd <- gg_partial_varpro(object = vp, xvar.names = wanted,
 #'                         method = "rnd")
 #'
@@ -355,7 +472,8 @@
 #' @export
 gg_partial_varpro <- function(part_dta  = NULL,
                                object    = NULL,
-                               scale     = c("auto", "prob", "odds", "logodds",
+                               scale     = c("auto", "prob", "prob_typical",
+                                             "odds", "logodds",
                                              "rmst", "surv", "mortality", "chf"),
                                time      = NULL,
                                nvars     = NULL,
@@ -409,14 +527,11 @@ gg_partial_varpro <- function(part_dta  = NULL,
   ## 'value_scale' differs from the reported 'scale' only for surv recomputed
   ## here: those values are S(tau) from our learner and get clamped to [0, 1].
   value_scale <- scale
+  ## '...' reaches partialpro() only when part_dta is computed here; otherwise
+  ## it is warned as ignored above and must not change the result.
+  pp_dots <- if (is.null(part_dta)) names(list(...)) else character(0)
   if (is.null(part_dta)) {
     if (scale == "surv") value_scale <- "surv_learner"
-    ## Before the expensive call: partialpro() silently discards any requested
-    ## name outside object$xvar.names, so flag it while we still know what was
-    ## asked for.  [["..."]] rather than $: `$` partial-matches on a list, so a
-    ## dots argument merely *starting* with "xvar.names" would be picked up as
-    ## the variable request.
-    .warn_varpro_dropped_xvars(list(...)[["xvar.names"]], object)
     learner <- switch(scale,
       rmst = .rmst_learner(object, time),
       surv = .surv_learner(object, time),
@@ -427,12 +542,24 @@ gg_partial_varpro <- function(part_dta  = NULL,
       varPro::partialpro(object, learner = learner, ...)
     }
   }
+  ## Rank BEFORE slicing.  Slicing first would make nvars mean "the first n list
+  ## elements", which is an arbitrary subset rather than the top n by importance.
+  ord <- .varpro_importance_order(part_dta, object)
+  if (!is.null(ord)) {
+    part_dta <- part_dta[ord]
+  }
+
   if (is.null(nvars)) {
     nvars <- length(part_dta)
   }
+  nvars <- min(nvars, length(part_dta))
 
   prov <- .varpro_provenance(object, scale, time, path = "A",
                              target = .varpro_target(object, list(...)))
+
+  anc <- .anchor_prob_scale(part_dta, object, scale, prov$target, pp_dots)
+  part_dta      <- anc$part_dta
+  prov$anchored <- anc$anchored
 
   dfs <- .build_varpro_dfs(part_dta, nvars, cat_limit, value_scale)
   continuous  <- dfs$continuous
@@ -461,6 +588,20 @@ gg_partial_varpro <- function(part_dta  = NULL,
   if (scale %in% c("surv", "chf") && is.null(object)) {
     stop("scale = '", scale, "' requires 'object' (the varpro fit)",
          call. = FALSE)
+  }
+  ## A supplied 'part_dta' must be named: the names ARE the variable identities.
+  ## Without them the constructor cannot build a 'name' column at all, and the
+  ## omission surfaces two calls later as an opaque facet_wrap() failure rather
+  ## than as a complaint about the input that caused it.
+  ## An EMPTY part_dta is a different case and stays legal: it has no variables
+  ## to name, and downstream code already handles a zero-row result.
+  if (!is.null(part_dta) && length(part_dta) > 0L) {
+    nms <- names(part_dta)
+    if (is.null(nms) || any(is.na(nms)) || !all(nzchar(nms))) {
+      stop("'part_dta' must be a named list; its names identify the variables. ",
+           "varPro::partialpro() returns one, so unnamed input usually means the ",
+           "names were dropped in transit.", call. = FALSE)
+    }
   }
   .validate_partial_time(time)
   if (scale %in% c("rmst", "surv"))
@@ -527,41 +668,6 @@ gg_partial_varpro <- function(part_dta  = NULL,
               "' (resolved to '", resolved, "').", call. = FALSE)
     }
   }
-  invisible(NULL)
-}
-
-## varPro::partialpro() selects variables with
-## object$xvar.names[na.omit(match(xvar.names, object$xvar.names))], so a
-## requested name outside the fit's reachable set is discarded with no error,
-## no warning, and nothing recorded on the return value -- asking for 12
-## variables can quietly return 10. varpro() screens in two stages, so
-## object$xvar.names is a strict subset of the design matrix, and an
-## externally-derived variable set (rfsrc VIMP names, say) can easily sit
-## outside it. Compare before calling partialpro(), so the warning arrives
-## ahead of the isolation-forest work rather than after it.
-##
-## Only meaningful when xvar.names was supplied: partialpro() applies its nvar
-## cap solely in the missing(xvar.names) branch, so a supplied vector is
-## filtered by reachability alone, and the get.topvars() fallback is documented
-## behavior rather than a silent drop.
-#' @keywords internal
-.warn_varpro_dropped_xvars <- function(requested, object) {
-  if (is.null(requested) || is.null(object) || is.null(object$xvar.names))
-    return(invisible(NULL))
-  dropped <- setdiff(as.character(requested), object$xvar.names)
-  if (length(dropped) == 0L) return(invisible(NULL))
-  ## NA rather than a hard failure if 'x' is absent: a guard that errors is a
-  ## worse failure mode than the one it reports.
-  n_pred <- if (is.null(object$x)) NA_integer_ else ncol(object$x)
-  warning(sprintf(paste0(
-    "gg_partial_varpro: %d of %d requested 'xvar.names' are not in the varpro ",
-    "fit's reachable set and are silently dropped by varPro::partialpro(): %s. ",
-    "The fit reaches %d of %d predictors (object$xvar.names); varpro() screens ",
-    "in two stages, so a variable can be in the data and still be unreachable. ",
-    "Refit with varPro::varpro(..., split.weight = FALSE) to reach every ",
-    "predictor."),
-    length(dropped), length(requested), paste(dropped, collapse = ", "),
-    length(object$xvar.names), n_pred), call. = FALSE)
   invisible(NULL)
 }
 
@@ -687,6 +793,79 @@ gg_partial_varpro <- function(part_dta  = NULL,
 ## Classification target class label: the `target` passed through ... if any,
 ## else the last factor level of the response (partialpro's default target).
 ## NA for non-classification fits or when only part_dta is supplied.
+## partialpro() fits each case's curve separately but returns every case at the
+## cohort-mean intercept (yhat.par = global.mean + B %*% x^k). On the log-odds
+## scale that pins every case to the mean log-odds, so "prob"'s per-case
+## plogis-then-average no longer gives the expected proportion of the cohort.
+## Put each case's level back: shift its curve so it passes through the case's
+## own OOB log-odds at its observed x. The shape (the slopes partialpro kept) is
+## untouched. Binary variables are skipped: partialpro returns per-case level
+## means for them, without the swap. A case whose local fit failed comes back
+## from varPro >= 3.3.1 as an all-NA row; it has no level to restore, so it
+## stays NA and the column means leave it out.
+#' @keywords internal
+.anchor_varpro_levels <- function(part_dta, anchor) {
+  for (k in seq_along(part_dta)) {
+    feat <- part_dta[[k]]
+    if (length(unique(feat$xorg)) == 2L || is.null(feat$case)) next
+    offset <- vapply(seq_along(feat$case), function(i) {
+      r <- feat$case[i]
+      if (sum(is.finite(feat$yhat.par[i, ])) < 2L) return(NA_real_)
+      anchor[r] - stats::approx(feat$xvirtual, feat$yhat.par[i, ], feat$xorg[r],
+                                rule = 2)$y
+    }, numeric(1))
+    feat$yhat.par    <- feat$yhat.par    + offset
+    feat$yhat.nonpar <- feat$yhat.nonpar + offset
+    part_dta[[k]] <- feat
+  }
+  part_dta
+}
+
+## "prob" averages per-case probabilities, which needs each case's own level;
+## see .anchor_varpro_levels(). The anchors are the forest's OOB predictions,
+## so a caller's own learner or newdata puts the curves on a footing the
+## anchors don't share, and those are left as partialpro returned them.
+#' @keywords internal
+.anchor_prob_scale <- function(part_dta, object, scale, target, dot_names) {
+  if (scale != "prob") return(list(part_dta = part_dta, anchored = FALSE))
+  if (!is.null(object$rf) && identical(object$family, "class") &&
+      !any(c("learner", "newdata") %in% dot_names)) {
+    return(list(part_dta = .anchor_varpro_levels(
+                  part_dta, .varpro_oob_logodds(object, target)),
+                anchored = TRUE))
+  }
+  if (is.null(object)) {
+    warning("gg_partial_varpro: scale = 'prob' without 'object' cannot ",
+            "restore each case's level, so the curve averages cases pinned ",
+            "to the cohort-mean log-odds and is not the expected ",
+            "proportion. Supply 'object' (the classification varpro fit).",
+            call. = FALSE)
+  }
+  list(part_dta = part_dta, anchored = FALSE)
+}
+
+## Per-row OOB log-odds of the target class, clamped at 0.001 as partialpro's
+## own mylogodds() is, so the anchor and the curves share a scale. A case that
+## was never out of bag (common with few trees) has no OOB prediction; it takes
+## its in-bag one instead, since an NA anchor would drop the case from the
+## average without saying so.
+#' @keywords internal
+.varpro_oob_logodds <- function(object, target) {
+  pr  <- randomForestSRC::predict.rfsrc(object$rf, perf.type = "none")
+  pick <- function(p) {
+    if (is.null(p) || is.null(dim(p))) return(p)
+    ## 'target' is a class label, or an index when passed as a number.
+    col <- if (target %in% colnames(p)) target else as.integer(target)
+    p[, col]
+  }
+  p   <- pick(pr$predicted.oob)
+  inb <- pick(pr$predicted)
+  if (is.null(p)) p <- inb
+  miss <- is.na(p)
+  p[miss] <- inb[miss]
+  stats::qlogis(pmin(pmax(p, 1e-3), 1 - 1e-3))
+}
+
 #' @keywords internal
 .varpro_target <- function(object, dots) {
   if (is.null(object) || !identical(object$family, "class"))
@@ -720,24 +899,17 @@ gg_partial_varpro <- function(part_dta  = NULL,
 #' @keywords internal
 .build_varpro_dfs <- function(part_dta, nvars, cat_limit, scale = "generic") {
   bounded   <- .is_bounded_scale(scale)
-  ## Average, then clamp: clamping each case first would pull the mean down
-  ## wherever some cases overshoot. See .clamp_unit().
-  col_mean  <- function(mat) {
-    if (identical(scale, "surv_learner")) {
-      return(.clamp_unit(colMeans(mat, na.rm = TRUE)))
-    }
-    colMeans(.scale_transform(mat, scale), na.rm = TRUE)
-  }
   cont_list <- list()
   cat_list  <- list()
-  for (feature in seq(nvars)) {
+  .warn_empty_varpro(part_dta, nvars)
+  for (feature in seq_len(nvars)) {
     feat      <- part_dta[[feature]]
     feat_name <- names(part_dta)[[feature]]
     if (length(feat$xvirtual) > cat_limit) {
       plt.df <- dplyr::bind_cols(
         variable      = feat$xvirtual,
-        parametric    = col_mean(feat$yhat.par),
-        nonparametric = col_mean(feat$yhat.nonpar),
+        parametric    = .varpro_column_summary(feat$yhat.par,    scale),
+        nonparametric = .varpro_column_summary(feat$yhat.nonpar, scale),
         # `causal` is a centered contrast: not shown on bounded scales
         causal        = if (bounded) NA_real_ else
           colMeans(feat$yhat.causal, na.rm = TRUE)
@@ -748,16 +920,82 @@ gg_partial_varpro <- function(part_dta  = NULL,
       cat_list[[feature]] <- .process_cat_var(feat, feat_name, scale)
     }
   }
-  list(
-    continuous  = dplyr::bind_rows(cont_list),
-    categorical = dplyr::bind_rows(cat_list)
-  )
+  ## 'name' must be a factor: as a character column facet_wrap() re-sorts it
+  ## alphabetically and the importance order established above is discarded.
+  lvls <- unique(names(part_dta)[seq_len(nvars)])
+  cont <- dplyr::bind_rows(cont_list)
+  cats <- .bind_cat_list(cat_list)
+  if (nrow(cont) > 0L && !is.null(lvls) && length(lvls) > 0L)
+    cont$name <- factor(cont$name, levels = lvls)
+  if (nrow(cats) > 0L && !is.null(lvls) && length(lvls) > 0L)
+    cats$name <- factor(cats$name, levels = lvls)
+
+  list(continuous = cont, categorical = cats)
+}
+
+## Each variable's 'variable' column carries its own level order, and may be
+## an ordered or unordered factor or a plain vector; vctrs refuses to bind
+## mixed factor types. Bind as character, then restore one factor whose levels
+## run through each variable's levels in turn, ordered only when every
+## variable's was. Each variable's rows are bound in its own level order, which
+## is what the plot reads: pooled levels misorder overlapping labels (grids
+## c(2, 3) and c(1, 2) pool to 2, 3, 1).
+#' @keywords internal
+.bind_cat_list <- function(cat_list) {
+  ## cat_list is indexed by feature, so continuous variables leave NULLs
+  cat_list <- Filter(Negate(is.null), cat_list)
+  cat_list <- lapply(cat_list, function(x) {
+    if (is.factor(x$variable)) x[order(x$variable), , drop = FALSE] else x
+  })
+  cat_lvls <- unique(unlist(lapply(cat_list, function(x) {
+    if (is.factor(x$variable)) levels(x$variable) else
+      unique(as.character(x$variable))
+  })))
+  cat_ordered <- length(cat_list) > 0L &&
+    all(vapply(cat_list, function(x) is.ordered(x$variable), logical(1L)))
+  cat_list <- lapply(cat_list, function(x) {
+    x$variable <- as.character(x$variable)
+    x
+  })
+  cats <- dplyr::bind_rows(cat_list)
+  if (nrow(cats) > 0L)
+    cats$variable <- factor(cats$variable, levels = cat_lvls,
+                            ordered = cat_ordered)
+  cats
+}
+
+## varPro >= 3.3.1 marks failed fits NA rather than returning a flat curve; a
+## variable with none left would otherwise plot as a silent empty panel.
+#' @keywords internal
+.warn_empty_varpro <- function(part_dta, nvars) {
+  shown <- part_dta[seq_len(nvars)]
+  empty <- vapply(shown, function(feat) {
+    !any(is.finite(feat$yhat.par)) && !any(is.finite(feat$yhat.nonpar))
+  }, logical(1))
+  if (any(empty)) {
+    warning("gg_partial_varpro: no available partial curve for ",
+            paste(sQuote(names(shown)[empty], FALSE), collapse = ", "),
+            "; partialpro() could not fit it, so its panel will be empty.",
+            call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @keywords internal
 .resolve_varpro_scale <- function(scale, family) {
   if (scale != "auto") return(scale)
-  if (is.na(family) || is.null(family)) return("generic")
+  ## No fit means no family, and no family means no scale.  Say so: the y-axis
+  ## silently falls back to the generic "Partial Effect" label, which is honest
+  ## but is rarely the scale a reader wants.
+  if (is.na(family) || is.null(family)) {
+    warning("gg_partial_varpro: scale could not be resolved because the ",
+            "fit family is unknown (no 'object' was supplied, or its ",
+            "'family' element is missing); the y-axis will be labelled ",
+            "'Partial Effect'. Pass object = <varpro fit> with a resolvable ",
+            "family to get the probability scale, or set 'scale' ",
+            "explicitly.", call. = FALSE)
+    return("generic")
+  }
   if (family == "surv")  return("surv")    # bounded survival default (3.3.0)
   if (family == "class") return("prob")    # probability default (3.3.0)
   "generic"   # regr or unknown
@@ -770,10 +1008,15 @@ gg_partial_varpro <- function(part_dta  = NULL,
 .scale_transform <- function(z, scale) {
   switch(scale,
     prob = stats::plogis(z),
+    ## Elementwise only. On the categorical frame the values stay unaveraged,
+    ## so "average first" has nothing to bite on and this matches `prob`; the
+    ## two scales differ only on the continuous frame. See
+    ## .varpro_column_summary().
+    prob_typical = stats::plogis(z),
     odds = exp(z),
     ## Internal: S(tau) from .surv_learner(), per value. Used on the
     ## categorical frame; the continuous frame clamps after averaging, in
-    ## .build_varpro_dfs(). Plain "surv" stays the identity, because a
+    ## .varpro_column_summary(). Plain "surv" stays the identity, because a
     ## precomputed part_dta carries only the label.
     surv_learner = .clamp_unit(z),
     z)
@@ -794,7 +1037,7 @@ gg_partial_varpro <- function(part_dta  = NULL,
 ## contrast is not shown (it cannot share the axis).
 #' @keywords internal
 .is_bounded_scale <- function(scale) {
-  scale %in% c("prob", "odds", "surv", "surv_learner")
+  scale %in% c("prob", "prob_typical", "odds", "surv", "surv_learner")
 }
 
 #' @keywords internal
@@ -904,4 +1147,35 @@ gg_partial_varpro <- function(part_dta  = NULL,
     path       = "C"
   )
   pd
+}
+
+## Collapse one partialpro matrix (observations x grid points) to one value per
+## grid point.  The ORDER matters and is the whole difference between "prob"
+## and "prob_typical".
+##
+##   prob          mean_i(plogis(z_i))   the mean predicted probability -- the
+##                                       expected proportion of this cohort,
+##                                       and the standard partial dependence
+##                                       quantity on a probability scale.
+##   prob_typical  plogis(mean_i(z_i))   the probability for a subject sitting
+##                                       at the mean log-odds.
+##
+## plogis is concave above 0 and convex below it, so by Jensen these are not
+## the same curve: "prob" is pulled toward 0.5 relative to "prob_typical", and
+## the gap widens with the spread of per-subject log-odds.  On a heterogeneous
+## cohort it is large: 0.13 under "prob_typical" against 0.35 under "prob" at
+## a per-subject log-odds SD near 4 (see the roxygen). "prob" needs the
+## per-case levels .anchor_varpro_levels() restores, or it collapses toward
+## "prob_typical".
+#' @keywords internal
+.varpro_column_summary <- function(mat, scale) {
+  if (identical(scale, "prob_typical")) {
+    return(stats::plogis(colMeans(mat, na.rm = TRUE)))
+  }
+  ## Average, then clamp: clamping each case first would pull the mean down
+  ## wherever some cases overshoot. See .clamp_unit().
+  if (identical(scale, "surv_learner")) {
+    return(.clamp_unit(colMeans(mat, na.rm = TRUE)))
+  }
+  colMeans(.scale_transform(mat, scale), na.rm = TRUE)
 }

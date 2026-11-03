@@ -30,8 +30,8 @@
 #'   survival) produce a single line; multi-outcome forests (classification)
 #'   produce one colored line per class.
 #'
-#' @details The gg_error plot is used to track the convergence of the
-#' randomForest. This figure is a reproduction of the error plot
+#' @details The gg_error plot tracks the convergence of the
+#' randomForest. It reproduces the error plot
 #' from the \code{\link[randomForestSRC]{plot.rfsrc}} function.
 #'
 #' @seealso \code{\link{gg_error}} \code{\link[randomForestSRC]{rfsrc}}
@@ -43,8 +43,8 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, Rnews,
 #' 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-#' Regression and Classification. R package version >= 3.4.0.
+#' Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+#' Regression, and Classification (RF-SRC). R package version 3.6.2.
 #' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #' @examples

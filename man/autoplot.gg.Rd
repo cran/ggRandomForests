@@ -13,10 +13,16 @@
 \alias{autoplot.gg_roc}
 \alias{autoplot.gg_survival}
 \alias{autoplot.gg_brier}
+\alias{autoplot.gg_rhf}
+\alias{autoplot.gg_tune_rhf}
+\alias{autoplot.gg_auct}
+\alias{autoplot.gg_rhf_importance}
 \alias{autoplot.gg_varpro}
 \alias{autoplot.gg_udependent}
 \alias{autoplot.gg_isopro}
 \alias{autoplot.gg_shap}
+\alias{autoplot.gg_ale_rfsrc}
+\alias{autoplot.gg_ale_interaction}
 \title{\code{autoplot} methods for \pkg{ggRandomForests} data objects}
 \usage{
 \method{autoplot}{gg_error}(object, ...)
@@ -41,6 +47,14 @@
 
 \method{autoplot}{gg_brier}(object, ...)
 
+\method{autoplot}{gg_rhf}(object, ...)
+
+\method{autoplot}{gg_tune_rhf}(object, ...)
+
+\method{autoplot}{gg_auct}(object, ...)
+
+\method{autoplot}{gg_rhf_importance}(object, ...)
+
 \method{autoplot}{gg_varpro}(object, ...)
 
 \method{autoplot}{gg_udependent}(object, ...)
@@ -48,6 +62,10 @@
 \method{autoplot}{gg_isopro}(object, ...)
 
 \method{autoplot}{gg_shap}(object, ...)
+
+\method{autoplot}{gg_ale_rfsrc}(object, ...)
+
+\method{autoplot}{gg_ale_interaction}(object, ...)
 }
 \arguments{
 \item{object}{A \code{gg_*} data object (see Details).}
@@ -79,6 +97,10 @@ The following \code{gg_*} classes are supported:
 \item{\code{gg_roc}}{ROC curve}
 \item{\code{gg_survival}}{Survival / cumulative hazard curves}
 \item{\code{gg_brier}}{Time-resolved Brier score and CRPS}
+\item{\code{gg_rhf}}{Random Hazard Forest hazard curves}
+\item{\code{gg_tune_rhf}}{Random Hazard Forest tuning path}
+\item{\code{gg_auct}}{Random Hazard Forest time-varying AUC}
+\item{\code{gg_rhf_importance}}{Random Hazard Forest variable priority}
 \item{\code{gg_shap}}{SHAP explanations}
 }
 }

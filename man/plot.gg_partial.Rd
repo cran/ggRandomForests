@@ -4,10 +4,16 @@
 \alias{plot.gg_partial}
 \title{Plot a \code{\link{gg_partial}} object}
 \usage{
-\method{plot}{gg_partial}(x, ...)
+\method{plot}{gg_partial}(x, labels = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{\link{gg_partial}} object (output of \code{\link{gg_partial}}).}
+
+\item{labels}{Optional variable labels for the facet strips.  One of: a named
+character vector (\code{c(bpd_last = "BP Diastole")}); a labelled data frame,
+whose \code{attr(col, "label")} values are read; or a two-column
+\code{key}/\code{label} data frame.  Variables with no label keep their raw
+name.  Defaults to \code{NULL} (raw names).}
 
 \item{...}{Not currently used; reserved for future arguments.}
 }
@@ -20,7 +26,7 @@ satisfies \code{inherits(p, "ggplot")}.
 }
 \description{
 Turns a \code{\link{gg_partial}} object into a ggplot2 figure.  Each curve
-is a partial dependence trace -- the forest's average prediction as one
+is a partial dependence trace, the forest's average prediction as one
 predictor is swept across its range while the rest are marginalized over the
 training data.  Continuous predictors appear as line plots.  Categorical
 predictors appear as box plots, one box per level, drawn from the
@@ -32,7 +38,7 @@ glance.
 }
 \details{
 When a \code{model} label was attached in \code{gg_partial()}, lines are
-colored by model -- handy for overlaying results from two forests (e.g.,
+colored by model, which is handy for overlaying results from two forests (e.g.,
 one tuned, one default) in the same figure.
 }
 \examples{

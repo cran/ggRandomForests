@@ -4,7 +4,7 @@
 \alias{plot.gg_rfsrc}
 \title{Predicted response plot from a \code{\link{gg_rfsrc}} object.}
 \usage{
-\method{plot}{gg_rfsrc}(x, notch = TRUE, ...)
+\method{plot}{gg_rfsrc}(x, notch = TRUE, time_units = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{\link{gg_rfsrc}} object, or a raw
@@ -15,6 +15,12 @@
 classification forests (default \code{TRUE}).  Set \code{notch = FALSE}
 to suppress notches when sample sizes are too small for reliable
 confidence intervals on the median.}
+
+\item{time_units}{Optional name of the time unit the forest was fit in, used
+only in the survival x axis title. The default titles the axis
+\code{"time"}; \code{time_units = "days"} makes that \code{"time (days)"}.
+Nothing on an \code{\link[randomForestSRC]{rfsrc}} object records the unit,
+so the package cannot infer it. Defaults to \code{NULL} (no unit printed).}
 
 \item{...}{Additional arguments forwarded to the underlying
 \code{ggplot2} geometry calls.  Commonly useful arguments include:
@@ -48,8 +54,8 @@ colored by group.}
 }
 \description{
 Visualizes the ensemble predictions extracted by \code{\link{gg_rfsrc}}.
-By default those are out-of-bag (OOB) predictions -- the forest's built-in
-cross-validation estimate, averaging only over the trees that left a given
+By default those are out-of-bag (OOB) predictions, the forest's built-in
+cross-validation estimate, which averages only over the trees that left a given
 observation out of their bootstrap sample.
 }
 \details{
@@ -181,8 +187,8 @@ Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 Ishwaran H. and Kogalur U.B. (2007). Random survival forests for
 R, Rnews, 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-Regression and Classification. R package version >= 3.4.0.
+Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+Regression, and Classification (RF-SRC). R package version 3.6.2.
 \url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{

@@ -29,7 +29,7 @@ knitr::opts_chunk$set(
   cache      = TRUE,
   cache.path = "uvarpro_cache/"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 ```
 
 ```{r libs}
@@ -53,7 +53,7 @@ if (requireNamespace("ggRandomForests", quietly = TRUE)) {
 
 Most measures of variable importance start from a question: which predictors
 help explain *this* outcome? Permutation VIMP, the varPro release rules, the
-per-rule lasso weights behind `gg_beta_varpro()` — all of them score a variable
+per-rule lasso weights behind `gg_beta_varpro()`: all of them score a variable
 by how much it moves a response `y`. The companion
 [varPro vignette](varpro.html) walks that supervised toolkit end to end.
 
@@ -62,7 +62,8 @@ know which columns carry the structure of the data: which variables define its
 shape, which travel together, and which are close to noise. That is the job of
 unsupervised varPro. `varPro::uvarpro()` grows a forest on the predictor matrix
 alone, with no response, and scores each variable by how much entropy it
-contributes to the regions the forest carves out [@Lu2024varpro]. "Important"
+contributes to the regions the forest carves out [@Lu2024varpro;
+@Ishwaran:varPro:software:2026]. "Important"
 here
 does not mean useful for prediction. It means a variable helps reconstruct the
 feature space that the others cannot.
@@ -75,8 +76,8 @@ and noise.
 # One fit, three views
 
 We'll use `mtcars`. Its columns are all numeric, and several of them measure
-closely related things — displacement, horsepower, weight, and cylinder count
-all track engine size — so the unsupervised structure is easy to read.
+closely related things (displacement, horsepower, weight, and cylinder count
+all track engine size), so the unsupervised structure is easy to read.
 
 ```{r fit}
 set.seed(1)
@@ -135,8 +136,8 @@ most unsupervised signal, and *how* they group.
 A ranking invites the obvious next question: where is the cut? Which variables
 are signal, and which are noise? `gg_sdependent()` answers that narrower
 question off the same fit. It wraps `varPro::sdependent()` and returns one row
-per candidate variable — an importance score, its degree in the dependency
-graph, and a `signal` flag — drawn as a ranked lollipop.
+per candidate variable (an importance score, its degree in the dependency
+graph, and a `signal` flag), drawn as a ranked lollipop.
 
 ```{r sdep}
 plot(gg_sdependent(u, beta_fit = beta_fit))
@@ -148,15 +149,22 @@ from the ones it treats as noise.
 
 # Reading the three together
 
-The three views are one workflow, not three unrelated plots. Start with
+The three views are one workflow. Start with
 `gg_udependent()` to see the structure, rank it with `gg_beta_uvarpro()`, then
 let `gg_sdependent()` draw the signal-versus-noise line. They all derive from the
 one `uvarpro()` fit, and two of them from the one `get.beta.entropy()` matrix, so
 computing that matrix once (as we did above) and passing it in keeps the whole
 sequence cheap.
 
-For the supervised side of varPro — VIMP, partial dependence, per-rule lasso
-refinement, local importance, and anomaly scoring — see the companion
+For the supervised side of varPro (VIMP, partial dependence, per-rule lasso
+refinement, local importance, and anomaly scoring), see the companion
 [varPro vignette](varpro.html).
+
+```{r}
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
+```
 
 # References

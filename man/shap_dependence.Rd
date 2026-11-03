@@ -4,7 +4,7 @@
 \alias{shap_dependence}
 \title{SHAP dependence plot}
 \usage{
-shap_dependence(x, xvar = NULL, ...)
+shap_dependence(x, xvar = NULL, labels = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{\link{gg_shap}} object.}
@@ -12,13 +12,19 @@ shap_dependence(x, xvar = NULL, ...)
 \item{xvar}{The variable to plot. When \code{NULL}, the top-ranked variable
 (largest mean absolute SHAP) is used.}
 
+\item{labels}{Optional variable labels. One of: a named character vector
+(\code{c(Temp = "Temperature")}); a labelled data frame, whose
+\code{attr(col, "label")} values are read; or a two-column
+\code{key}/\code{label} data frame. Variables with no label keep their raw
+name. Defaults to \code{NULL} (raw names).}
+
 \item{...}{Unused.}
 }
 \value{
 A \code{ggplot} object.
 }
 \description{
-SHAP value against the value of a single feature — the SHAP analog of a
+SHAP value against the value of a single feature, the SHAP analog of a
 partial-dependence plot. Numeric features use a continuous x-axis; factor
 or character features fall back to their labels on a discrete axis.
 }

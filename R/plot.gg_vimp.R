@@ -17,22 +17,31 @@
 #'
 #' Draws a horizontal bar chart of the VIMP scores extracted by
 #' \code{\link{gg_vimp}}.  Each bar represents one predictor; bar length is
-#' proportional to its permutation VIMP -- the average rise in OOB prediction
+#' proportional to its permutation VIMP, the average rise in OOB prediction
 #' error when that predictor's OOB values are randomly shuffled.  Predictors
 #' are sorted in descending order of importance so the most influential
 #' variables appear at the top.
 #'
 #' Bars are colored by the \code{positive} flag: a bar at or below zero
 #' (non-positive VIMP) is color-coded differently to flag predictors that
-#' \emph{hurt} OOB accuracy when their signal is removed -- usually a sign of
+#' \emph{hurt} OOB accuracy when their signal is removed, usually a sign of
 #' collinearity or a very noisy variable.  In a well-behaved forest most bars
 #' are positive; the color distinction matters when a handful are not.
 #'
 #' @param x \code{\link{gg_vimp}} object created from a
 #' \code{\link[randomForestSRC]{rfsrc}} object
-#' @param relative should we plot vimp or relative vimp. Defaults to vimp.
-#' @param lbls A vector of alternative variable labels. Item names should be
-#' the same as the variable names.
+#' @param relative If \code{TRUE}, plot relative VIMP: each variable's VIMP
+#'   divided by the largest VIMP in its \code{set}, so the top variable reads
+#'   1 (for classification, the top variable within each class).  A set with
+#'   no positive VIMP is divided by its largest absolute VIMP instead, and an
+#'   all-zero set stays at zero.  Defaults to \code{FALSE}, raw VIMP.
+#' @param lbls \emph{Deprecated} as of v4.0.0; use \code{labels}.  A named
+#'   character vector of alternative variable labels.
+#' @param labels Optional variable labels for the variable axis.  One of: a named
+#'   character vector (\code{c(bpd_last = "BP Diastole")}); a labelled data frame,
+#'   whose \code{attr(col, "label")} values are read; or a two-column
+#'   \code{key}/\code{label} data frame.  Variables with no label keep their raw
+#'   name.  Defaults to \code{NULL} (raw names).
 #' @param ... optional arguments passed to gg_vimp if necessary
 #'
 #' @return \code{ggplot} object
@@ -45,8 +54,8 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for
 #' R, Rnews, 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-#' Regression and Classification. R package version >= 3.4.0.
+#' Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+#' Regression, and Classification (RF-SRC). R package version 3.6.2.
 #' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #' @examples
@@ -68,7 +77,7 @@
 #'
 #'
 #' @export
-plot.gg_vimp <- function(x, relative, lbls, ...) {
+plot.gg_vimp <- function(x, relative = FALSE, lbls, labels = NULL, ...) {
   gg_dta <- x
 
   # Accept raw rfsrc / randomForest objects and compute VIMP on the fly
@@ -79,26 +88,52 @@ plot.gg_vimp <- function(x, relative, lbls, ...) {
   # Capture extra args so we can inspect nvar.
   arg_set <- list(...)
 
-  # Optionally restrict to the top-nvar most important variables (gg_vimp
-  # already sorts by descending VIMP, so we just trim the tail).
-  nvar <- nrow(gg_dta)
-  if (!is.null(arg_set$nvar)) {
-    if (is.numeric(arg_set$nvar) && arg_set$nvar > 1) {
-      if (arg_set$nvar < nrow(gg_dta)) {
-        nvar <- arg_set$nvar
-        gg_dta <- gg_dta[seq_len(nvar), ]
-      }
-    }
-  }
-
-  gg_plt <- ggplot2::ggplot(gg_dta)
-
   # Use "vimp" as the bar-height column when it exists; fall back to the
   # first column name for objects that store a renamed importance measure.
   msr <- "vimp"
   if (!msr %in% colnames(gg_dta)) {
     msr <- colnames(gg_dta)[1]
   }
+
+  # relative = TRUE rescales each bar to a fraction of the largest VIMP in its
+  # set (per class for multi-outcome fits). gg_vimp() does not return a
+  # relative column, so it is computed here, before the nvar trim, so that a
+  # set's largest VIMP counts even when its variable is trimmed away.
+  if (isTRUE(relative)) {
+    grp <- if (is.null(gg_dta$set)) {
+      rep("all", nrow(gg_dta))
+    } else {
+      as.character(gg_dta$set)
+    }
+    # A set with no positive VIMP has no top variable to scale to: fall back
+    # to its largest magnitude so bars keep their sign, and leave an all-zero
+    # set at zero rather than divide by zero.
+    top <- tapply(gg_dta[[msr]], grp, function(v) {
+      v <- v[is.finite(v)]
+      if (length(v) == 0L) return(NA_real_)
+      top_v <- max(v)
+      if (top_v <= 0) top_v <- max(abs(v))
+      if (top_v == 0) 1 else top_v
+    })
+    gg_dta$rel_vimp <- gg_dta[[msr]] / unname(top[grp])
+    msr <- "rel_vimp"
+  }
+
+  # Optionally restrict to the top-nvar most important variables. gg_vimp
+  # already sorts by descending VIMP, so keep the first nvar variables. Trim
+  # by variable, not by row: a multi-outcome frame has one row per variable
+  # and class, so a row trim would drop whole class panels.
+  if (!is.null(arg_set$nvar)) {
+    if (is.numeric(arg_set$nvar) && arg_set$nvar > 1) {
+      vars_ord <- unique(as.character(gg_dta$vars))
+      if (arg_set$nvar < length(vars_ord)) {
+        keep <- vars_ord[seq_len(arg_set$nvar)]
+        gg_dta <- gg_dta[as.character(gg_dta$vars) %in% keep, ]
+      }
+    }
+  }
+
+  gg_plt <- ggplot2::ggplot(gg_dta)
 
   # Always map both `fill` and `color` to `positive` -- this gives filled bars
   # (rather than hollow outlines) and ensures the function-level
@@ -129,19 +164,26 @@ plot.gg_vimp <- function(x, relative, lbls, ...) {
     ggplot2::labs(x = "", y = msr,
                   fill = legend_title, color = legend_title)
 
+  ## 'lbls' is deprecated in favour of 'labels' (v4.0.0).  The old argument took
+  ## a named character vector only, and silently did nothing unless at least as
+  ## many labels as variables were supplied; 'labels' honours a partial lookup
+  ## and falls back per variable.
   if (!missing(lbls)) {
-    # Map internal variable names to human-readable labels.  lbls should be a
-    # named character vector; any unmatched variables keep their original name.
-    if (length(lbls) >= length(gg_dta$vars)) {
-      st_lbls <- lbls[as.character(gg_dta$vars)]
-      names(st_lbls) <- as.character(gg_dta$vars)
-      # Fall back to the raw variable name when no label was supplied
-      st_lbls[which(is.na(st_lbls))] <-
-        names(st_lbls[which(is.na(st_lbls))])
-
-      gg_plt <- gg_plt +
-        ggplot2::scale_x_discrete(labels = st_lbls)
+    if (!is.null(labels)) {
+      stop("plot.gg_vimp: supply either 'lbls' or 'labels', not both. ",
+           "'lbls' is deprecated; use 'labels'.", call. = FALSE)
     }
+    warning("plot.gg_vimp: 'lbls' is deprecated and will be removed in a ",
+            "future release; use 'labels' instead.", call. = FALSE)
+    labels <- lbls
+  }
+
+  lab_lookup <- .forest_labels(labels)
+  if (!is.null(lab_lookup)) {
+    gg_plt <- gg_plt +
+      ggplot2::scale_x_discrete(
+        labels = function(v) .apply_forest_labels(v, lab_lookup)
+      )
   }
 
   # Flip coordinates so variable names appear on the y-axis (horizontal bars

@@ -16,6 +16,10 @@
 \alias{print.gg_roc}
 \alias{print.gg_survival}
 \alias{print.gg_brier}
+\alias{print.gg_rhf}
+\alias{print.gg_tune_rhf}
+\alias{print.gg_auct}
+\alias{print.gg_rhf_importance}
 \alias{print.gg_udependent}
 \alias{print.summary.gg_udependent}
 \alias{print.gg_varpro}
@@ -23,6 +27,8 @@
 \alias{print.gg_beta_varpro}
 \alias{print.gg_ivarpro}
 \alias{print.gg_shap}
+\alias{print.gg_ale_rfsrc}
+\alias{print.gg_ale_interaction}
 \title{Print methods for gg_* data objects}
 \usage{
 \method{print}{gg_beta_uvarpro}(x, ...)
@@ -51,6 +57,14 @@
 
 \method{print}{gg_brier}(x, ...)
 
+\method{print}{gg_rhf}(x, ...)
+
+\method{print}{gg_tune_rhf}(x, ...)
+
+\method{print}{gg_auct}(x, ...)
+
+\method{print}{gg_rhf_importance}(x, ...)
+
 \method{print}{gg_udependent}(x, ...)
 
 \method{print}{summary.gg_udependent}(x, ...)
@@ -64,6 +78,10 @@
 \method{print}{gg_ivarpro}(x, ...)
 
 \method{print}{gg_shap}(x, ...)
+
+\method{print}{gg_ale_rfsrc}(x, ...)
+
+\method{print}{gg_ale_interaction}(x, ...)
 }
 \arguments{
 \item{x}{A \code{gg_*} data object.}

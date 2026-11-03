@@ -228,6 +228,13 @@ summary.gg_survival <- function(object, ...) {
   .summary_skel(object, "gg_survival", body)
 }
 
+#' How a gg_varpro selection was made, for print() and summary()
+#' @return A single character string.
+#' @keywords internal
+.varpro_sel_rule <- function(prov, cutoff) {
+  if (is.null(prov$noise)) sprintf("z > %.2g", cutoff) else "z above tested noise of its kind"
+}
+
 .varpro_body <- function(x) {
   prov   <- attr(x, "provenance")
   cutoff <- if (!is.null(prov)) prov$cutoff %||% 0.79 else 0.79
@@ -235,16 +242,22 @@ summary.gg_survival <- function(object, ...) {
   top_n  <- min(5L, nrow(x$stats))
   top_df <- x$stats[order(-x$stats$median), ][seq_len(top_n), ]
   c(
-    sprintf("variables: %d total, %d selected (z > %.2g)",
-            nrow(x$imp), n_sel, cutoff),
+    sprintf("variables: %d total, %d selected (%s)",
+            nrow(x$imp), n_sel, .varpro_sel_rule(prov, cutoff)),
     sprintf("top %d by median z: %s", top_n,
             paste(sprintf("%s (%.3g)",
                           as.character(top_df$variable),
                           top_df$median),
                   collapse = ", ")),
-    sprintf("z range: [%.3g, %.3g]",
-            min(x$imp$z, na.rm = TRUE),
-            max(x$imp$z, na.rm = TRUE))
+    ## Every z can be undefined (NA), e.g. a fit too small for any variable
+    ## to be tested in trim of its trees.
+    if (any(!is.na(x$imp$z))) {
+      sprintf("z range: [%.3g, %.3g]",
+              min(x$imp$z, na.rm = TRUE),
+              max(x$imp$z, na.rm = TRUE))
+    } else {
+      "z range: unavailable (no variable has a defined z)"
+    }
   )
 }
 
@@ -273,7 +286,8 @@ summary.gg_udependent <- function(object, ...) {
 #' @rdname summary.gg
 #' @export
 summary.gg_brier <- function(object, ...) {
-  crps <- attr(object, "crps_integrated")
+  crps     <- attr(object, "crps_integrated")
+  crps_std <- .gg_brier_crps_std(object)
   envelope_mean <- mean(object$bs.upper - object$bs.lower, na.rm = TRUE)
   body <- c(
     sprintf("time range: [%.4g, %.4g]",
@@ -282,11 +296,44 @@ summary.gg_brier <- function(object, ...) {
     sprintf("peak Brier: %.4g at time %.4g",
             max(object$brier, na.rm = TRUE),
             object$time[which.max(object$brier)]),
-    sprintf("integrated CRPS: %s",
+    sprintf("CRPS (time-normalized): %s",
+            if (is.null(crps_std)) "NA" else sprintf("%.4g", crps_std)),
+    sprintf("integrated CRPS (time units): %s",
             if (is.null(crps)) "NA" else sprintf("%.4g", crps)),
     sprintf("mean 15-85%% envelope width: %.4g", envelope_mean)
   )
   .summary_skel(object, "gg_brier", body)
+}
+
+#' @rdname summary.gg
+#' @export
+summary.gg_rhf <- function(object, ...) {
+  agg <- stats::aggregate(
+    cbind(hazard, chf) ~ time, data = as.data.frame(object),
+    FUN = function(v) mean(v, na.rm = TRUE)
+  )
+  names(agg) <- c("time", "hazard.mean", "chf.mean")
+  agg
+}
+
+#' @rdname summary.gg
+#' @export
+summary.gg_tune_rhf <- function(object, ...) {
+  selected <- object[object$selected, , drop = FALSE]
+  data.frame(
+    metric = selected$metric,
+    treesize = selected$treesize,
+    value = selected$value,
+    se = selected$se,
+    n_evaluations = nrow(object),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @rdname summary.gg
+#' @export
+summary.gg_rhf_importance <- function(object, ...) {
+  .rhf_priority_summary(object)
 }
 
 #' @rdname summary.gg
@@ -358,6 +405,19 @@ summary.gg_ivarpro <- function(object, ...) {
 
 #' @rdname summary.gg
 #' @export
+summary.gg_auct <- function(object, ...) {
+  iauc <- attr(object, "iauc")
+  data.frame(
+    iAUC.uno    = iauc$uno,
+    iAUC.std    = iauc$std,
+    iAUC.uno.se = iauc$uno.se,
+    iAUC.std.se = iauc$std.se,
+    conf.level  = iauc$conf.level
+  )
+}
+
+#' @rdname summary.gg
+#' @export
 summary.gg_shap <- function(object, ...) {
   # Rank variables the same way gg_shap() does: mean |SHAP| across observations.
   imp <- stats::aggregate(abs(object$shap),
@@ -385,4 +445,30 @@ summary.gg_shap <- function(object, ...) {
                   collapse = ", "))
   )
   .summary_skel(object, "gg_shap", body)
+}
+
+#' @rdname summary.gg
+#' @export
+summary.gg_ale_rfsrc <- function(object, ...) {
+  .summary_skel(object, "gg_ale_rfsrc", .partial_body(object))
+}
+
+## Body lines for summary.gg_ale_interaction(). The interaction surface is
+## centered by construction, so its range is the informative summary: a
+## purely additive pair returns a surface that is zero everywhere, and the
+## range is how far from additive this pair actually is.
+.ale_interaction_body <- function(x) {
+  c(
+    sprintf("pair: %s x %s", x$name1[1], x$name2[1]),
+    sprintf("grid: %d x %d", length(unique(x$x)), length(unique(x$y))),
+    sprintf("interaction ALE range: [%.4g, %.4g]",
+            min(x$ale, na.rm = TRUE), max(x$ale, na.rm = TRUE)),
+    sprintf("max |interaction|: %.4g", max(abs(x$ale), na.rm = TRUE))
+  )
+}
+
+#' @rdname summary.gg
+#' @export
+summary.gg_ale_interaction <- function(object, ...) {
+  .summary_skel(object, "gg_ale_interaction", .ale_interaction_body(object))
 }

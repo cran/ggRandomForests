@@ -16,7 +16,7 @@
 #   2. Run devtools::test(filter = "snapshots")
 #   3. Call testthat::snapshot_accept()
 #   4. Commit tests/testthat/_snaps/ to the repo
-if (requireNamespace("vdiffr", quietly = TRUE) &&
+if (requireNamespace("vdiffr", quietly = TRUE) && # nolint: cyclocomp_linter
     identical(Sys.getenv("VDIFFR_RUN_TESTS"), "true")) {
 
 ## ---- Shared fixtures -------------------------------------------------------
@@ -213,18 +213,18 @@ local({
   }
 
   test_that("snapshot: gg-partial-varpro-continuous", {
-    result <- gg_partial_varpro(make_mock_vpro_snap(), nvars = 1)
+    result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_snap(), nvars = 1))
     vdiffr::expect_doppelganger("gg-partial-varpro-continuous", plot(result))
   })
 
   test_that("snapshot: gg-partial-varpro-categorical", {
     mock <- make_mock_vpro_snap()
-    result <- gg_partial_varpro(mock["sex"])
+    result <- suppressWarnings(gg_partial_varpro(mock["sex"]))
     vdiffr::expect_doppelganger("gg-partial-varpro-categorical", plot(result))
   })
 
   test_that("snapshot: gg-partial-varpro-both", {
-    result <- gg_partial_varpro(make_mock_vpro_snap())
+    result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_snap()))
     vdiffr::expect_doppelganger("gg-partial-varpro-both", plot(result))
   })
 
@@ -234,6 +234,29 @@ local({
     vdiffr::expect_doppelganger("gg-partial-varpro-mortality", plot(result))
   })
 
+  test_that("snapshot: gg-partial-varpro-panels", {
+    mock <- make_mock_vpro_snap()
+    mock$bmi <- mock$age
+    result <- suppressWarnings(gg_partial_varpro(mock, scale = "logodds"))
+    spec <- data.frame(name = c("age", "bmi"),
+                       xlab = c("Age (years)", "BMI"),
+                       xmin = 30, xmax = 80, xby = 10,
+                       stringsAsFactors = FALSE)
+    vdiffr::expect_doppelganger(
+      "gg-partial-varpro-panels",
+      plot(result, type = "parametric", panels = spec, ncol = 2))
+  })
+
+  test_that("snapshot: gg-partial-varpro-points-smooth", {
+    result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_snap(),
+                                                 nvars = 1))
+    vdiffr::expect_doppelganger(
+      "gg-partial-varpro-points-smooth",
+      plot(result, which = "continuous", type = "parametric",
+           points = TRUE, smooth = TRUE, palette = "Set1",
+           point_size = 1.6, linewidth = 1.2))
+  })
+
   ## ---- gg_varpro snapshots ------------------------------------------------
   local({
     set.seed(42L)
@@ -241,18 +264,36 @@ local({
     vp_class <- varPro::varpro(Species ~ ., data = iris, ntree = 50L)
 
     test_that("snapshot: gg-varpro-default", {
+      set.seed(42L)
       gg <- gg_varpro(vp_regr)
       vdiffr::expect_doppelganger("gg-varpro-default", plot(gg))
     })
 
     test_that("snapshot: gg-varpro-faithful", {
+      set.seed(42L)
       gg <- gg_varpro(vp_regr, faithful = TRUE)
       vdiffr::expect_doppelganger("gg-varpro-faithful", plot(gg))
     })
 
     test_that("snapshot: gg-varpro-conditional", {
+      set.seed(42L)
       gg <- gg_varpro(vp_class, conditional = TRUE)
       vdiffr::expect_doppelganger("gg-varpro-conditional", plot(gg))
+    })
+
+    test_that("snapshot: gg-varpro-noise", {
+      set.seed(20261029L)
+      d <- data.frame(x1 = rnorm(150), x2 = rnorm(150), x3 = rnorm(150),
+                      g = factor(sample(c("a", "b", "c"), 150, TRUE)))
+      d$y <- d$x1 + 0.5 * d$x2 + (d$g == "b") + rnorm(150)
+      d$noise_x1 <- sample(d$x1)
+      d$noise_g <- sample(d$g)
+      set.seed(20261029L)
+      vp_noise <- varPro::varpro(y ~ ., data = d, ntree = 50L,
+                                 split.weight = FALSE, mtry = 2L)
+      set.seed(42L)
+      gg <- gg_varpro(vp_noise, noise = "^noise")
+      vdiffr::expect_doppelganger("gg-varpro-noise", plot(gg))
     })
   })
 
@@ -442,6 +483,66 @@ test_that("gg-ivarpro-class-which-obs", {
   vdiffr::expect_doppelganger("gg-ivarpro-class-which-obs", p)
 })
 
+test_that("gg-rhf-hazard", {
+  skip_if_not_installed("vdiffr")
+  skip_if_not_installed("randomForestRHF")
+  skip_on_cran()
+  if (!identical(Sys.getenv("VDIFFR_RUN_TESTS", "false"), "true")) {
+    skip("vdiffr snapshots skipped (set VDIFFR_RUN_TESTS=true to run)")
+  }
+  gg <- gg_rhf(.rhf_pbc())
+  vdiffr::expect_doppelganger("gg-rhf-hazard", plot(gg, idx = c(1, 5, 10)))
+})
+
+test_that("gg-rhf-chf", {
+  skip_if_not_installed("vdiffr")
+  skip_if_not_installed("randomForestRHF")
+  skip_on_cran()
+  if (!identical(Sys.getenv("VDIFFR_RUN_TESTS", "false"), "true")) {
+    skip("vdiffr snapshots skipped (set VDIFFR_RUN_TESTS=true to run)")
+  }
+  gg <- gg_rhf(.rhf_pbc())
+  vdiffr::expect_doppelganger("gg-rhf-chf",
+                              plot(gg, idx = c(1, 5, 10), hazard.only = FALSE))
+})
+
+test_that("gg-auct-chf", {
+  skip_if_not_installed("vdiffr")
+  skip_if_not_installed("randomForestRHF")
+  skip_on_cran()
+  if (!identical(Sys.getenv("VDIFFR_RUN_TESTS", "false"), "true")) {
+    skip("vdiffr snapshots skipped (set VDIFFR_RUN_TESTS=true to run)")
+  }
+  gg <- gg_auct(.rhf_pbc(), auct_fit = .auct_pbc_boot())
+  vdiffr::expect_doppelganger("gg-auct-chf", plot(gg))
+})
+
+test_that("snapshot: gg_tune_rhf iAUC path", {
+  skip_if_not_installed("vdiffr")
+  skip_on_cran()
+  if (!identical(Sys.getenv("VDIFFR_RUN_TESTS", "false"), "true")) {
+    skip("vdiffr snapshots skipped (set VDIFFR_RUN_TESTS=true to run)")
+  }
+  set.seed(20260825L)
+  x <- gg_tune_rhf(.fake_rhf_tune_iauc())
+  vdiffr::expect_doppelganger("gg-tune-rhf-iauc", plot(x))
+})
+
+test_that("snapshot: gg_rhf_importance priority matrix", {
+  skip_if_not_installed("vdiffr")
+  skip_if_not_installed("randomForestRHF")
+  skip_on_cran()
+  if (!identical(Sys.getenv("VDIFFR_RUN_TESTS", "false"), "true")) {
+    skip("vdiffr snapshots skipped (set VDIFFR_RUN_TESTS=true to run)")
+  }
+  set.seed(20260825L)
+  x <- gg_rhf_importance(.rhf_pbc(), importance_fit = .rhf_importance_pbc())
+  vdiffr::expect_doppelganger(
+    "gg-rhf-importance-priority",
+    plot(x, top_n_union = 8L)
+  )
+})
+
 ## ── gg_shap snapshots (Task 8) ───────────────────────────────────────────────
 if (requireNamespace("kernelshap", quietly = TRUE)) {
   local({
@@ -467,6 +568,105 @@ if (requireNamespace("kernelshap", quietly = TRUE)) {
     })
   })
 }
+
+# Survival — pbc, plot.gg_variable() across all four survival paths
+#
+# plot.gg_variable()'s survival branch forks twice: on `panel`, and on whether
+# gg_dta carries one time or several. The four combinations differ in both
+# faceting and y-axis title, and none of them had a visual baseline:
+#
+#   panel = FALSE, one time    no facet                y = "Survival at <t> year"
+#   panel = FALSE, many times  facet_wrap(~time)       y = "Survival"
+#   panel = TRUE,  one time    facet_wrap(~variable)   y = "Survival at <t> year"
+#   panel = TRUE,  many times  facet_grid(time ~ var)  y = "Survival"
+#
+# The two single-time paths are the ones carrying the hard-coded time unit, so
+# they are the ones that a change to that axis title has to redraw. Before this
+# block the only guard on that title was expect_equal() on p$labels$y, which
+# cannot see the rest of the panel.
+#
+# This block sits last in the file deliberately. expect_doppelganger() consumes
+# the RNG whenever a plot draws geom_jitter (see the note in
+# test_determinism.R), so a new block inserted higher up would shift the stream
+# for every jitter-dependent snapshot below it. Appending cannot.
+local({
+  data(pbc, package = "randomForestSRC")
+  pbc$time <- pbc$days / 364.25
+  pbc_sub <- pbc[, c("time", "status", "treatment", "age", "bili", "albumin")]
+
+  # Same data subset and seed as the survival fixture above. importance and
+  # tree.err are omitted because gg_variable() reads neither, and permutation
+  # importance would draw from the RNG for nothing.
+  set.seed(42L)
+  rfsrc_pbc <- randomForestSRC::rfsrc(
+    Surv(time, status) ~ .,
+    data = pbc_sub,
+    ntree = 100L
+  )
+
+  # bili and albumin are both numeric, so these four plots draw geom_point plus
+  # geom_smooth and never geom_jitter. The baselines therefore do not depend on
+  # RNG state at draw time.
+  gg_one <- gg_variable(rfsrc_pbc, time = 1)
+  gg_many <- gg_variable(rfsrc_pbc, time = c(1, 3))
+
+  test_that("snapshot: gg_variable survival single time", {
+    vdiffr::expect_doppelganger(
+      "gg_variable survival single time",
+      plot(gg_one, xvar = "bili")
+    )
+  })
+
+  test_that("snapshot: gg_variable survival multiple times", {
+    vdiffr::expect_doppelganger(
+      "gg_variable survival multi time",
+      plot(gg_many, xvar = "bili")
+    )
+  })
+
+  test_that("snapshot: gg_variable survival panel single time", {
+    vdiffr::expect_doppelganger(
+      "gg_variable survival panel single time",
+      plot(gg_one, xvar = c("bili", "albumin"), panel = TRUE)
+    )
+  })
+
+  test_that("snapshot: gg_variable survival panel multiple times", {
+    vdiffr::expect_doppelganger(
+      "gg_variable survival panel multi time",
+      plot(gg_many, xvar = c("bili", "albumin"), panel = TRUE)
+    )
+  })
+})
+
+
+## ---- Accumulated local effects ---------------------------------------------
+
+local({
+  set.seed(20260909L)
+  airq <- stats::na.omit(airquality)
+  rfsrc_airq <- randomForestSRC::rfsrc(Ozone ~ ., data = airq, ntree = 50L)
+
+  # Continuous-only, so plot() returns a plain ggplot rather than a patchwork.
+  gg_ale_cont <- gg_ale_rfsrc(rfsrc_airq, xvar.names = c("Wind", "Temp"),
+                              n_eval = 8)
+  gg_ale_int <- gg_ale_rfsrc(rfsrc_airq, xvar.names = "Wind",
+                             xvar2.name = "Temp", n_eval = 6)
+
+  test_that("snapshot: gg_ale_rfsrc continuous", {
+    vdiffr::expect_doppelganger(
+      "gg_ale_rfsrc continuous",
+      plot(gg_ale_cont)
+    )
+  })
+
+  test_that("snapshot: gg_ale_rfsrc interaction heatmap", {
+    vdiffr::expect_doppelganger(
+      "gg_ale_rfsrc interaction",
+      plot(gg_ale_int)
+    )
+  })
+})
 
 # Categorical partial dependence panels. The objects are written out by hand:
 # the panel draws whatever per-observation predictions it is given, so a fit
@@ -509,6 +709,26 @@ local({
     vdiffr::expect_doppelganger("gg_partial_rfsrc continuous survival by group",
                                 plot(gg_dta))
   })
+})
+
+} else {
+
+## ---- Preserve baselines when the vdiffr comparison is opted out ------------
+# When VDIFFR_RUN_TESTS != "true" (or vdiffr is unavailable) none of the
+# expect_doppelganger() calls above register, so testthat's snapshot cleanup
+# would treat every committed baseline under _snaps/snapshots/ as orphaned and
+# delete it during a normal `devtools::test()` run. Announcing each file marks
+# it as still in use so cleanup leaves the repo untouched.
+# See ?testthat::announce_snapshot_file.
+test_that("vdiffr baseline snapshots are preserved when comparison is skipped", {
+  # announce_snapshot_file() (and vdiffr's file snapshots) are 3rd-edition
+  # features; the package otherwise defaults to edition 2, so opt in locally.
+  local_edition(3)
+  snap_dir <- test_path("_snaps", "snapshots")
+  skip_if(!dir.exists(snap_dir), "no vdiffr baselines present to preserve")
+  svgs <- list.files(snap_dir, pattern = "\\.svg$")
+  for (f in svgs) announce_snapshot_file(name = f)
+  succeed()
 })
 
 } # end CI guard

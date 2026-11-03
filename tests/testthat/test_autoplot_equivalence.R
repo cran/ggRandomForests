@@ -1,6 +1,6 @@
 # autoplot() and plot() must produce the same plot for every gg_* class.
 #
-# All 19 autoplot methods are thin delegators: autoplot.gg_x() calls plot() or
+# All autoplot methods are thin delegators: autoplot.gg_x() calls plot() or
 # plot.gg_x() and returns the result. That makes the failure mode a drift one.
 # Someone adds an argument, a default or a layer to plot.gg_x and does not
 # carry it through the delegator, or replaces a delegator with a second
@@ -10,7 +10,7 @@
 # drift apart.
 #
 # A vdiffr baseline per autoplot method would also catch this, but it would
-# mean 19 more SVGs rendering the same plots the plot() baselines already
+# mean more SVGs rendering the same plots the plot() baselines already
 # cover, and a visual diff answers "these images differ" rather than "the
 # delegation broke". Comparing the ggplot objects is cheaper and names the
 # actual defect. Audited 2026-08-17: all 49 existing baselines exercise
@@ -111,6 +111,17 @@ test_that("autoplot() equals plot() for every cheaply constructible gg_* class",
     "gg_survival"                      = gg_survival(
       interval = "time", censor = "status", by = "trt", data = survival::veteran
     )
+  )
+  objects[["gg_tune_rhf (iAUC)"]] <- gg_tune_rhf(.fake_rhf_tune_iauc())
+
+  # ALE, both classes. Continuous predictors only: with a categorical variable
+  # in the mix plot.gg_ale_rfsrc() returns a patchwork rather than a ggplot,
+  # and same_plot() compares built ggplots.
+  objects[["gg_ale_rfsrc (regression)"]] <- gg_ale_rfsrc(
+    rr, xvar.names = "wt", n_eval = 5
+  )
+  objects[["gg_ale_interaction (regression)"]] <- gg_ale_rfsrc(
+    rr, xvar.names = "wt", xvar2.name = "disp", n_eval = 4
   )
 
   # gg_shap() stops() when kernelshap is absent, and kernelshap is Suggests.

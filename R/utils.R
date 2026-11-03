@@ -107,3 +107,240 @@ shift <- function(x, shift_by = 1) {
   tbl$groups <- rep(strat$vals[idx], times = counts)
   tbl
 }
+
+# --------------------------------------------------------------------------- #
+# Variable-label resolution, shared by every plot method that draws variable
+# names.  Base R only: 'ggRandomForests' is on CRAN and must not take a
+# dependency on 'labelled' or on an internal package for a cosmetic feature.
+#
+# Three input shapes are accepted, because attr(x, "label") is a haven/SAS-era
+# carrier that does not reliably survive a parquet round-trip.  The named-vector
+# and key/label arms are format-agnostic and are the durable ones.
+#' @keywords internal
+.forest_labels <- function(labels) {
+  if (is.null(labels)) {
+    return(NULL)
+  }
+
+  ## Shape 3 first: a two-column key/label lookup (the shape
+  ## hvtiRutilities::label_map() returns).  Checked before attribute reading so
+  ## a lookup table is never mistaken for a labelled data frame.
+  if (is.data.frame(labels) && all(c("key", "label") %in% names(labels))) {
+    out <- as.character(labels[["label"]])
+    names(out) <- as.character(labels[["key"]])
+    return(.forest_labels_check(out))
+  }
+
+  ## Shape 1: a labelled data frame -- read attr(col, "label") per column.
+  if (is.data.frame(labels)) {
+    out <- vapply(labels, function(col) {
+      lb <- attr(col, "label")
+      if (is.null(lb) || !nzchar(as.character(lb)[1L])) {
+        NA_character_
+      } else {
+        as.character(lb)[1L]
+      }
+    }, character(1L))
+    return(.forest_labels_check(out[!is.na(out)]))
+  }
+
+  ## Shape 2: a named character vector.
+  if (is.character(labels) && !is.null(names(labels))) {
+    return(.forest_labels_check(labels))
+  }
+
+  stop("'labels' must be a named character vector, a labelled data frame, ",
+       "or a two-column key/label data frame.", call. = FALSE)
+}
+
+## Warn once when a lookup resolves nothing at all.  The usual cause is that
+## 'label' attributes were dropped in transit (a parquet round-trip written by a
+## non-R stage does this silently), which otherwise presents as a figure that is
+## simply unlabelled with no explanation.
+#' @keywords internal
+.forest_labels_check <- function(x) {
+  ## A blank or missing label is not a label: drop it so the variable falls back
+  ## to its raw name. Done centrally because the labelled-data-frame arm already
+  ## dropped these, and a named vector or key/label frame must not behave
+  ## differently for the same information -- "never blank" is the contract.
+  if (length(x) > 0L) {
+    nms  <- names(x)
+    keep <- !is.na(x) & nzchar(x)
+    keep <- if (is.null(nms)) rep(FALSE, length(x)) else
+      keep & !is.na(nms) & nzchar(nms)
+    x <- x[keep]
+  }
+  if (length(x) == 0L) {
+    warning("No variable labels were found. If the data came through a ",
+            "parquet round-trip, 'label' attributes may have been dropped; ",
+            "pass a named character vector instead.", call. = FALSE)
+  }
+  x
+}
+
+## Map raw variable names onto display labels, falling back per variable.  A
+## variable with no label keeps its raw name: never blank, never an error.
+#' @keywords internal
+.apply_forest_labels <- function(vars, lookup) {
+  vars <- as.character(vars)
+  if (is.null(lookup) || length(lookup) == 0L) {
+    return(vars)
+  }
+  out <- unname(lookup[vars])
+  out[is.na(out)] <- vars[is.na(out)]
+  out
+}
+
+## Facet-strip labeller built straight from the user's 'labels' argument, so the
+## resolve-then-wrap pair is written once rather than at every faceted call site.
+#' @keywords internal
+.forest_strip_labeller <- function(labels) {
+  lookup <- .forest_labels(labels)
+  ggplot2::as_labeller(function(v) .apply_forest_labels(v, lookup))
+}
+
+## ---------------------------------------------------------------------------
+## Rank the variables in a partialpro list by varPro importance.
+##
+## get.topvars() returns a SHORT ranked vector -- far shorter than the fit
+## reaches -- so most names arrive unranked.  Those keep their incoming order and
+## are appended after the ranked block; nothing is ever dropped.
+#' @keywords internal
+.varpro_importance_order <- function(part_dta, object) {
+  nms <- names(part_dta)
+  if (is.null(object) || is.null(nms)) {
+    return(nms)
+  }
+
+  ranked <- tryCatch(as.character(varPro::get.topvars(object)),
+                     error = function(e) character(0L))
+  if (length(ranked) == 0L) {
+    return(nms)
+  }
+
+  rank_key <- .varpro_rank_of(nms, ranked, xnames = colnames(object$x))
+  ## seq_along() as the tiebreaker keeps incoming order stable among names that
+  ## share a rank (in practice, all the unranked ones at Inf).
+  nms[order(rank_key, seq_along(nms))]
+}
+
+## Position of each name in the ranked vector.  Exact match wins; failing that a
+## one-hot level (name followed by digits, e.g. sex0/sex1) is accepted and the
+## best -- lowest -- position across levels is taken.  Requiring digits keeps
+## 'age' from being captured by 'age_group'.  The fallback is only for a name
+## that is not itself a column of the feature matrix ('xnames'): a real column
+## such as x1 must not borrow the rank of x10.
+#' @keywords internal
+.varpro_rank_of <- function(nms, ranked, xnames = NULL) {
+  vapply(nms, function(nm) {
+    hit <- which(ranked == nm)
+    if (length(hit) == 0L && !(nm %in% xnames)) {
+      pat <- paste0("^", .escape_regex(nm), "[0-9]+$")
+      hit <- grep(pat, ranked)
+    }
+    if (length(hit) == 0L) Inf else min(hit)
+  }, numeric(1L))
+}
+
+#' @keywords internal
+.escape_regex <- function(x) {
+  gsub("([.\\\\|()\\[\\]{}^$*+?])", "\\\\\\1", x, perl = TRUE)
+}
+
+# --------------------------------------------------------------------------- #
+# Survival time-unit labelling.  Nothing on an rfsrc fit records what the time
+# column was measured in -- randomForestSRC carries no units metadata, and
+# gg_variable() builds its 'time' column from rf$time.interest -- so the package
+# cannot derive the unit and must not assert one.  The default prints no unit,
+# which is always correct; a caller who knows the unit supplies it.
+#' @keywords internal
+.check_time_units <- function(time_units, time_values = NULL) {
+  if (is.null(time_units)) {
+    return(NULL)
+  }
+  if (!is.character(time_units) || length(time_units) != 1L ||
+        is.na(time_units) || !nzchar(time_units)) {
+    stop("'time_units' must be NULL or a single non-empty character string.",
+         call. = FALSE)
+  }
+  .warn_implausible_time_units(time_units, time_values)
+  time_units
+}
+
+## One-directional plausibility check on a SUPPLIED unit.  The package cannot
+## derive the unit (randomForestSRC stores none), so this never errors and never
+## guesses: it flags only the case that actually occurred, a day-scale horizon
+## labelled in years, which renders "Survival at 1191 years" and is wrong by a
+## factor of 365.
+##
+## Deliberately not checked in reverse.  Small values with "days" is ordinary
+## (a five-day ICU study), so there is no signal there and a check would be noise.
+##
+## The check is opportunistic: 'time_values' is absent for regression and
+## classification, because plot.gg_variable() resolves units before it branches
+## on family.  A missing, empty or non-numeric column simply skips the check.
+#' @keywords internal
+.warn_implausible_time_units <- function(time_units, time_values) {
+  if (is.null(time_values) || !length(time_values)) {
+    return(invisible(NULL))
+  }
+  if (!grepl("^(year|years|yr|yrs)$", time_units, ignore.case = TRUE)) {
+    return(invisible(NULL))
+  }
+  ## gg_dta$time is a FACTOR whose integer codes are not its labels, so compare
+  ## through as.character() or this silently tests the wrong numbers.
+  num <- suppressWarnings(as.numeric(as.character(time_values)))
+  num <- num[is.finite(num)]
+  if (!length(num) || max(num) <= 150) {
+    return(invisible(NULL))
+  }
+  warning("time_units = \"", time_units, "\" against time values up to ",
+          format(max(num)), ". That is implausible for years and usually means ",
+          "the forest was fit on a smaller unit, such as days. The axis title ",
+          "is taken from 'time_units' as supplied and is not derived from the ",
+          "data.", call. = FALSE)
+  invisible(NULL)
+}
+
+## plot.gg_variable() once declared 'time' and 'time_labels' as formals it never
+## read.  They are parameters of gg_variable(), the extractor, which bakes the
+## horizon into gg_dta$time before plot() ever runs.  Removing them alone would
+## let the names fall into ... and trip ggplot2's generic "Ignoring unknown
+## parameters", which points at a geom rather than at the call that works, so
+## catch them here and name the right one.
+##
+## MUST NOT consume anything from ...: plot.gg_variable() forwards ... to ggplot2
+## layers, and swallowing an argument meant to be relayed would reintroduce the
+## defect this replaced.
+#' @keywords internal
+.check_retired_time_args <- function(...) {
+  supplied <- names(list(...))
+  if (is.null(supplied)) {
+    return(invisible(NULL))
+  }
+  hit <- intersect(c("time", "time_labels"), supplied)
+  for (arg in hit) {
+    warning("plot.gg_variable(): '", arg, "' selects a horizon at extraction ",
+            "time, not at plot time, and is ignored here. Use ",
+            "gg_variable(rf, ", arg, " = ...) instead.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+# Survival y-axis title: "Survival at 1191" / "Survival at 1191 days".
+# time_value is typically a factor level, so as.character() takes the label
+# rather than the integer code.
+#' @keywords internal
+.survival_at_label <- function(time_value, time_units) {
+  paste(c("Survival at", as.character(time_value), time_units), collapse = " ")
+}
+
+# Survival x-axis title: "time" / "time (days)".
+#' @keywords internal
+.time_axis_label <- function(time_units) {
+  if (is.null(time_units)) {
+    "time"
+  } else {
+    paste0("time (", time_units, ")")
+  }
+}

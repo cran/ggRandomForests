@@ -1,0 +1,126 @@
+##=============================================================================
+#' Plot Random Hazard Forest hazard / cumulative-hazard curves
+#'
+#' Draws case-specific ensemble curves from a [gg_rhf()] object: hazard
+#' (default) or cumulative hazard, one line per case selected by `idx`.
+#'
+#' Cells the forest left undefined are dropped before drawing. From
+#' \pkg{randomForestRHF} 2.0.0 the hazard is `NA` outside each case's observed
+#' `(start, stop]` path, so a hazard curve ends with that case's
+#' follow-up, and a case whose hazard is masked throughout is left out of the
+#' legend rather than shown as an empty one. From 2.0.3 the cumulative hazard
+#' is masked too, though on a different rule: it is `NA` after each case's
+#' final stop. It is documented upstream as flat through an internal gap, but
+#' \pkg{randomForestRHF} 2.1.0 returns `NA` from a case's first gap onward, so
+#' on 2.1.0 the `hazard.only = FALSE` curve of such a case ends where the gap
+#' begins. Either curve breaks at a masked run instead of being joined across
+#' it, so a gap shows as a gap.
+#'
+#' Each case gets its own colour and legend key only while there are at most
+#' 10 of them. Beyond that the colours stop being distinguishable and the
+#' legend would list every id, so the curves are drawn in a single translucent
+#' colour with no legend. To pick out individual cases, pass a short `idx`.
+#'
+#' @param x A `gg_rhf` object from [gg_rhf()].
+#' @param idx Integer vector of case ids (matched against the `id` column) to
+#'   draw. `NULL` (default) draws every case.
+#' @param hazard.only Logical; `TRUE` (default) plots the hazard, `FALSE`
+#'   plots the cumulative hazard.
+#' @param ... Not currently used.
+#'
+#' @return A `ggplot` object.
+#'
+#' @seealso [gg_rhf()].
+#'
+#' @examples
+#' \donttest{
+#' if (requireNamespace("randomForestRHF", quietly = TRUE)) {
+#'   data(pbc, package = "randomForestSRC")
+#'   d <- randomForestRHF::convert.counting(
+#'     survival::Surv(days, status) ~ ., na.omit(pbc))
+#'   o <- randomForestRHF::rhf("Surv(id, start, stop, event) ~ .", d, ntree = 30)
+#'   plot(gg_rhf(o), idx = c(1, 5, 10))
+#' }
+#' }
+#'
+#' @importFrom ggplot2 ggplot aes geom_line labs theme_bw
+#' @name plot.gg_rhf
+#' @export
+plot.gg_rhf <- function(x, idx = NULL, hazard.only = TRUE, ...) {
+  if (!inherits(x, "gg_rhf")) {
+    stop("plot.gg_rhf() requires a 'gg_rhf' object.", call. = FALSE)
+  }
+  ids <- unique(x$id)
+  if (is.null(idx)) idx <- ids
+  if (!any(idx %in% ids)) {
+    stop("none of the requested idx values are present in the gg_rhf id ",
+         "column.", call. = FALSE)
+  }
+  missing_ids <- idx[!idx %in% ids]
+  if (length(missing_ids)) {
+    warning("idx values not found in gg_rhf and will be ignored: ",
+            paste(missing_ids, collapse = ", "), call. = FALSE)
+  }
+  dta <- x[x$id %in% idx, , drop = FALSE]
+
+  yvar <- if (hazard.only) "hazard" else "chf"
+  ylab <- if (hazard.only) "Hazard" else "Cumulative hazard"
+
+  # randomForestRHF >= 2.0.0 returns NA hazard outside each case's observed
+  # (start, stop] path. Drop those cells rather than hand geom_line() missing
+  # values it reports as removed rows on every hazard plot: the curve is
+  # identical either way, it simply ends with the case's follow-up. Filtering
+  # before factor() also keeps a case whose hazard is entirely masked out of
+  # the legend instead of leaving it there as an empty level. Since 2.0.3 chf
+  # is masked as well (NA after each case's final stop, and on 2.1.0 from a
+  # case's first internal gap onward, although upstream documents chf as flat
+  # through gaps), so this
+  # filter applies to both columns; it is not a no-op when hazard.only = FALSE.
+  #
+  # Dropping the cells must not join a case's curve across an internal gap,
+  # or geom_line() draws a straight line over time the case was not observed.
+  # So each run of finite values between masked cells becomes its own line
+  # group: the segment counter is the number of masked cells seen so far in
+  # that case, in time order.
+  dta <- dta[order(dta$id, dta$time), , drop = FALSE]
+  dropped <- !is.finite(dta[[yvar]])
+  if (all(dropped)) {
+    warning("no finite ", yvar, " values remain for the requested idx.",
+            call. = FALSE)
+  }
+  dta$segment <- paste(dta$id, stats::ave(as.integer(dropped), dta$id,
+                                          FUN = cumsum))
+  dta <- dta[!dropped, , drop = FALSE]
+  dta$id <- factor(dta$id)
+  dta$segment <- factor(dta$segment, levels = unique(dta$segment))
+
+  # A colour per case only reads while the cases are few; past that the hue
+  # palette blurs and the legend becomes a list of every id (2,386 keys on a
+  # full waiting-list cohort). Draw many cases as one translucent bundle.
+  if (nlevels(dta$id) <= 10L) {
+    p <- ggplot2::ggplot(
+      dta,
+      ggplot2::aes(
+        x      = .data[["time"]],
+        y      = .data[[yvar]],
+        colour = .data[["id"]],
+        group  = .data[["segment"]]
+      )
+    ) +
+      ggplot2::geom_line() +
+      ggplot2::labs(colour = "Case")
+  } else {
+    p <- ggplot2::ggplot(
+      dta,
+      ggplot2::aes(
+        x     = .data[["time"]],
+        y     = .data[[yvar]],
+        group = .data[["segment"]]
+      )
+    ) +
+      ggplot2::geom_line(colour = "grey20", alpha = 0.2)
+  }
+  p +
+    ggplot2::labs(x = "Time", y = ylab) +
+    ggplot2::theme_bw()
+}

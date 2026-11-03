@@ -67,37 +67,37 @@ test_that("gg_partial_varpro: precomputed part_dta skips the default-tau path", 
 
 ## ── Class & structure ────────────────────────────────────────────────────────
 test_that("gg_partial_varpro returns gg_partial_varpro class", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_s3_class(result, "gg_partial_varpro")
 })
 
 test_that("gg_partial_varpro has continuous and categorical elements", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_named(result, c("continuous", "categorical"))
   expect_s3_class(result$continuous, "data.frame")
   expect_s3_class(result$categorical, "data.frame")
 })
 
 test_that("gg_partial_varpro continuous has required columns", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_true(all(c("variable", "parametric", "nonparametric", "causal", "name")
                   %in% colnames(result$continuous)))
 })
 
 test_that("gg_partial_varpro categorical has required columns", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_true(all(c("parametric", "nonparametric", "causal", "variable", "name")
                   %in% colnames(result$categorical)))
 })
 
 test_that("gg_partial_varpro continuous: one row per xvirtual point (age)", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   age_rows <- result$continuous[result$continuous$name == "age", ]
   expect_equal(nrow(age_rows), 15L)
 })
 
 test_that("gg_partial_varpro: age is continuous, sex is categorical", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_true("age" %in% result$continuous$name)
   expect_false("age" %in% result$categorical$name)
   expect_true("sex" %in% result$categorical$name)
@@ -106,7 +106,7 @@ test_that("gg_partial_varpro: age is continuous, sex is categorical", {
 
 ## ── Provenance attribute ─────────────────────────────────────────────────────
 test_that("gg_partial_varpro attaches provenance list attr", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   prov <- attr(result, "provenance")
   expect_type(prov, "list")
   expect_true(all(c("family", "scale", "rmst_tau", "xvar.names", "n", "path",
@@ -115,13 +115,13 @@ test_that("gg_partial_varpro attaches provenance list attr", {
 })
 
 test_that("gg_partial_varpro: provenance path = 'A' for A-path", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_equal(attr(result, "provenance")$path, "A")
 })
 
 ## ── Scale resolution ─────────────────────────────────────────────────────────
 test_that("gg_partial_varpro: scale='auto' no object → prov scale='generic'", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_equal(attr(result, "provenance")$scale, "generic")
 })
 
@@ -142,53 +142,53 @@ test_that("gg_partial_varpro: scale='rmst' with time stored in provenance", {
 
 ## ── nvars + model ────────────────────────────────────────────────────────────
 test_that("gg_partial_varpro: nvars=1 processes only first variable", {
-  result <- gg_partial_varpro(make_mock_vpro_data(), nvars = 1)
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data(), nvars = 1))
   expect_true("age" %in% result$continuous$name)
   expect_equal(nrow(result$categorical), 0L)
 })
 
 test_that("gg_partial_varpro: model arg adds column", {
-  result <- gg_partial_varpro(make_mock_vpro_data(), model = "forest1")
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data(), model = "forest1"))
   expect_true("model" %in% colnames(result$continuous))
   expect_true("model" %in% colnames(result$categorical))
   expect_equal(unique(result$continuous$model), "forest1")
 })
 
 test_that("gg_partial_varpro: no model arg → no model column", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_false("model" %in% colnames(result$continuous))
 })
 
 ## ── Numeric/structural tests ──────────────────────────────────────────────────
 test_that("gg_partial_varpro: continuous parametric equals colMeans(yhat.par)", {
   d      <- make_mock_vpro_data()
-  result <- gg_partial_varpro(d)
+  result <- suppressWarnings(gg_partial_varpro(d))
   expected <- colMeans(d$age$yhat.par, na.rm = TRUE)
   expect_equal(result$continuous$parametric[result$continuous$name == "age"],
                expected)
 })
 
 test_that("gg_partial_varpro: categorical sex has n_obs * 2 rows", {
-  result  <- gg_partial_varpro(make_mock_vpro_data())
+  result  <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   sex_rows <- result$categorical[result$categorical$name == "sex", ]
   expect_equal(nrow(sex_rows), 30L * 2L)
 })
 
 ## ── plot.gg_partial_varpro (A-path) ──────────────────────────────────────────
 test_that("plot.gg_partial_varpro: continuous-only returns ggplot", {
-  result <- gg_partial_varpro(make_mock_vpro_data(), nvars = 1)
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data(), nvars = 1))
   gg <- plot(result)
   expect_s3_class(gg, "ggplot")
 })
 
 test_that("plot.gg_partial_varpro: both cont + cat returns ggplot", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   gg <- plot(result)
   expect_s3_class(gg, "ggplot")
 })
 
 test_that("plot.gg_partial_varpro: type arg selects effect columns", {
-  result <- gg_partial_varpro(make_mock_vpro_data(), nvars = 1)
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data(), nvars = 1))
   gg <- plot(result, type = "parametric")
   expect_s3_class(gg, "ggplot")
 })
@@ -212,19 +212,19 @@ test_that("plot.gg_partial_varpro: scale='rmst' with time → RMST y-label", {
 
 ## ── autoplot / print / summary ───────────────────────────────────────────────
 test_that("autoplot.gg_partial_varpro: returns ggplot", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   expect_s3_class(ggplot2::autoplot(result), "ggplot")
 })
 
 test_that("print.gg_partial_varpro: returns x invisibly", {
-  result <- gg_partial_varpro(make_mock_vpro_data())
+  result <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   out <- capture.output(ret <- print(result))
   expect_identical(ret, result)
   expect_true(any(grepl("gg_partial_varpro", out)))
 })
 
 test_that("summary.gg_partial_varpro: returns summary.gg", {
-  result  <- gg_partial_varpro(make_mock_vpro_data())
+  result  <- suppressWarnings(gg_partial_varpro(make_mock_vpro_data()))
   s       <- summary(result)
   expect_s3_class(s, "summary.gg")
 })
@@ -262,7 +262,8 @@ test_that(".resolve_varpro_scale maps 'auto' by family, passes others through", 
   expect_equal(ggRandomForests:::.resolve_varpro_scale("auto", "class"), "prob")
   expect_equal(ggRandomForests:::.resolve_varpro_scale("auto", "regr"),
                "generic")
-  expect_equal(ggRandomForests:::.resolve_varpro_scale("auto", NA_character_),
+  expect_equal(suppressWarnings(
+    ggRandomForests:::.resolve_varpro_scale("auto", NA_character_)),
                "generic")
   # explicit scales returned unchanged
   expect_equal(ggRandomForests:::.resolve_varpro_scale("rmst", "surv"), "rmst")
@@ -290,7 +291,7 @@ test_that(".is_bounded_scale flags prob/odds/surv only", {
 ## ── v3.3.0 conversion in the extractor (mean of probabilities) ───────────────
 test_that("gg_partial_varpro: scale='prob' is mean of plogis, causal NA", {
   d <- make_mock_vpro_data()
-  res <- gg_partial_varpro(d, scale = "prob")
+  res <- suppressWarnings(gg_partial_varpro(d, scale = "prob"))  # no object
   age <- res$continuous[res$continuous$name == "age", ]
   expected <- colMeans(stats::plogis(d$age$yhat.par), na.rm = TRUE)
   expect_equal(age$parametric, expected)
@@ -334,7 +335,7 @@ test_that(".partial_varpro_ylabel: prob/odds/logodds/surv labels", {
 ## ── v3.3.0 plot: causal hidden on bounded scales ─────────────────────────────
 test_that("plot.gg_partial_varpro: bounded scale drops causal, warns if asked", {
   d   <- make_mock_vpro_data()
-  res <- gg_partial_varpro(d, nvars = 1, scale = "prob")
+  res <- suppressWarnings(gg_partial_varpro(d, nvars = 1, scale = "prob"))
   expect_s3_class(plot(res), "ggplot")
   expect_warning(plot(res, type = "causal"), regexp = "causal")
 })
@@ -437,8 +438,8 @@ test_that("gg_partial_varpro: scale='rmst' is genuinely tau-dependent", {
   r1   <- gg_partial_varpro(object = vp, scale = "rmst", time = 500,
                             xvar.names = one)
   vars <- unique(c(
-    if (nrow(r1$continuous)  > 0) r1$continuous$name,
-    if (nrow(r1$categorical) > 0) r1$categorical$name
+    if (nrow(r1$continuous)  > 0) as.character(r1$continuous$name),
+    if (nrow(r1$categorical) > 0) as.character(r1$categorical$name)
   ))
   expect_equal(vars, one)
 })
@@ -549,9 +550,7 @@ test_that("gg_partial_varpro: scale='surv' stays in [0,1] near S = 1", {
   tau <- sort(unique(d$time[d$status == 1]))[3]
   r <- suppressWarnings(gg_partial_varpro(object = vp, scale = "surv",
                                           time = tau))
-  ## [[ ]], not $: on 3.5.x an empty $categorical is a 0-column tibble, and $
-  ## on a missing tibble column warns.
-  vals <- c(r$continuous[["parametric"]], r$continuous[["nonparametric"]],
+  vals <- c(r$continuous$parametric, r$continuous$nonparametric,
             r$categorical[["parametric"]], r$categorical[["nonparametric"]])
   expect_true(length(vals) > 0L)
   expect_true(all(vals >= 0 & vals <= 1))
@@ -585,6 +584,139 @@ test_that("surv_learner: continuous curve is averaged, then clamped", {
   ## The categorical frame is unaveraged, so it clamps per value.
   sex <- dfs$categorical
   expect_equal(sex$parametric, pmin(pmax(as.vector(d$sex$yhat.par), 0), 1))
+})
+
+## ── 4.0.0 "prob" anchored at each case's own level ──────────────────────────
+## partialpro returns every case at the cohort-mean intercept; "prob" restores
+## each case's level from the forest's OOB log-odds before plogis-then-average.
+test_that(".anchor_varpro_levels passes each curve through its anchor", {
+  d <- make_mock_vpro_data()
+  d$age$case <- seq_len(nrow(d$age$yhat.par))
+  d$sex$case <- seq_len(nrow(d$sex$yhat.par))
+  anchor <- seq(-2, 2, length.out = nrow(d$age$yhat.par))
+  out <- ggRandomForests:::.anchor_varpro_levels(d, anchor)
+  at_obs <- vapply(seq_along(anchor), function(i) {
+    stats::approx(out$age$xvirtual, out$age$yhat.par[i, ], d$age$xorg[i],
+                  rule = 2)$y
+  }, numeric(1))
+  expect_equal(at_obs, anchor)
+  ## Shape is kept: each row moves by one constant.
+  shift <- out$age$yhat.par - d$age$yhat.par
+  expect_equal(apply(shift, 1, stats::sd), rep(0, nrow(shift)))
+  expect_equal(out$age$yhat.nonpar - d$age$yhat.nonpar, shift)
+  expect_equal(out$age$yhat.causal, d$age$yhat.causal)
+  ## Binary variables carry per-case levels already and are left alone.
+  expect_identical(out$sex, d$sex)
+})
+
+## varPro 3.3.1 returns a case whose local fit failed as an all-NA row. It has
+## no level to restore, so it stays NA and colMeans(na.rm = TRUE) leaves it out.
+test_that(".anchor_varpro_levels leaves an unavailable case NA", {
+  d <- make_mock_vpro_data()
+  d$age$case <- seq_len(nrow(d$age$yhat.par))
+  d$age$yhat.par[1:3, ] <- NA
+  anchor <- seq(-2, 2, length.out = nrow(d$age$yhat.par))
+  out <- ggRandomForests:::.anchor_varpro_levels(d, anchor)
+  expect_true(all(is.na(out$age$yhat.par[1:3, ])))
+  expect_true(all(is.na(out$age$yhat.nonpar[1:3, ])))
+  expect_false(anyNA(out$age$yhat.par[-(1:3), ]))
+})
+
+test_that("gg_partial_varpro warns when a variable has no available curve", {
+  d <- make_mock_vpro_data()
+  d$age$yhat.par[]    <- NA
+  d$age$yhat.nonpar[] <- NA
+  expect_warning(gg_partial_varpro(d, scale = "logodds"),
+                 "no available partial curve.*age")
+})
+
+test_that("gg_partial_varpro: 'prob' is anchored and tracks the true PD", {
+  skip_on_cran()
+  skip_if_not_installed("varPro")
+  set.seed(3)
+  n <- 300
+  d <- data.frame(x1 = stats::rnorm(n), x2 = stats::rnorm(n),
+                  x3 = stats::rnorm(n))
+  ## x2 spreads the cases' levels widely; that is where the swap bites.
+  d$y <- factor(stats::rbinom(n, 1, stats::plogis(1.5 * d$x1 + 3 * d$x2)))
+  vp  <- varPro::varpro(y ~ ., d, ntree = 100)
+  set.seed(1)
+  pp  <- varPro::partialpro(vp, xvar.names = "x1")
+  r   <- gg_partial_varpro(part_dta = pp, object = vp, scale = "prob")
+  expect_true(attr(r, "provenance")$anchored)
+  un  <- suppressWarnings(gg_partial_varpro(part_dta = pp, scale = "prob"))
+  grid  <- stats::quantile(d$x1, seq(0.05, 0.95, by = 0.1))
+  truth <- vapply(grid, function(g) mean(stats::plogis(1.5 * g + 3 * d$x2)),
+                  numeric(1))
+  err <- function(res) {
+    cont <- res$continuous
+    mean(abs(stats::approx(cont$variable, cont$parametric, grid,
+                           rule = 2)$y - truth))
+  }
+  expect_lt(err(r), err(un))
+  expect_lt(err(r), 0.06)
+})
+
+test_that("gg_partial_varpro: 'prob' without object warns and is not anchored", {
+  expect_warning(res <- gg_partial_varpro(make_mock_vpro_data(),
+                                          scale = "prob"),
+                 "cannot restore each case's level")
+  expect_false(attr(res, "provenance")$anchored)
+})
+
+test_that("gg_partial_varpro: a custom learner in ... is not anchored", {
+  skip_on_cran()
+  skip_if_not_installed("varPro")
+  set.seed(4)
+  dat <- data.frame(y = factor(rep(c("a", "b"), 60)),
+                    x1 = stats::rnorm(120), x2 = stats::rnorm(120))
+  vp  <- varPro::varpro(y ~ ., dat, ntree = 40, nvar = 2)
+  lrn <- function(newx) {
+    if (missing(newx)) newx <- vp$x
+    randomForestSRC::predict.rfsrc(vp$rf, newx, perf.type = "none")$predicted
+  }
+  r <- suppressMessages(gg_partial_varpro(object = vp, scale = "prob",
+                                          nvars = 1, learner = lrn))
+  expect_false(attr(r, "provenance")$anchored)
+})
+
+test_that("gg_partial_varpro: ignored ... cannot switch anchoring off", {
+  skip_on_cran()
+  skip_if_not_installed("varPro")
+  set.seed(6)
+  ## x1 carries real signal, so partialpro() reliably returns it. On a pure
+  ## noise outcome it can come back empty (seen on R 4.5), and part_dta = NULL
+  ## would then mean "compute it", which is not the path under test.
+  x1  <- stats::rnorm(120)
+  dat <- data.frame(y = factor(stats::rbinom(120, 1, stats::plogis(2 * x1))),
+                    x1 = x1, x2 = stats::rnorm(120))
+  vp  <- varPro::varpro(y ~ ., dat, ntree = 40, nvar = 2)
+  set.seed(1)
+  pp  <- varPro::partialpro(vp, xvar.names = "x1")
+  expect_true("x1" %in% names(pp))
+  base <- gg_partial_varpro(part_dta = pp, object = vp, scale = "prob")
+  ## With part_dta supplied, '...' is reported as ignored, so it must be.
+  r <- suppressWarnings(gg_partial_varpro(part_dta = pp, object = vp,
+                                          scale = "prob",
+                                          learner = function(newx) 0))
+  expect_true(attr(r, "provenance")$anchored)
+  expect_equal(r$continuous, base$continuous)
+})
+
+test_that(".varpro_oob_logodds keeps never-OOB cases via in-bag predictions", {
+  skip_on_cran()
+  skip_if_not_installed("varPro")
+  set.seed(1)
+  d  <- data.frame(y = factor(stats::rbinom(200, 1, 0.5)),
+                   x1 = stats::rnorm(200), x2 = stats::rnorm(200))
+  vp <- varPro::varpro(y ~ ., d, ntree = 5)
+  pr <- randomForestSRC::predict.rfsrc(vp$rf, perf.type = "none")
+  expect_true(anyNA(pr$predicted.oob))       # the case being tested
+  a  <- ggRandomForests:::.varpro_oob_logodds(vp, "1")
+  expect_false(anyNA(a))
+  ok <- !is.na(pr$predicted.oob[, "1"])
+  expect_equal(stats::plogis(a[ok]),
+               pmin(pmax(pr$predicted.oob[ok, "1"], 1e-3), 1 - 1e-3))
 })
 
 test_that("gg_partial_varpro: precomputed part_dta on 'surv' is not clamped", {
@@ -647,6 +779,23 @@ test_that("gg_partial_varpro: plot C-path returns ggplot", {
   expect_s3_class(gg, "ggplot")
 })
 
+test_that("gg_partial_varpro: plot C-path honours labels on the facet strips", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  # Path-C dispatches via NextMethod() to plot.gg_partial_rfsrc(); this pins
+  # that `labels` survives that hand-off instead of evaporating into `...`.
+  # xvar_subset = 5L is "age" alone -- continuous-only, so the result is a
+  # single ggplot rather than a patchwork of stacked panels.
+  skip_if_not_installed("randomForestSRC")
+  m      <- make_mock_cpath(xvar_subset = 5L)
+  result <- suppressWarnings(
+    gg_partial_varpro(object = m$vp, scale = "chf",
+                      time = median(m$rf$time.interest))
+  )
+  gg <- plot(result, labels = c(age = "Patient Age"))
+  strips <- as.character(ggplot2::get_strip_labels(gg)$facets$name)
+  expect_true("Patient Age" %in% strips)
+})
+
 test_that("gg_partial_varpro: C-path 'model' label is attached to the frames", {
   skip_if_not_installed("randomForestSRC")
   # full var set → both continuous (age/karno) and categorical (celltype)
@@ -666,70 +815,11 @@ test_that("gg_partial_varpro: C-path 'model' label is attached to the frames", {
     expect_equal(unique(result$continuous$model), "forestC")
 })
 
-## ── dropped xvar.names guard ─────────────────────────────────────────────────
-## varPro::partialpro() filters requested variables through
-## na.omit(match(xvar.names, object$xvar.names)), so any name outside the fit's
-## reachable set is discarded with no error, warning, or record on the return
-## value. These cover the guard that makes that loss loud.
-
-make_fake_varpro_fit <- function(reachable = c("wt", "hp", "drat"),
-                                 p = 10) {
-  structure(
-    list(xvar.names = reachable,
-         x = matrix(0, nrow = 2, ncol = p)),
-    class = "varpro"
-  )
-}
-
-test_that(".warn_varpro_dropped_xvars: warns and names unreachable variables", {
-  fake <- make_fake_varpro_fit()
-  expect_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(
-      c("wt", "hp", "qsec", "vs"), fake),
-    regexp = "qsec"
-  )
-  # the warning names every dropped variable, not just the first
-  expect_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(
-      c("wt", "hp", "qsec", "vs"), fake),
-    regexp = "vs"
-  )
-  # and reports the reachability ceiling (3 of 10 here)
-  expect_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(
-      c("wt", "hp", "qsec", "vs"), fake),
-    regexp = "3 of 10|split\\.weight"
-  )
-})
-
-test_that(".warn_varpro_dropped_xvars: silent when every request is reachable", {
-  fake <- make_fake_varpro_fit()
-  expect_no_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(c("wt", "hp"), fake)
-  )
-  expect_no_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(c("wt", "hp", "drat"), fake)
-  )
-})
-
-test_that(".warn_varpro_dropped_xvars: silent when xvar.names is not supplied", {
-  # No xvar.names => partialpro falls back to get.topvars(), which is
-  # documented, expected behavior rather than a silent drop.
-  expect_no_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(NULL, make_fake_varpro_fit())
-  )
-})
-
-test_that(".warn_varpro_dropped_xvars: silent when object is unusable", {
-  expect_no_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(c("wt", "qsec"), NULL)
-  )
-  # a fit with no xvar.names gives nothing to compare against
-  expect_no_warning(
-    ggRandomForests:::.warn_varpro_dropped_xvars(
-      c("wt", "qsec"), structure(list(x = matrix(0, 2, 3)), class = "varpro"))
-  )
-})
+## ── unreachable xvar.names ──────────────────────────────────────────────────
+## varPro::partialpro() keeps only the requested names it finds in
+## object$xvar.names. From varPro 3.3.0 it warns and names the rest, so
+## gg_partial_varpro() no longer carries a warning of its own. This pins that
+## the loss still reaches the caller through the object path.
 
 test_that("gg_partial_varpro: object path warns on unreachable xvar.names", {
   skip_if_not_installed("varPro")
@@ -858,4 +948,523 @@ test_that("gg_partial_varpro: chf xvar.names extraction is an exact match", {
   fake_dots <- list(xvar.names.bogus = "qsec")
   expect_null(fake_dots[["xvar.names"]])
   expect_identical(fake_dots$xvar.names, "qsec")   # documents why [[ is required
+})
+
+## ── Ordering: name is a factor in importance order, and nvars slices AFTER ──
+## ranking rather than before (Task 3: the nvars bug fix).
+
+make_mock_part_dta <- function(names_vec, n_obs = 20, n_pts = 12) {
+  out <- lapply(names_vec, function(nm) {
+    list(xvirtual    = seq_len(n_pts),
+         xorg        = sample(seq_len(n_pts), n_obs, replace = TRUE),
+         yhat.par    = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
+         yhat.nonpar = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
+         yhat.causal = matrix(rnorm(n_obs * n_pts), nrow = n_obs))
+  })
+  names(out) <- names_vec
+  out
+}
+
+test_that("name is a factor so facet order is not alphabetical", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("vis", "age", "bpd"))
+  res <- suppressWarnings(gg_partial_varpro(pd, cat_limit = 5))
+  expect_s3_class(res$continuous$name, "factor")
+  expect_equal(levels(res$continuous$name), c("vis", "age", "bpd"))
+})
+
+test_that("nvars selects the top n by importance, not the first n", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "bpd", "vis"))
+  fake <- structure(list(family = "class"), class = "varpro")
+  local_mocked_bindings(get.topvars = function(...) c("vis", "bpd", "age"),
+                        .package = "varPro")
+  res <- gg_partial_varpro(pd, object = fake, scale = "logodds",
+                           nvars = 2, cat_limit = 5)
+  # Ranked order is vis, bpd, age -- so the top 2 are vis and bpd, NOT age/bpd.
+  expect_setequal(levels(droplevels(res$continuous$name)), c("vis", "bpd"))
+  expect_false("age" %in% as.character(res$continuous$name))
+})
+
+test_that("no object leaves part_dta list order intact", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("zulu", "alpha", "mike"))
+  res <- suppressWarnings(gg_partial_varpro(pd, cat_limit = 5))
+  expect_equal(levels(res$continuous$name), c("zulu", "alpha", "mike"))
+})
+
+test_that("an unnamed part_dta is rejected, not silently accepted", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "bpd", "vis"))
+  names(pd) <- NULL
+  expect_error(gg_partial_varpro(pd, cat_limit = 5), "must be a named list")
+})
+
+test_that("a part_dta with a blank or NA name is rejected", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "bpd"))
+  names(pd) <- c("age", "")
+  expect_error(gg_partial_varpro(pd, cat_limit = 5), "must be a named list")
+  names(pd) <- c("age", NA_character_)
+  expect_error(gg_partial_varpro(pd, cat_limit = 5), "must be a named list")
+})
+
+test_that("duplicate names in part_dta do not crash factor(levels=)", {
+  # Regression test: lvls used to be names(part_dta)[seq_len(nvars)] without
+  # unique(), so a duplicated name fed a duplicated 'levels=' to factor() and
+  # errored "factor level [2] is duplicated" instead of just collapsing the
+  # duplicate into a single facet.
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "age", "bpd"))
+  res <- suppressWarnings(gg_partial_varpro(pd, cat_limit = 5))
+  expect_s3_class(res$continuous$name, "factor")
+  expect_equal(levels(res$continuous$name), c("age", "bpd"))
+})
+
+test_that("a zero-length part_dta does not crash on seq(nvars)", {
+  # Regression test: seq(0) is c(1, 0), not integer(0), so the
+  # nvars <- min(nvars, length(part_dta)) clamp made an empty part_dta reach
+  # part_dta[[1]] and error "subscript out of bounds". seq_len(0) is
+  # integer(0), so the loop simply does not run.
+  res <- suppressWarnings(gg_partial_varpro(part_dta = list()))
+  expect_equal(nrow(res$continuous), 0L)
+  expect_equal(nrow(res$categorical), 0L)
+})
+
+## ── Audible fallback when 'auto' cannot resolve a scale (Task 4) ────────────
+
+test_that("auto scale warns when no fit is available to resolve it", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "bpd"))
+  expect_warning(gg_partial_varpro(pd, cat_limit = 5),
+                 "scale could not be resolved")
+})
+
+test_that("an explicit scale does not warn", {
+  set.seed(42)
+  pd <- make_mock_part_dta(c("age", "bpd"))
+  expect_no_warning(gg_partial_varpro(pd, scale = "logodds", cat_limit = 5))
+})
+
+test_that("a classification fit resolves auto to prob without warning", {
+  fake <- structure(list(family = "class"), class = "varpro")
+  expect_no_warning(sc <- .resolve_varpro_scale("auto", fake$family))
+  expect_equal(sc, "prob")
+})
+
+test_that("the prob scale labels the y axis P(Y = target)", {
+  prov <- list(scale = "prob", target = "1")
+  expect_equal(.partial_varpro_ylabel(prov), "P(Y = 1)")
+})
+
+test_that("an unresolved scale still labels the y axis Partial Effect", {
+  expect_equal(.partial_varpro_ylabel(list(scale = "generic")), "Partial Effect")
+})
+
+## ── labels = on facet strips (Task 5) ────────────────────────────────────────
+
+test_that("labels rename facet strips without touching the data", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  set.seed(42)
+  pd  <- make_mock_part_dta(c("bpd", "vis"))
+  res <- gg_partial_varpro(pd, scale = "logodds", cat_limit = 5)
+  p   <- plot(res, labels = c(bpd = "BP Diastole", vis = "VIS"))
+
+  # ggplot_build()$layout$layout carries the RAW facet values (labellers are
+  # applied at render time, not at build time), so the labelled strip text is
+  # read via ggplot2::get_strip_labels(), which drives the same
+  # format_strip_labels()/labeller path used to draw the strips.
+  strips <- ggplot2::get_strip_labels(p)$facets$name
+  expect_true("BP Diastole" %in% as.character(strips))
+
+  # The object itself must still carry raw names.
+  expect_true("bpd" %in% as.character(res$continuous$name))
+})
+
+test_that("an unlabelled variable keeps its raw name", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  set.seed(42)
+  pd  <- make_mock_part_dta(c("bpd", "vis"))
+  res <- gg_partial_varpro(pd, scale = "logodds", cat_limit = 5)
+  p   <- plot(res, labels = c(bpd = "BP Diastole"))
+  strips <- as.character(ggplot2::get_strip_labels(p)$facets$name)
+  expect_true(all(c("BP Diastole", "vis") %in% strips))
+})
+
+test_that("labels = NULL reproduces the unlabelled plot", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  set.seed(42)
+  pd  <- make_mock_part_dta(c("bpd", "vis"))
+  res <- gg_partial_varpro(pd, scale = "logodds", cat_limit = 5)
+  a <- ggplot2::get_strip_labels(plot(res))$facets$name
+  b <- ggplot2::get_strip_labels(plot(res, labels = NULL))$facets$name
+  expect_equal(as.character(a), as.character(b))
+})
+
+test_that("the deprecated shim forwards labels identically", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  set.seed(42)
+  pd  <- make_mock_part_dta(c("bpd", "vis"))
+  res <- gg_partial_varpro(pd, scale = "logodds", cat_limit = 5)
+  shim <- res
+  class(shim) <- c("gg_partialpro", "list")
+  p <- plot(shim, labels = c(bpd = "BP Diastole"))
+  strips <- as.character(ggplot2::get_strip_labels(p)$facets$name)
+  expect_true("BP Diastole" %in% strips)
+})
+
+test_that("autoplot.gg_partialpro forwards labels through '...'", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  # autoplot.gg_partialpro() has no 'labels' formal of its own -- it takes
+  # only (object, ...) and re-dispatches to autoplot.gg_partial_varpro(),
+  # which forwards '...' to plot(). This pins that the forwarding actually
+  # reaches the facet strips rather than silently landing nowhere.
+  set.seed(42)
+  pd   <- make_mock_part_dta(c("bpd", "vis"))
+  res  <- gg_partial_varpro(pd, scale = "logodds", cat_limit = 5)
+  shim <- res
+  class(shim) <- c("gg_partialpro", "list")
+  p <- ggplot2::autoplot(shim, labels = c(bpd = "BP Diastole"))
+  strips <- as.character(ggplot2::get_strip_labels(p)$facets$name)
+  expect_true("BP Diastole" %in% strips)
+})
+
+## ── plot(): which, panels, marks and palette ─────────────────────────────────
+## Two continuous variables plus the categorical one, so the panels route has
+## something to lay out and `which` has both frames to choose between.
+make_mock_vpro_two_cont <- function(n_obs = 30, n_pts = 15) {
+  set.seed(42)
+  cont <- function() {
+    list(
+      xvirtual    = seq(30, 80, length.out = n_pts),
+      xorg        = sample(seq(30, 80, by = 5), n_obs, replace = TRUE),
+      yhat.par    = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
+      yhat.nonpar = matrix(rnorm(n_obs * n_pts), nrow = n_obs),
+      yhat.causal = matrix(rnorm(n_obs * n_pts), nrow = n_obs)
+    )
+  }
+  list(age = cont(), bmi = cont(), sex = list(
+    xvirtual    = c(0, 1),
+    xorg        = sample(c(0, 1), n_obs, replace = TRUE),
+    yhat.par    = matrix(rnorm(n_obs * 2), nrow = n_obs),
+    yhat.nonpar = matrix(rnorm(n_obs * 2), nrow = n_obs),
+    yhat.causal = matrix(rnorm(n_obs * 2), nrow = n_obs)
+  ))
+}
+
+test_that("plot.gg_partial_varpro: panels = NULL is the unchanged facet route", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  p <- plot(pp, which = "continuous")
+  expect_s3_class(p, "ggplot")
+  expect_false(inherits(p, "patchwork"))
+  ## One facet layer, and it is the free_x wrap this method has always drawn.
+  expect_s3_class(p$facet, "FacetWrap")
+  expect_true(p$facet$params$free$x)
+})
+
+test_that("plot.gg_partial_varpro: which returns a bare ggplot per frame", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  ## Default keeps the historical patchwork when both frames are populated.
+  expect_true(inherits(plot(pp), "patchwork"))
+  for (w in c("continuous", "categorical")) {
+    p <- plot(pp, which = w)
+    expect_s3_class(p, "ggplot")
+    expect_false(inherits(p, "patchwork"))
+  }
+})
+
+test_that("plot.gg_partial_varpro: panels lays out one panel per row", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  spec <- data.frame(name = c("age", "bmi"), xlab = c("Age (y)", "BMI"),
+                     xmin = 30, xmax = 80, xby = 10,
+                     stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec)
+  expect_true(inherits(p, "patchwork"))
+  expect_equal(length(p), nrow(spec))
+  ## Titles come from the spec, in row order.
+  expect_equal(vapply(seq_along(p), function(i) p[[i]]$labels$x,
+                      character(1)),
+               spec$xlab)
+})
+
+test_that("plot.gg_partial_varpro: panels selects a subset, in row order", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  spec <- data.frame(name = "bmi", stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec)
+  ## A single row yields a one-panel patchwork, not the two-variable facet.
+  expect_true(inherits(p, "patchwork"))
+  expect_equal(length(p), 1L)
+  expect_equal(p[[1]]$labels$x, "bmi")
+})
+
+test_that("plot.gg_partial_varpro: panels names an absent variable → stop", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  expect_error(
+    plot(pp, panels = data.frame(name = "nope", stringsAsFactors = FALSE)),
+    regexp = "nope"
+  )
+})
+
+test_that("plot.gg_partial_varpro: panels needs a data frame with 'name'", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  expect_error(plot(pp, panels = "age"), regexp = "data frame")
+  expect_error(plot(pp, panels = data.frame(v = 1)), regexp = "'name' column")
+  expect_error(plot(pp, panels = data.frame(name = character(0))),
+               regexp = "no rows")
+})
+
+test_that("plot.gg_partial_varpro: panels with only 'name' still renders", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  spec <- data.frame(name = c("age", "bmi"), stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec)
+  expect_silent(invisible(ggplot2::ggplot_build(p[[1]])))
+})
+
+test_that("plot.gg_partial_varpro: palette reaches the built colours", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  cols <- function(p) unique(ggplot2::ggplot_build(p)$data[[1]]$colour)
+  default <- cols(plot(pp, which = "continuous", type = "parametric"))
+  brewed  <- cols(plot(pp, which = "continuous", type = "parametric",
+                       palette = "Set1"))
+  expect_false(identical(default, brewed))
+  expect_true("#E41A1C" %in% brewed)   # Set1's first colour
+})
+
+test_that("plot.gg_partial_varpro: points and linewidth reach the layers", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  p <- plot(pp, which = "continuous", type = "parametric",
+            points = TRUE, point_size = 0.6, linewidth = 1.4)
+  geoms <- vapply(p$layers, function(l) class(l$geom)[1], character(1))
+  expect_true("GeomPoint" %in% geoms)
+  expect_true("GeomLine"  %in% geoms)
+  pt <- p$layers[[which(geoms == "GeomPoint")[1]]]
+  ln <- p$layers[[which(geoms == "GeomLine")[1]]]
+  expect_equal(pt$aes_params$size, 0.6)
+  expect_equal(ln$aes_params$linewidth, 1.4)
+})
+
+test_that("plot.gg_partial_varpro: smooth replaces the line, not adds to it", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  p <- plot(pp, which = "continuous", type = "parametric", smooth = TRUE)
+  geoms <- vapply(p$layers, function(l) class(l$geom)[1], character(1))
+  expect_true("GeomSmooth" %in% geoms)
+  expect_false("GeomLine" %in% geoms)
+})
+
+test_that("plot.gg_partial_varpro: panels share one y range", {
+  set.seed(42)
+  n <- 30
+  np <- 15
+  cont <- function(m) {
+    list(
+      xvirtual    = seq(30, 80, length.out = np),
+      xorg        = sample(seq(30, 80, by = 5), n, replace = TRUE),
+      yhat.par    = matrix(rnorm(n * np, mean = m), nrow = n),
+      yhat.nonpar = matrix(rnorm(n * np), nrow = n),
+      yhat.causal = matrix(rnorm(n * np), nrow = n)
+    )
+  }
+  ## Deliberately offset so free y would be visibly different.
+  pp <- suppressWarnings(
+    gg_partial_varpro(list(age = cont(0), bmi = cont(3)), scale = "logodds"))
+  p <- plot(pp, type = "parametric",
+            panels = data.frame(name = c("age", "bmi"),
+                                stringsAsFactors = FALSE))
+  ## p[[i]] is the per-panel accessor: $patches$plots holds only the first
+  ## n-1 plots, so comparing p[[1]] against $patches$plots[[1]] compares a
+  ## plot with itself and passes even when y is free.
+  yr <- lapply(seq_along(p), function(i) {
+    ggplot2::ggplot_build(p[[i]])$layout$panel_params[[1]]$y.range
+  })
+  expect_length(yr, 2L)
+  expect_equal(yr[[1]], yr[[2]])
+  ## And the shared range must span BOTH panels' data, not just one.
+  expect_gt(diff(yr[[1]]), 3)
+})
+
+## ── complement and the unused-dots guard ────────────────────────────────────
+test_that("plot.gg_partial_varpro: complement plots 1 - p and relabels", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "prob"))
+  y <- function(p) ggplot2::ggplot_build(p)$data[[1]]$y
+  base <- plot(pp, which = "continuous", type = "parametric")
+  comp <- plot(pp, which = "continuous", type = "parametric",
+               complement = TRUE)
+  expect_equal(y(comp), 1 - y(base))
+  expect_match(comp$labels$y, "^1 - ")
+  expect_false(grepl("^1 - ", base$labels$y))
+})
+
+test_that("plot.gg_partial_varpro: complement reaches the panels route too", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "prob"))
+  spec <- data.frame(name = c("age", "bmi"), stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec, complement = TRUE)
+  ## Every panel is complemented, and the shared y stays inside [0, 1].
+  yr <- range(unlist(lapply(seq_along(p), function(i) {
+    ggplot2::ggplot_build(p[[i]])$data[[1]]$y
+  })))
+  expect_gte(yr[1], 0)
+  expect_lte(yr[2], 1)
+})
+
+test_that("plot.gg_partial_varpro: complement off a probability scale → stop", {
+  for (sc in c("logodds", "odds", "mortality")) {
+    pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                             scale = sc))
+    expect_error(plot(pp, complement = TRUE), regexp = "probability scale")
+  }
+})
+
+test_that("plot.gg_partial_varpro: unused '...' warns and names them", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  ## A misspelling that would otherwise be discarded without a word.
+  expect_warning(plot(pp, panls = data.frame(name = "age")),
+                 regexp = "panls")
+  expect_warning(plot(pp, nonsense = 1, other = 2), regexp = "2 argument")
+  ## The supported spellings bind to formals and must stay silent.
+  expect_silent(plot(pp, which = "continuous", points = TRUE))
+})
+
+## ── ylim and the monochrome palette ─────────────────────────────────────────
+test_that("plot.gg_partial_varpro: ylim pins the shared range on both routes", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "prob"))
+  yr <- function(q) ggplot2::ggplot_build(q)$layout$panel_params[[1]]$y.range
+
+  ## Facet route.
+  f <- plot(pp, which = "continuous", type = "parametric", ylim = c(0, 1))
+  expect_lte(yr(f)[1], 0)
+  expect_gte(yr(f)[2], 1)
+
+  ## Panels route: every panel takes it, and the per-panel x survives.
+  spec <- data.frame(name = c("age", "bmi"), xmin = 30, xmax = 100, xby = 10,
+                     stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec, ylim = c(0, 1))
+  for (i in seq_along(p)) {
+    expect_lte(yr(p[[i]])[1], 0)
+    expect_gte(yr(p[[i]])[2], 1)
+    ## xmax = 100 is beyond the data (30..80); it must still be honoured.
+    expect_gte(ggplot2::ggplot_build(p[[i]])$layout$panel_params[[1]]$x.range[2],
+               100)
+  }
+})
+
+test_that("plot.gg_partial_varpro: palette = 'black' gives a mono scale", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  cols <- function(pal) {
+    unique(ggplot2::ggplot_build(
+      plot(pp, which = "continuous", type = "parametric", palette = pal)
+    )$data[[1]]$colour)
+  }
+  expect_equal(cols("black"), "black")
+  expect_equal(cols("mono"), "black")
+  expect_equal(cols("grey"), "grey30")
+  expect_equal(cols("gray"), "grey30")
+  ## A real brewer name still routes to the brewer scale.
+  expect_true("#E41A1C" %in% cols("Set1"))
+})
+
+test_that("plot.gg_partial_varpro: mono palette reaches the categorical fill", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  p <- plot(pp, which = "categorical", type = "parametric", palette = "black")
+  expect_equal(unique(ggplot2::ggplot_build(p)$data[[1]]$fill), "black")
+})
+
+test_that("plot.gg_partial_varpro: factor scale columns coerce by label", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  ## as.numeric() on a factor yields integer CODES: factor(c(30, 80)) would
+  ## become 1, 2 and draw the panel on an axis nobody asked for.
+  spec <- data.frame(name = c("age", "bmi"),
+                     xmin = factor(c(30, 30)), xmax = factor(c(80, 80)),
+                     stringsAsFactors = FALSE)
+  p <- plot(pp, type = "parametric", panels = spec)
+  xr <- ggplot2::ggplot_build(p[[1]])$layout$panel_params[[1]]$x.range
+  expect_gte(xr[2], 80)   # not 2
+})
+
+test_that("plot.gg_partial_varpro: non-numeric scale column → stop", {
+  pp <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                           scale = "logodds"))
+  spec <- data.frame(name = "age", xmin = "wide", stringsAsFactors = FALSE)
+  expect_error(plot(pp, type = "parametric", panels = spec),
+               regexp = "must be numeric")
+})
+
+## ── scale = "prob_typical": averaging order ─────────────────────────────────
+test_that("gg_partial_varpro: prob_typical is plogis(mean), prob is mean(plogis)", {
+  set.seed(5)
+  n <- 200
+  np <- 12
+  grid <- seq(25, 85, length.out = np)
+  ## Wide per-subject spread, so Jensen has something to bite on.
+  z <- sapply(grid, function(x) rnorm(n, mean = -2 + 0.06 * x, sd = 4.5))
+  md <- list(bpd = list(xvirtual = grid, xorg = runif(n, 25, 85),
+                        yhat.par = z, yhat.nonpar = z,
+                        yhat.causal = matrix(rnorm(n * np), nrow = n)))
+
+  a <- suppressWarnings(gg_partial_varpro(md, scale = "prob"))$continuous
+  b <- suppressWarnings(gg_partial_varpro(md, scale = "prob_typical"))$continuous
+
+  expect_equal(a$parametric, as.numeric(colMeans(stats::plogis(z))))
+  expect_equal(b$parametric, as.numeric(stats::plogis(colMeans(z))))
+
+  ## Jensen: prob is pulled TOWARD 0.5 relative to prob_typical, both ends.
+  hi <- b$parametric > 0.5
+  expect_true(all(a$parametric[hi] < b$parametric[hi]))
+  expect_true(all(a$parametric[!hi] > b$parametric[!hi]))
+
+  ## Both stay in [0, 1].
+  expect_true(all(a$parametric >= 0 & a$parametric <= 1))
+  expect_true(all(b$parametric >= 0 & b$parametric <= 1))
+})
+
+test_that("gg_partial_varpro: prob_typical is bounded, and drops causal", {
+  o <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                          scale = "prob_typical"))
+  expect_true(all(is.na(o$continuous$causal)))
+  expect_equal(attr(o, "provenance")$scale, "prob_typical")
+})
+
+test_that("gg_partial_varpro: the two scales agree on the categorical frame", {
+  ## No averaging happens there, so there is no order to choose.
+  md <- make_mock_vpro_data()
+  a <- suppressWarnings(gg_partial_varpro(md, scale = "prob"))$categorical
+  b <- suppressWarnings(gg_partial_varpro(md, scale = "prob_typical"))$categorical
+  expect_equal(a$parametric, b$parametric)
+})
+
+test_that("plot.gg_partial_varpro: prob_typical labels the axis and takes complement", {
+  o <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                          scale = "prob_typical"))
+  p <- plot(o, which = "continuous", type = "parametric")
+  expect_match(p$labels$y, "typical subject")
+  q <- plot(o, which = "continuous", type = "parametric", complement = TRUE)
+  expect_match(q$labels$y, "^1 - ")
+})
+
+test_that("plot.gg_partial_varpro: complement error names every valid scale", {
+  o <- suppressWarnings(gg_partial_varpro(make_mock_vpro_two_cont(),
+                                          scale = "logodds"))
+  msg <- tryCatch(plot(o, complement = TRUE),
+                  error = function(e) conditionMessage(e))
+  ## The guard accepts three scales; a message listing a subset sends the
+  ## caller to the wrong estimand.
+  for (sc in c("prob", "prob_typical", "surv")) {
+    expect_match(msg, sc, fixed = TRUE)
+  }
 })

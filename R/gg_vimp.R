@@ -13,15 +13,14 @@
 ####**********************************************************************
 #' Variable Importance (VIMP) data object
 #'
-#' \code{gg_vimp} Extracts the variable importance (VIMP) information from a
+#' \code{gg_vimp} extracts the variable importance (VIMP) information from a
 #' \code{\link[randomForestSRC]{rfsrc}} or \code{\link[randomForest]{randomForest}}
 #' object and reshapes it into a tidy data set.
 #'
 #' @param object A \code{\link[randomForestSRC]{rfsrc}} object, the output from
 #' \code{\link[randomForestSRC]{vimp}}, or a fitted
 #' \code{\link[randomForest]{randomForest}}.
-#' @param nvar argument to control the number of variables included in the
-#' output.
+#' @param nvar Number of variables to include in the output.
 #' @param ... arguments passed to the \code{\link[randomForestSRC]{vimp.rfsrc}}
 #' function if the \code{\link[randomForestSRC]{rfsrc}} object does not contain
 #' importance information.
@@ -39,19 +38,21 @@
 #'
 #' \strong{A \code{randomForest} fit needs \code{importance = TRUE} to give you
 #' this.}  \code{randomForest::randomForest()} defaults to
-#' \code{importance = FALSE}, and that fit stores only \code{IncNodePurity} --
-#' a node-impurity (RSS or Gini) measure, which is not a permutation quantity
-#' and is not comparable to one.  It is the only importance the forest kept, so
+#' \code{importance = FALSE}, and that fit stores only a node-impurity measure
+#' (\code{IncNodePurity}, RSS, for regression; \code{MeanDecreaseGini} for
+#' classification), which is not a permutation quantity and is not comparable
+#' to one.  It is the only importance the forest kept, so
 #' it is what \code{gg_vimp()} reports, in the \code{vimp} column, same as any
 #' other.  Nothing marks the difference in the plot.  So
 #' \code{gg_vimp(randomForest(y ~ ., data))} ranks by node purity; pass
-#' \code{importance = TRUE} and you get permutation VIMP (\code{\%IncMSE}), and
+#' \code{importance = TRUE} and you get permutation VIMP (\code{\%IncMSE} for
+#' regression), and
 #' \code{colnames(object$importance)} tells you which one you have.
 #' \code{randomForestSRC::rfsrc()} has no such trap: its \code{importance}
 #' argument yields permutation VIMP.
 #'
 #' When a \code{randomForest} fit carries both measures, \code{gg_vimp()}
-#' reports the permutation one and leaves node purity out of the ranking --
+#' reports the permutation one and leaves node purity out of the ranking;
 #' the two run on different scales and mean different things, so putting them
 #' in one ordering would be meaningless.  Read
 #' \code{randomForest::importance(object)} if you want both.  A classification
@@ -74,10 +75,15 @@
 #' \code{positive} column and colored differently by
 #' \code{\link{plot.gg_vimp}}.
 #'
-#' @return \code{gg_vimp} object. A \code{data.frame} of VIMP measures, in rank
-#'   order, optionally containing class-specific scores and a relative importance
-#'   column. When \code{randomForest} objects lack stored importance values a
-#'   warning is issued and \code{NA} placeholders are returned so plots remain
+#' @return \code{gg_vimp} object. A \code{data.frame} of VIMP measures in rank
+#'   order, with columns \code{vars}, \code{set} (the importance measure),
+#'   \code{vimp} and \code{positive}. A classification forest with class-wise
+#'   permutation importance has one set per class plus the overall measure; a
+#'   \code{randomForest} classification fit grown with
+#'   \code{importance = FALSE} stores only node impurity, so it has a single
+#'   set. When \code{randomForest} objects lack stored
+#'   importance values a warning is issued and \code{NA} placeholders (columns
+#'   \code{vimp}, \code{vars} and \code{positive}) are returned so plots remain
 #'   reproducible.
 #'
 #' @seealso \code{\link{plot.gg_vimp}} \code{\link[randomForestSRC]{rfsrc}}
@@ -235,6 +241,8 @@ gg_vimp.rfsrc <- function(object, nvar, ...) {
 
   # Multi-class forests: $importance is a matrix (vars × classes).
   # Pivot to long form so each row is one (variable, class) combination.
+  # Single-outcome frames land here too: the `vars` column added above makes
+  # them two columns wide, and the pivot gives them set = "VIMP".
   if (ncol(gg_dta) > 1) {
     arg_set <- list(...)
 
@@ -290,8 +298,12 @@ gg_vimp.rfsrc <- function(object, nvar, ...) {
       colnames(gg_v)[1] <- which_col
       gg_dta <- gg_v
     } else {
-      # No specific class requested: attach variable names and pivot.
+      # No specific class requested: attach variable names and pivot. rfsrc's
+      # importance matrix is in predictor order, so rank by the overall
+      # measure (column 1, "all") before the nvar trim below keeps the top
+      # nvar rather than the first nvar.
       gg_dta$vars <- rownames(gg_dta)
+      gg_dta <- gg_dta[order(gg_dta[[1]], decreasing = TRUE), , drop = FALSE]
     }
 
     gg_dta <- gg_dta[seq_len(nvar), ]
@@ -306,17 +318,6 @@ gg_vimp.rfsrc <- function(object, nvar, ...) {
     )
     gg_dta <- gg_dta[order(gg_dta$vimp, decreasing = TRUE), ]
     gg_dta$vars <- factor(gg_dta$vars)
-  } else {
-    # Single-outcome: compute relative VIMP (each value as a fraction of the
-    # top-ranked variable's importance).
-    cnms <- colnames(gg_dta)
-    gg_dta <- cbind(gg_dta, gg_dta / gg_dta[1, 1])
-    colnames(gg_dta) <- c(cnms, "rel_vimp")
-    # Patch any NA entries in the vars column that slipped through.
-    gg_dta$vars[which(is.na(gg_dta$vars))] <-
-      rownames(gg_dta)[which(is.na(gg_dta$vars))]
-
-    gg_dta <- gg_dta[seq_len(nvar), ]
   }
 
   # Convert vars to an ordered factor (reversed so the most important variable
@@ -432,8 +433,7 @@ gg_vimp.randomForest <- function(object, nvar, ...) {
       )
       placeholder <- data.frame(
         vimp = rep(NA_real_, length(vars)),
-        vars = vars,
-        rel_vimp = NA_real_
+        vars = vars
       )
       placeholder$vars <- factor(placeholder$vars, levels = rev(unique(placeholder$vars)))
       placeholder$positive <- FALSE
@@ -542,10 +542,6 @@ gg_vimp.randomForest <- function(object, nvar, ...) {
     )
     gg_dta <- gg_dta[order(gg_dta$vimp, decreasing = TRUE), ]
     gg_dta$vars <- factor(gg_dta$vars)
-  } else {
-    gg_dta$vars[which(is.na(gg_dta$vars))] <-
-      rownames(gg_dta)[which(is.na(gg_dta$vars))]
-    gg_dta <- gg_dta[seq_len(nvar), ]
   }
 
   gg_dta$vars <-

@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   cache      = TRUE,
   cache.path = "varpro_cache/"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 
 
 ## ----libs---------------------------------------------------------------------
@@ -76,7 +76,7 @@ gg_pd <- if (is.null(.vp$pd_boston)) {
 } else {
   .vp$pd_boston
 }
-plot(gg_pd)
+plot(gg_pd, type = c("parametric", "nonparametric", "causal"))
 
 
 ## ----boston-beta-fit, cache=TRUE----------------------------------------------
@@ -146,7 +146,7 @@ v_iris_multi <- if (is.null(.vp$v_iris_multi)) {
 
 
 ## ----iris-multi-gg-varpro-conditional-----------------------------------------
-plot(gg_varpro(v_iris_multi, conditional = TRUE))
+plot(gg_varpro(v_iris_multi, conditional = TRUE, local.std = FALSE))
 
 
 ## ----iris-multi-gg-partial-varpro---------------------------------------------
@@ -201,7 +201,7 @@ v_pbc <- if (is.null(.vp$v_pbc)) {
 
 
 ## ----pbc-gg-varpro------------------------------------------------------------
-plot(gg_varpro(v_pbc))
+plot(gg_varpro(v_pbc, local.std = FALSE))
 
 
 ## ----pbc-gg-partial-varpro----------------------------------------------------
@@ -246,5 +246,12 @@ c(handed_in = ncol(v_iris_binary$x),
 
 
 ## ----both-off, eval=FALSE-----------------------------------------------------
-# varPro::varpro(medv ~ ., data = Boston, sparse = FALSE, split.weight = FALSE)
+# varPro::varpro(medv ~ ., data = Boston, split.weight = FALSE)
+
+
+## -----------------------------------------------------------------------------
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
 

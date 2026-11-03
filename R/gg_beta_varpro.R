@@ -137,9 +137,8 @@
 #' pick slightly different folds across separate calls. Reuse `beta_fit`
 #' when reproducibility matters.
 #'
-#' @note Multivariate regression (`regr+`) and survival families are out
-#'   of scope for this release and tracked for v3.1.0. The
-#'   unsupported-family path errors with a message pointing at that work.
+#' @note Multivariate regression (`regr+`) and survival fits are not
+#'   supported. The unsupported-family path reports the family it received.
 #'
 #' @param object A `varpro` fit from [varPro::varpro()] (regression or
 #'   classification family).
@@ -162,9 +161,9 @@
 #'   For a regression fit: one row per released variable, sorted by
 #'   `beta_mean` descending. For a classification fit: long-format with
 #'   an extra `class` column, one row per (variable, class) pair;
-#'   `variable` is a factor whose levels are set by
-#'   `mean(|sum-of-class-beta|)` descending so every facet / panel shares
-#'   the same row order. `which_class` (or the binary default
+#'   `variable` is a factor whose levels run in ascending
+#'   `mean(|sum-of-class-beta|)`, most important last, so every facet /
+#'   panel shares the same row order with the top variable at the top. `which_class` (or the binary default
 #'   last-factor-level) collapses the output to a single class.
 #'
 #' @seealso [gg_varpro()], [gg_vimp()], [plot.gg_beta_varpro()], [varPro::beta.varpro()].
@@ -200,9 +199,8 @@ gg_beta_varpro.varpro <- function(object, ..., cutoff = NULL,
   fam <- object$family
   if (!fam %in% c("regr", "class")) {
     stop(sprintf(
-      paste0("gg_beta_varpro currently supports varpro regression and ",
-             "classification forests only; got family = '%s'. regr+ and ",
-             "survival are tracked for v3.1.0 (see vignette / NEWS)."),
+      paste0("gg_beta_varpro supports varPro regression and classification ",
+             "fits only; got family = '%s'."),
       fam
     ), call. = FALSE)
   }

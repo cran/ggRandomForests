@@ -118,6 +118,7 @@ test_that("gg_udependent provenance has all expected fields", {
   prov <- attr(gg, "provenance")
   expect_type(prov, "list")
   expect_true(all(c("threshold", "q.signal", "directed", "min.degree",
+                    "pre.filter", "beta.mat.supplied",
                     "xvar.names", "n") %in% names(prov)))
 })
 
@@ -179,11 +180,79 @@ test_that("plot.gg_udependent empty graph -> stop with informative message", {
 ## Visual regression tests for plot.gg_udependent are in test_snapshots.R
 ## (guarded by VDIFFR_RUN_TESTS=true), following the package convention.
 
+## ---- labels= on the node text (issue #243) ---------------------------------
+
+# The node text is drawn by geom_node_label(); ggraph resolves node data at
+# build time, so read the built layer rather than the graph.
+.ggu_node_labels <- function(p) {
+  built <- ggplot2::ggplot_build(p)
+  lab <- unlist(lapply(built$data, function(d) {
+    if ("label" %in% names(d)) as.character(d$label) else NULL
+  }))
+  sort(unique(lab))
+}
+
+test_that("plot.gg_udependent labels the node text", {
+  skip_on_cran()
+  skip_if_not_installed("ggraph")
+  gg <- make_ggu()
+  raw <- igraph::V(gg$graph)$name
+  target <- raw[1L]
+
+  p <- plot(gg, labels = stats::setNames("RENAMED NODE", target))
+  labs <- .ggu_node_labels(p)
+
+  expect_true("RENAMED NODE" %in% labs)
+  expect_false(target %in% labs)
+  if (length(raw) > 1L) expect_true(raw[2L] %in% labs)   # fallback per node
+})
+
+test_that("plot.gg_udependent leaves the igraph vertex key untouched", {
+  skip_on_cran()
+  skip_if_not_installed("ggraph")
+  gg <- make_ggu()
+  raw <- igraph::V(gg$graph)$name
+  target <- raw[1L]
+
+  # 'name' is the vertex key the edge-weight backfill matches on, so relabelling
+  # must not rewrite it, and the display string must live on a separate
+  # attribute.
+  expect_null(igraph::vertex_attr(gg$graph, "node_label"))
+
+  p <- plot(gg, labels = stats::setNames("RENAMED NODE", target))
+
+  # The caller's graph is untouched: same key, and still no display attribute.
+  expect_equal(igraph::V(gg$graph)$name, raw)
+  expect_null(igraph::vertex_attr(gg$graph, "node_label"))
+
+  # ...while the drawn node text did change, so the two are genuinely distinct.
+  expect_true("RENAMED NODE" %in% .ggu_node_labels(p))
+})
+
+test_that("plot.gg_udependent with labels = NULL keeps the raw node names", {
+  skip_on_cran()
+  skip_if_not_installed("ggraph")
+  gg <- make_ggu()
+  raw <- igraph::V(gg$graph)$name
+
+  expect_true(all(raw %in% .ggu_node_labels(plot(gg))))
+})
+
+test_that("plot.gg_udependent warns once when no label resolves", {
+  skip_on_cran()
+  skip_if_not_installed("ggraph")
+  gg <- make_ggu()
+  target <- igraph::V(gg$graph)$name[1L]
+
+  expect_warning(plot(gg, labels = stats::setNames("", target)),
+                 "No variable labels")
+})
+
 ## ── Mixed-type data: non-square get.beta.entropy() (#320) ──────────────────────
 
 # mtcars with three factors. get.beta.entropy() on this fit is non-square:
 # rows are the variables that produced releases, columns every one-hot
-# predictor column. Memoised so the forest is grown once per file.
+# predictor column. Memoised so the entropy is computed once per file.
 .ggu_mixed <- new.env(parent = emptyenv())
 make_mixed_uvp <- function() {
   if (is.null(.ggu_mixed$fit)) {
@@ -205,7 +274,7 @@ test_that("gg_udependent handles a non-square dependency matrix", {
   # Precondition: the fixture really is non-square, or this test proves nothing.
   expect_false(nrow(mx$beta) == ncol(mx$beta))
 
-  gg <- gg_udependent(mx$fit, threshold = 0.1)
+  gg <- gg_udependent(mx$fit, threshold = 0.1, beta.mat = mx$beta)
   expect_s3_class(gg, "gg_udependent")
   expect_s3_class(gg$graph, "igraph")
 })
@@ -215,8 +284,43 @@ test_that("gg_udependent drops edges between levels of the same factor", {
   set.seed(1L)
   mx <- make_mixed_uvp()
   # threshold so low that every non-zero entry would otherwise be an edge
-  gg <- gg_udependent(mx$fit, threshold = 1e-8)
+  gg <- gg_udependent(mx$fit, threshold = 1e-8, beta.mat = mx$beta)
   vmap <- attr(mx$fit$x, "xvar.map")
   same <- vmap[gg$edges$variable_from] == vmap[gg$edges$variable_to]
   expect_false(any(same))
+})
+
+test_that("gg_udependent pre.filter and beta.mat are named-only", {
+  # After `...`, so a positional extra still reaches sdependent() as before.
+  f <- names(formals(gg_udependent))
+  dots <- which(f == "...")
+  expect_true(all(match(c("pre.filter", "beta.mat"), f) > dots))
+})
+
+test_that("gg_udependent beta.mat must be a named numeric matrix", {
+  mx <- make_mixed_uvp()
+  expect_error(gg_udependent(mx$fit, beta.mat = 1:4), "beta.mat")
+  expect_error(gg_udependent(mx$fit, beta.mat = unname(mx$beta)), "beta.mat")
+})
+
+test_that("gg_udependent forwards pre.filter to get.beta.entropy", {
+  skip_on_cran()
+  mx <- make_mixed_uvp()
+  set.seed(1L)
+  unfiltered <- varPro::get.beta.entropy(mx$fit, pre.filter = FALSE)
+  # Precondition: pre.filter changes the matrix, or equality proves nothing.
+  expect_false(identical(dim(unfiltered), dim(mx$beta)))
+
+  set.seed(1L)
+  gg <- gg_udependent(mx$fit, threshold = 0.1, pre.filter = FALSE)
+  from_mat <- gg_udependent(mx$fit, threshold = 0.1, beta.mat = unfiltered)
+  expect_equal(gg$edges, from_mat$edges)
+
+  # Provenance tells the two routes apart, so a graph can be audited later.
+  prov <- attr(gg, "provenance")
+  expect_identical(prov$pre.filter, FALSE)
+  expect_false(prov$beta.mat.supplied)
+  prov_mat <- attr(from_mat, "provenance")
+  expect_identical(prov_mat$pre.filter, NA)
+  expect_true(prov_mat$beta.mat.supplied)
 })

@@ -18,12 +18,24 @@
 #' @param x \code{\link{gg_variable}} object created from a
 #' \code{\link[randomForestSRC]{rfsrc}} object
 #' @param xvar variable (or list of variables) of interest.
-#' @param time For survival, one or more times of interest
-#' @param time_labels string labels for times
 #' @param panel Should plots be faceted along multiple xvar?
 #' @param oob oob estimates (boolean)
 #' @param points plot the raw data points (boolean)
 #' @param smooth include a smooth curve (boolean)
+#' @param labels Optional variable labels. One of: a named character vector
+#'   (\code{c(wt = "Weight")}); a labelled data frame, whose
+#'   \code{attr(col, "label")} values are read; or a two-column
+#'   \code{key}/\code{label} data frame. Variables with no label keep their raw
+#'   name. Applied to the facet strips in the panel plot and to the x axis title
+#'   in the individual plot. Defaults to \code{NULL} (raw names).
+#' @param time_units Optional name of the time unit the forest was fit in, used
+#'   only in the survival y axis title. The horizon is chosen at
+#'   \code{gg_variable(rf, time = 1191)}; \code{plot(gg_dta)} then titles the
+#'   axis \code{"Survival at 1191"}, and \code{time_units = "days"} makes that
+#'   \code{"Survival at 1191 days"}. Nothing on an
+#'   \code{\link[randomForestSRC]{rfsrc}} object records the unit, so the
+#'   package cannot infer it. Defaults to \code{NULL} (no unit printed). Not
+#'   printed when multiple times are faceted.
 #' @param ... arguments passed to the \code{ggplot2} functions.
 #'
 #' @return A single \code{ggplot} object when \code{length(xvar) == 1} or
@@ -43,8 +55,8 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, Rnews,
 #' 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-#' Regression and Classification. R package version >= 3.4.0.
+#' Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+#' Regression, and Classification (RF-SRC). R package version 3.6.2.
 #' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #'
@@ -127,19 +139,47 @@
 #' @export
 plot.gg_variable <- function(x, # nolint: cyclocomp_linter
                              xvar,
-                             time,
-                             time_labels,
                              panel = FALSE,
                              oob = TRUE,
                              points = TRUE,
                              smooth = TRUE,
-                             ...) {
+                             labels = NULL,
+                             ...,
+                             ## AFTER the dots deliberately.  R partial-matches
+                             ## argument names only BEFORE ..., so with
+                             ## time_units ahead of it a caller writing
+                             ## time = 1191 (the retired argument) silently bound
+                             ## to time_units and died on its type check, and
+                             ## .check_retired_time_args() never saw the name.
+                             ## Past the dots, matching is exact and 'time' falls
+                             ## into ... where the guard can report it.
+                             time_units = NULL) {
+  ## Coerce FIRST.  plot.gg_variable() also accepts a raw rfsrc and forwards ...
+  ## to gg_variable(), where 'time' and 'time_labels' are real, working
+  ## parameters.  Guarding before this point warned that they were ignored on
+  ## the one path where they are honoured, and left the plausibility check
+  ## reading gg_dta[["time"]] off an rfsrc rather than off the extracted frame.
   gg_dta <- x
-
-  # I don't think this will work with latest S3 models.
-  if (inherits(x, "rfsrc")) {
+  from_rfsrc <- inherits(x, "rfsrc")
+  if (from_rfsrc) {
     gg_dta <- gg_variable(x, ...)
   }
+
+  ## Only meaningful for an already-extracted gg_variable object: that is the
+  ## call where the horizon is already baked in and the argument really is dead.
+  if (!from_rfsrc) {
+    .check_retired_time_args(...)
+  }
+  time_units <- .check_time_units(time_units, gg_dta[["time"]])
+
+  ## Resolve the label lookup ONCE.  .forest_strip_labeller() would resolve it
+  ## again internally, and a lookup that matches nothing warns on every
+  ## resolution, so a second call would double the warning.  Strips and axis
+  ## titles are both built from this one lookup.
+  lab_lookup <- .forest_labels(labels)
+  strip_labeller <- ggplot2::as_labeller(
+    function(v) .apply_forest_labels(v, lab_lookup)
+  )
 
   ## ---- Detect forest family from gg_variable class attributes ----------
   # Default to classification; override if survival or regression flags found
@@ -312,16 +352,21 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       # Multiple time points: grid of (time × variable); single time: wrap
       if (length(levels(gg_dta$time)) > 1) {
         gg_plt <- gg_plt +
+          ## Scope the labeller to the 'variable' dimension only.  A bare
+          ## labeller here would also be applied to the 'time' strips, so a
+          ## lookup key that happened to equal a time value would relabel them.
           ggplot2::facet_grid(stats::reformulate("variable", "time"),
-            scales = "free_x"
+            scales = "free_x",
+            labeller = ggplot2::labeller(variable = strip_labeller)
           ) +
           labs(x = "")
       } else {
         gg_plt <- gg_plt +
-          ggplot2::facet_wrap(~variable, scales = "free_x") +
+          ggplot2::facet_wrap(~variable, scales = "free_x",
+                              labeller = strip_labeller) +
           labs(
             x = "",
-            y = paste("Survival at", gg_dta$time[1], "year")
+            y = .survival_at_label(gg_dta$time[1], time_units)
           )
       }
 
@@ -420,7 +465,8 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       }
 
       gg_plt <- gg_plt +
-        ggplot2::facet_wrap(~variable, scales = "free_x") +
+        ggplot2::facet_wrap(~variable, scales = "free_x",
+                              labeller = strip_labeller) +
         ggplot2::labs(x = "")
     }
 
@@ -435,6 +481,9 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       # Temporarily rename the target predictor column to "var" for aes()
       ch_indx <- which(colnames(gg_dta) == xvar[ind])
       h_name <- colnames(gg_dta)[ch_indx]
+      # Display name for axis titles only.  h_name stays raw: it is written back
+      # to colnames() at the foot of this loop.
+      h_display <- .apply_forest_labels(h_name, lab_lookup)
       colnames(gg_dta)[ch_indx] <- "var"
       # Use only the primary class (class() can return multiple strings, e.g.
       # c("POSIXct", "POSIXt")); a multi-element vector in if() triggers a warning.
@@ -446,7 +495,7 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       ## ---- Survival individual plot -----------------------------------
       if (family == "surv") {
         gg_plt[[ind]] <- gg_plt[[ind]] +
-          ggplot2::labs(x = h_name, y = "Survival")
+          ggplot2::labs(x = h_display, y = "Survival")
 
         if (ccls_var == "numeric") {
           # Continuous predictor: scatter (and optional smooth)
@@ -495,15 +544,15 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
         } else {
           gg_plt[[ind]] <- gg_plt[[ind]] +
             ggplot2::labs(
-              x = h_name,
-              y = paste("Survival at", gg_dta$time[1], "year")
+              x = h_display,
+              y = .survival_at_label(gg_dta$time[1], time_units)
             )
         }
 
       ## ---- Classification individual plot ----------------------------
       } else if (family == "class") {
         gg_plt[[ind]] <- gg_plt[[ind]] +
-          ggplot2::labs(x = h_name, y = "Predicted")
+          ggplot2::labs(x = h_display, y = "Predicted")
 
         if (sum(colnames(gg_dta) == "outcome") == 0) {
           # Single-outcome (binary) classification
@@ -609,7 +658,7 @@ plot.gg_variable <- function(x, # nolint: cyclocomp_linter
       } else {
         # assume regression
         gg_plt[[ind]] <- gg_plt[[ind]] +
-          ggplot2::labs(x = h_name, y = "Predicted")
+          ggplot2::labs(x = h_display, y = "Predicted")
         if (ccls_var == "numeric") {
           if (points) {
             gg_plt[[ind]] <- gg_plt[[ind]] +

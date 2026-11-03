@@ -23,13 +23,24 @@ dependence should be computed. Must be a subset of \code{rf_model$xvar.names}.}
 
 \item{xvar2.name}{Optional single character name of a grouping variable in
 \code{newx}. When supplied, partial dependence is computed separately for
-each unique level of this variable and a \code{grp} column is appended.
-A factor keeps its level labels in \code{grp}, as a factor in the
-model's level order.}
+each unique value of this column in \code{newx}, with the variable held
+at that value for every training observation, and a \code{grp} column is
+appended. For a continuous variable, set \code{newx[[xvar2.name]]} to a
+short grid first, since every distinct value costs one more
+\code{partial.rfsrc()} call for each variable in \code{xvar.names}. A
+factor keeps its level labels in \code{grp}, as a factor in the model's
+level order.}
 
-\item{newx}{Optional \code{data.frame} of predictor values to evaluate
-partial effects at. Defaults to the training data stored in
-\code{rf_model$xvar}. All column names must match \code{rf_model$xvar.names}.}
+\item{newx}{Optional \code{data.frame} that sets the evaluation grid, not
+the data being averaged over. Each of \code{xvar.names} is evaluated at
+the quantile grid (or unique levels) of its column in \code{newx}, and
+\code{xvar2.name} takes its values from the same place. The average is
+always taken over the training data held in \code{rf_model} (see
+\code{\link[randomForestSRC]{partial.rfsrc}}), so overwriting any other
+column of \code{newx} has no effect on \code{yhat}; to hold a second
+variable fixed, pass it as \code{xvar2.name}. Defaults to
+\code{rf_model$xvar}. All column names must match
+\code{rf_model$xvar.names}.}
 
 \item{partial.time}{Numeric vector of desired time points for survival
 forests (ignored for regression/classification).  Values are automatically
@@ -77,7 +88,7 @@ A partial dependence curve marginalizes the forest's prediction over all
 other predictors: for each evaluation point of the target variable, the
 forest scores every training observation with that value substituted in,
 then averages the result.  What you get is the average effect of the target
-variable after "integrating out" the rest -- a curve that would be flat if
+variable after "integrating out" the rest, a curve that would be flat if
 the variable carried no signal.
 }
 \details{
@@ -85,7 +96,7 @@ This function builds those curves for one or more predictors by calling
 \code{\link[randomForestSRC]{partial.rfsrc}} and then tidy-stacking the
 results into separate data frames for continuous and categorical variables.
 Unlike \code{\link{gg_partial}} (which wraps \code{plot.variable}), you
-pass the fitted \code{rfsrc} object directly -- no intermediate
+pass the fitted \code{rfsrc} object directly, with no intermediate
 \code{plot.variable} step.
 
 For survival forests, the marginalized quantity depends on
@@ -127,6 +138,12 @@ ti  <- rf_model$time.interest
 t1  <- ti[which.min(abs(ti - 1))]   # nearest to 1 year
 pd  <- gg_partial_rfsrc(rf_model, xvar.names = "x", partial.time = t1)
 }
+
+The snap is silent, and it matters most before the first event: every
+request earlier than the first event time returns that first event's
+curve, so partials at, say, 10, 30 and 60 days come back identical in a
+sample whose first death is later. Check the \code{time} column of the
+result, and choose horizons after the first event.
 }
 
 \section{Logical predictor columns}{

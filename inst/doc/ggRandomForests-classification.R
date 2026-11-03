@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   comment = "#>"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 
 
 ## ----packages-----------------------------------------------------------------
@@ -103,4 +103,11 @@ plot(roc_virginica)
 
 ## ----auc-calc-----------------------------------------------------------------
 calc_auc(roc_virginica)
+
+
+## -----------------------------------------------------------------------------
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
 

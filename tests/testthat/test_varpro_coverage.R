@@ -1,0 +1,308 @@
+# varpro_coverage(): per-term and per-variable coverage of a varpro fit.
+# Two supervised mtcars fits with a factor and two permuted noise columns:
+# guided (default split weights, which cut the noise before rule-building)
+# and unguided (every term eligible, so some noise is tested).
+
+.coverage_fits <- function() {
+  if (is.null(.varpro_cache$cov)) {
+    if (!requireNamespace("varPro", quietly = TRUE)) testthat::skip("varPro not installed")
+    set.seed(20261014L)
+    d <- mtcars
+    d$cyl <- factor(d$cyl)
+    d$noise_wt <- sample(d$wt)
+    d$noise_cyl <- sample(d$cyl)
+    set.seed(20261014L)
+    guided <- varPro::varpro(mpg ~ ., data = d, ntree = 50)
+    set.seed(20261014L)
+    unguided <- varPro::varpro(mpg ~ ., data = d, ntree = 50, split.weight = FALSE, mtry = 3)
+    .varpro_cache$cov <- list(guided = guided, unguided = unguided)
+  }
+  .varpro_cache$cov
+}
+
+test_that("term table has the documented shape and settings", {
+  vp <- .coverage_fits()$guided
+  set.seed(1)
+  cv <- varpro_coverage(vp)
+  expect_s3_class(cv, "varpro_coverage")
+  expect_s3_class(cv, "data.frame")
+  expect_named(cv, c("term", "variable", "eligible", "n_trees", "coverage", "n_rules",
+                     "z", "tested"))
+  expect_setequal(cv$term, colnames(vp$x))
+  expect_identical(attr(cv, "by"), "term")
+  expect_lte(attr(cv, "trees"), vp$rf$ntree)
+  expect_identical(attr(cv, "trim"), 0.1)
+  expect_equal(cv$coverage, cv$n_trees / attr(cv, "trees"))
+  expect_identical(cv$tested, cv$coverage >= 0.1)
+  expect_false(is.unsorted(rev(cv$coverage)))
+})
+
+test_that("ineligible terms are listed with no rules and no z", {
+  vp <- .coverage_fits()$guided
+  set.seed(1)
+  cv <- varpro_coverage(vp)
+  expect_setequal(cv$term[cv$eligible], vp$xvar.names)
+  out <- cv[!cv$eligible, ]
+  expect_true(all(out$n_trees == 0L & out$n_rules == 0L & is.na(out$z)))
+})
+
+test_that("z agrees with importance() scored on the same trees", {
+  vp <- .coverage_fits()$unguided
+  set.seed(1)
+  cv <- varpro_coverage(vp)
+  set.seed(1)
+  imp <- varPro::importance(vp, plot.it = FALSE, max.tree = vp$rf$ntree)
+  expect_equal(cv$z[match(rownames(imp), cv$term)], imp$z)
+  expect_true(all(is.na(cv$z[!cv$term %in% rownames(imp)])))
+})
+
+test_that("variable rows roll factor levels up", {
+  vp <- .coverage_fits()$unguided
+  set.seed(1)
+  tm <- varpro_coverage(vp)
+  set.seed(1)
+  vr <- varpro_coverage(vp, by = "variable")
+  expect_named(vr, c("variable", "n_terms", "eligible", "n_trees", "coverage", "n_rules",
+                     "z", "tested"))
+  expect_setequal(vr$variable, vp$xvar.org.names)
+  cyl <- vr[vr$variable == "cyl", ]
+  cyl_terms <- tm[tm$variable == "cyl", ]
+  expect_identical(cyl$n_terms, nrow(cyl_terms))
+  expect_identical(cyl$n_rules, sum(cyl_terms$n_rules))
+  expect_gte(cyl$n_trees, max(cyl_terms$n_trees))
+  expect_lte(cyl$n_trees, sum(cyl_terms$n_trees))
+  expect_equal(cyl$z, max(cyl_terms$z, na.rm = TRUE))
+})
+
+test_that("coverage and z come from the same sampled rules (PR #341 review)", {
+  ## One rule per tree out of 20 trees: rule sampling is heavy, so a second
+  ## extraction would disagree. A term with a scored rule always has a z;
+  ## a term with none has no z, or z = 0 when its only rules came back
+  ## unscored.
+  vp <- .coverage_fits()$unguided
+  for (s in 1:5) {
+    cv <- varpro_coverage(vp, max.tree = 20, max.rules.tree = 1, seed = -s)
+    el <- cv[cv$eligible, ]
+    expect_true(all(!is.na(el$z[el$n_rules > 0L])))
+    z0 <- el$z[el$n_rules == 0L]
+    expect_true(all(is.na(z0) | z0 == 0))
+  }
+})
+
+test_that("encoded-name collisions map through varPro's stored map (PR #341 review)", {
+  skip_if_not_installed("varPro")
+  set.seed(20261014L)
+  d <- data.frame(y = stats::rnorm(150),
+                  g = factor(sample(c("a", "b", "c"), 150, replace = TRUE)),
+                  ga = stats::rnorm(150), h = stats::rnorm(150))
+  set.seed(20261014L)
+  vp <- varPro::varpro(y ~ ., data = d, ntree = 30, split.weight = FALSE)
+  map <- attr(vp$x, "xvar.map")
+  skip_if(is.null(map) || !"ga.1" %in% names(map), "this varPro encodes without the collision")
+  set.seed(1)
+  tm <- varpro_coverage(vp)
+  expect_identical(tm$variable[tm$term == "ga.1"], "g")
+  expect_identical(tm$variable[tm$term == "ga"], "ga")
+  set.seed(1)
+  vr <- varpro_coverage(vp, by = "variable")
+  expect_identical(vr$n_terms[vr$variable == "g"], 3L)
+  expect_identical(vr$n_terms[vr$variable == "ga"], 1L)
+  expect_identical(vr$n_rules[vr$variable == "g"], sum(tm$n_rules[tm$variable == "g"]))
+})
+
+test_that("a hot-encoded fit without a stored map fails rather than guessing", {
+  vp <- .coverage_fits()$guided
+  attr(vp$x, "xvar.map") <- NULL
+  expect_error(varpro_coverage(vp), "no stored encoding map")
+})
+
+test_that("a fixed seed reproduces the table", {
+  vp <- .coverage_fits()$unguided
+  set.seed(7)
+  a <- varpro_coverage(vp, seed = -7L)
+  set.seed(7)
+  b <- varpro_coverage(vp, seed = -7L)
+  expect_identical(a, b)
+})
+
+test_that("noise columns set a cutoff by kind", {
+  vp <- .coverage_fits()$unguided
+  set.seed(1)
+  ## Which noise this draw tests moves with randomForestSRC, and the warning
+  ## moves with it; the borrowed bar is pinned on a constructed table below.
+  cv <- suppressWarnings(varpro_coverage(vp, by = "variable", noise = "^noise"))
+  expect_true(all(c("noise", "kind", "noise_cut", "noise_ref", "selected") %in% names(cv)))
+  expect_identical(cv$kind[cv$variable == "cyl"], "categorical")
+  expect_identical(cv$kind[cv$variable == "disp"], "continuous")
+  expect_false(any(cv$selected & cv$noise))
+  expect_true(all(!cv$selected[!cv$tested]))
+})
+
+test_that("untested categorical noise borrows the continuous bar, and says so", {
+  out <- data.frame(
+    variable = c("a", "b", "noise_a", "noise_b"),
+    z        = c(0.9, 0.2, 0.15, 0),
+    tested   = c(TRUE, TRUE, TRUE, TRUE),
+    coverage = c(1, 1, 1, 0))
+  object <- list(x = data.frame(a = 1:10, b = rep(1:2, 5), noise_a = 1:10, noise_b = rep(1:2, 5)))
+  expect_warning(cv <- .varpro_noise_judge(out, out$variable, object, "^noise", kind_values = 5L),
+                 "judged against the continuous noise bar")
+  expect_identical(cv$kind, c("continuous", "categorical", "continuous", "categorical"))
+  expect_identical(cv$noise_ref, rep("continuous", 4))
+  expect_identical(cv$noise_cut, rep(0.15, 4))
+  expect_identical(cv$selected, c(TRUE, TRUE, FALSE, FALSE))
+})
+
+test_that("the noise cutoff ignores untested noise and falls back across kinds", {
+  out <- data.frame(
+    variable = c("a", "b", "noise_a", "noise_b"),
+    z        = c(0.9, 0.2, 0.15, 0.00),
+    tested   = c(TRUE, TRUE, TRUE, FALSE),
+    noise    = c(FALSE, FALSE, TRUE, TRUE),
+    kind     = c("continuous", "categorical", "continuous", "categorical"))
+  ## categorical noise is untested, so categorical rows fall back to 0.15
+  expect_identical(.varpro_coverage_cut(out), rep(0.15, 4))
+  out$tested[4] <- TRUE
+  out$z[4] <- 0.05
+  expect_identical(.varpro_coverage_cut(out), c(0.15, 0.05, 0.15, 0.05))
+})
+
+test_that("noise warnings name the problem", {
+  fits <- .coverage_fits()
+  set.seed(1)
+  expect_warning(varpro_coverage(fits$guided, noise = "^nothing_matches"),
+                 "no variable name matches")
+  set.seed(1)
+  expect_warning(varpro_coverage(fits$guided, noise = "^noise"),
+                 "no noise variable was tested")
+})
+
+test_that("bad inputs fail early", {
+  vp <- .coverage_fits()$guided
+  expect_error(varpro_coverage(list()), "must be a varpro fit")
+  expect_error(varpro_coverage(vp, trim = 0.6), "'trim' must be")
+  expect_error(varpro_coverage(vp, by = "tree"))
+  expect_error(varpro_coverage(vp, max_untested = 2), "'max_untested' must be")
+  expect_error(varpro_coverage(vp, max_untested = c(0.1, 0.2)), "'max_untested' must be")
+  expect_error(varpro_coverage(vp, max_untested = NA_real_), "'max_untested' must be")
+})
+
+test_that("max_untested stops a screen that tested too little", {
+  vp <- .coverage_fits()$guided
+  set.seed(1)
+  cv <- varpro_coverage(vp)
+  share <- mean(!cv$tested)
+  expect_gt(share, 0)
+  set.seed(1)
+  expect_error(varpro_coverage(vp, max_untested = share / 2), "split.weight = FALSE")
+  set.seed(1)
+  expect_identical(varpro_coverage(vp, max_untested = share), cv)
+  set.seed(1)
+  expect_identical(varpro_coverage(vp, max_untested = NULL), cv)
+})
+
+test_that("max_untested counts real rows only, ineligible ones as untested", {
+  out <- data.frame(variable = c("a", "b", "c", "noise_a", "noise_b"),
+                    tested   = c(TRUE, FALSE, FALSE, FALSE, FALSE),
+                    noise    = c(FALSE, FALSE, FALSE, TRUE, TRUE))
+  term_var <- stats::setNames(out$variable, out$variable)
+  term_ok  <- stats::setNames(out$tested, out$variable)
+  ## 2 of 3 real rows untested; the untested noise rows do not count
+  expect_null(.varpro_coverage_guard(out, 2 / 3, 0.1, term_var, term_ok))
+  expect_error(.varpro_coverage_guard(out, 0.5, 0.1, term_var, term_ok), "2 of 3")
+  out$noise <- NULL
+  expect_error(.varpro_coverage_guard(out, 0.7, 0.1, term_var, term_ok), "4 of 5")
+  out$noise <- TRUE
+  expect_error(.varpro_coverage_guard(out, 1, 0.1, term_var, term_ok), "no real variables")
+})
+
+test_that("max_untested judges a factor by its levels, not their union (PR #379 review)", {
+  ## f's levels sit in different trees: the union passes trim, no level does
+  out <- data.frame(variable = c("a", "f"), tested = c(TRUE, TRUE))
+  term_var <- c(a = "a", f.1 = "f", f.2 = "f")
+  term_ok  <- c(a = TRUE, f.1 = FALSE, f.2 = FALSE)
+  expect_error(.varpro_coverage_guard(out, 0, 0.1, term_var, term_ok), "1 of 2")
+  term_ok["f.2"] <- TRUE
+  expect_null(.varpro_coverage_guard(out, 0, 0.1, term_var, term_ok))
+
+  vp <- .coverage_fits()$unguided
+  set.seed(1)
+  ct <- varpro_coverage(vp, trim = 0.25)
+  set.seed(1)
+  cv <- varpro_coverage(vp, trim = 0.25, by = "variable")
+  ## the fixture case: every cyl level untested, the rolled-up cyl row tested
+  expect_true(!any(ct$tested[ct$variable == "cyl"]) && cv$tested[cv$variable == "cyl"])
+  n_bad <- sum(!vapply(cv$variable, function(v) any(ct$tested[ct$variable == v]), logical(1)))
+  set.seed(1)
+  expect_error(varpro_coverage(vp, trim = 0.25, by = "variable",
+                               max_untested = mean(!cv$tested)),
+               paste(n_bad, "of", nrow(cv)))
+})
+
+test_that("max_untested still counts unscored rows as untested when trim = 0", {
+  vp <- .coverage_fits()$guided
+  set.seed(1)
+  cv <- varpro_coverage(vp, trim = 0)
+  expect_true(all(cv$tested))
+  expect_true(any(!cv$eligible))
+  set.seed(1)
+  expect_error(varpro_coverage(vp, trim = 0, max_untested = 0), "split.weight = FALSE")
+})
+
+test_that("max_untested names custom split weights in its advice (PR #379 review)", {
+  if (!requireNamespace("varPro", quietly = TRUE)) testthat::skip("varPro not installed")
+  set.seed(20261029L)
+  vp <- varPro::varpro(mpg ~ ., data = mtcars, ntree = 20, split.weight = FALSE,
+                       split.weight.custom = c(wt = 1, hp = 1))
+  expect_length(vp$xvar.names, 2L)
+  set.seed(1)
+  expect_error(varpro_coverage(vp, max_untested = 0.5), "without split.weight.custom")
+})
+
+test_that("coverage and tested agree with gg_varpro() on the same rules", {
+  vp <- .coverage_fits()$unguided
+  set.seed(5)
+  cv <- varpro_coverage(vp)
+  set.seed(5)
+  gg <- gg_varpro(vp, max.tree = vp$rf$ntree)
+  imp <- gg$imp
+  hit <- match(as.character(imp$variable), cv$term)
+  expect_false(anyNA(hit))
+  expect_equal(cv$coverage[hit], imp$coverage)
+  expect_identical(cv$tested[hit], imp$tested)
+  expect_equal(cv$z[hit], imp$z)
+})
+
+## ---- Error and fallback branches ---------------------------------------------
+
+test_that("a stored map that misses a term fails rather than guessing", {
+  vp <- .coverage_fits()$guided
+  map <- attr(vp$x, "xvar.map")
+  skip_if(is.null(map), "this varPro stores no encoding map")
+  attr(vp$x, "xvar.map") <- map[-1L]
+  set.seed(1)
+  expect_error(varpro_coverage(vp), "does not cover every term")
+})
+
+test_that("a fit with no factors maps each term to itself", {
+  x <- data.frame(a = 1, b = 2)
+  attr(x, "hotencode") <- FALSE
+  expect_identical(.varpro_coverage_map(list(x = x), c("a", "b")),
+                   c(a = "a", b = "b"))
+})
+
+test_that("a multivariate regression fit is refused", {
+  imp <- list(y1 = data.frame(z = 1), y2 = data.frame(z = 2))
+  expect_error(.varpro_coverage_imp(imp, "regr+"), "multivariate regression")
+})
+
+test_that("a classification fit reports its unconditional z", {
+  set.seed(20261014L)
+  vp <- varPro::varpro(Species ~ ., data = iris, ntree = 30)
+  set.seed(1)
+  cv <- varpro_coverage(vp)
+  expect_setequal(cv$term, colnames(vp$x))
+  set.seed(1)
+  imp <- varPro::importance(vp, plot.it = FALSE, max.tree = vp$rf$ntree)$unconditional
+  expect_equal(cv$z[match(rownames(imp), cv$term)], imp$z)
+})

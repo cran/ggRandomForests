@@ -19,10 +19,16 @@
 \alias{summary.gg_varpro}
 \alias{summary.gg_udependent}
 \alias{summary.gg_brier}
+\alias{summary.gg_rhf}
+\alias{summary.gg_tune_rhf}
+\alias{summary.gg_rhf_importance}
 \alias{summary.gg_isopro}
 \alias{summary.gg_beta_varpro}
 \alias{summary.gg_ivarpro}
+\alias{summary.gg_auct}
 \alias{summary.gg_shap}
+\alias{summary.gg_ale_rfsrc}
+\alias{summary.gg_ale_interaction}
 \title{Summary methods for gg_* data objects}
 \usage{
 \method{summary}{gg_beta_uvarpro}(object, ...)
@@ -57,13 +63,25 @@
 
 \method{summary}{gg_brier}(object, ...)
 
+\method{summary}{gg_rhf}(object, ...)
+
+\method{summary}{gg_tune_rhf}(object, ...)
+
+\method{summary}{gg_rhf_importance}(object, ...)
+
 \method{summary}{gg_isopro}(object, ...)
 
 \method{summary}{gg_beta_varpro}(object, ...)
 
 \method{summary}{gg_ivarpro}(object, ...)
 
+\method{summary}{gg_auct}(object, ...)
+
 \method{summary}{gg_shap}(object, ...)
+
+\method{summary}{gg_ale_rfsrc}(object, ...)
+
+\method{summary}{gg_ale_interaction}(object, ...)
 }
 \arguments{
 \item{object}{A \code{gg_*} data object.}

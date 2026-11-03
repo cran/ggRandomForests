@@ -339,15 +339,7 @@ test_that("gg_partial_rfsrc survival: default partial.time uses quartiles", {
   # When partial.time = NULL, three quartile-snapped times are used.
   # We can verify this by inspecting how many distinct time values appear
   # in the output (should be 3 unless quartile snapping collapses duplicates).
-  result <- tryCatch(
-    gg_partial_rfsrc(rf, xvar.names = "karno"),
-    error = function(e) {
-      skip(paste(
-        "partial.rfsrc() failed for survival forest (upstream bug):",
-        conditionMessage(e)
-      ))
-    }
-  )
+  result <- gg_partial_rfsrc(rf, xvar.names = "karno")
 
   expect_type(result, "list")
   expect_named(result, c("continuous", "categorical"))
@@ -364,15 +356,7 @@ test_that("gg_partial_rfsrc survival: explicit partial.time is snapped and used"
   # Target the median event time
   t_med <- ti[which.min(abs(ti - median(ti)))]
 
-  result <- tryCatch(
-    gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = t_med),
-    error = function(e) {
-      skip(paste(
-        "partial.rfsrc() failed for survival forest (upstream bug):",
-        conditionMessage(e)
-      ))
-    }
-  )
+  result <- gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = t_med)
 
   expect_type(result, "list")
   expect_gt(nrow(result$continuous), 0)
@@ -389,15 +373,7 @@ test_that("gg_partial_rfsrc survival: multiple partial.time values produce one r
   # Ensure we actually have two distinct snapped times
   if (t1 == t2) skip("quartile times collapsed to same grid point")
 
-  result <- tryCatch(
-    gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = c(t1, t2)),
-    error = function(e) {
-      skip(paste(
-        "partial.rfsrc() failed for survival forest (upstream bug):",
-        conditionMessage(e)
-      ))
-    }
-  )
+  result <- gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = c(t1, t2))
 
   expect_type(result, "list")
   n_times <- length(unique(result$continuous$time))
@@ -409,15 +385,7 @@ test_that("gg_partial_rfsrc survival: returns correct column names", {
   ti <- rf$time.interest
   t_med <- ti[which.min(abs(ti - median(ti)))]
 
-  result <- tryCatch(
-    gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = t_med),
-    error = function(e) {
-      skip(paste(
-        "partial.rfsrc() failed for survival forest (upstream bug):",
-        conditionMessage(e)
-      ))
-    }
-  )
+  result <- gg_partial_rfsrc(rf, xvar.names = "karno", partial.time = t_med)
 
   expect_true(all(c("x", "yhat", "name", "time") %in% colnames(result$continuous)))
 })
@@ -575,6 +543,60 @@ test_that("plot.gg_partial falls back to 'Partial Effect' with no ylabel", {
 
   gg <- plot(gg_partial(mock_dta))
   expect_equal(gg[[1]]$labels$y, "Partial Effect")
+})
+
+# ---- labels= on plot.gg_partial() (Task 6) --------------------------------
+
+test_that("plot.gg_partial labels facet strips", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  set.seed(42)
+  gg_dta <- list(
+    continuous = data.frame(x = rep(1:5, 2),
+                            yhat = rnorm(10),
+                            name = rep(c("bpd", "vis"), each = 5),
+                            stringsAsFactors = FALSE),
+    categorical = NULL
+  )
+  class(gg_dta) <- c("gg_partial", "list")
+  p <- plot(gg_dta, labels = c(bpd = "BP Diastole"))
+  # NOTE: ggplot2 4.x separates build from render. ggplot_build(p)$layout$layout$name
+  # holds the faceting variable's DATA values, not the rendered strip text, and returns
+  # raw names whether or not a labeller is attached. Strip text must be read with
+  # get_strip_labels(), which walks the same format_strip_labels() path as the renderer.
+  strips <- as.character(ggplot2::get_strip_labels(p)$facets$name)
+  expect_true(all(c("BP Diastole", "vis") %in% strips))
+})
+
+test_that("plot.gg_partial layers still carry data when labelled", {
+  set.seed(42)
+  gg_dta <- list(
+    continuous = data.frame(x = rep(1:5, 2),
+                            yhat = rnorm(10),
+                            name = rep(c("bpd", "vis"), each = 5),
+                            stringsAsFactors = FALSE),
+    categorical = NULL
+  )
+  class(gg_dta) <- c("gg_partial", "list")
+  built <- ggplot2::ggplot_build(plot(gg_dta, labels = c(bpd = "BP Diastole")))
+  expect_gt(nrow(built$data[[1]]), 0L)
+})
+
+test_that("plot.gg_partial labels the categorical facet strips", {
+  skip_if_not_installed("ggplot2", "4.0.0")
+  # Both tests above build continuous-only data, so the categorical
+  # facet_wrap()'s labeller was never asserted -- this pins it.
+  set.seed(42)
+  gg_dta <- list(
+    continuous = NULL,
+    categorical = data.frame(x = rep(1:2, 2),
+                             yhat = rnorm(4),
+                             name = rep(c("sex", "vis"), each = 2),
+                             stringsAsFactors = FALSE)
+  )
+  class(gg_dta) <- c("gg_partial", "list")
+  p <- plot(gg_dta, labels = c(sex = "Sex"))
+  strips <- as.character(ggplot2::get_strip_labels(p)$facets$name)
+  expect_true(all(c("Sex", "vis") %in% strips))
 })
 
 ## ---- categorical panels draw the per-observation spread (issue #299) -------

@@ -4,7 +4,7 @@
 #'
 #' \emph{Deprecated.} \code{gg_partialpro()} has been superseded by
 #' \code{\link{gg_partial_varpro}()} and is now a thin alias for it.  It will
-#' be removed in the release after \pkg{ggRandomForests} v3.0.0; use
+#' be removed in a future release; use
 #' \code{\link{gg_partial_varpro}()} directly.
 #'
 #' Arguments are documented on \code{\link{gg_partial_varpro}}; this alias
@@ -19,7 +19,12 @@
 #' @export
 gg_partialpro <- function(part_dta,
                           object    = NULL,
-                          scale     = c("auto", "prob", "odds", "logodds",
+                          ## Must stay in step with gg_partial_varpro()'s own
+                          ## choices: this default vector is forwarded whole,
+                          ## and match.arg() there errors on any vector that is
+                          ## not exactly that formal's default.
+                          scale     = c("auto", "prob", "prob_typical",
+                                        "odds", "logodds",
                                         "rmst", "surv", "mortality", "chf"),
                           time      = NULL,
                           nvars     = NULL,

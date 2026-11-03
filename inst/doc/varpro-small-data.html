@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="John Ehrlinger">
+<meta name="dcterms.date" content="2026-11-03">
+
+<title>varPro on small or sparse data</title>
+<style>
+
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+width: 0.8em;
+margin: 0 0.8em 0.2em -1em;  vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+}
+pre.numberSource { margin-left: 3em; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+
+div.csl-bib-body { }
+div.csl-entry {
+clear: both;
+}
+.hanging-indent div.csl-entry {
+margin-left:2em;
+text-indent:-2em;
+}
+div.csl-left-margin {
+min-width:2em;
+float:left;
+}
+div.csl-right-inline {
+margin-left:2em;
+padding-left:1em;
+}
+div.csl-indent {
+margin-left: 2em;
+}</style>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+</style>
+</head>
+
+<body>
+
+
+<header id="title-block-header">
+<h1 class="title">varPro on small or sparse data</h1>
+<p class="author">John Ehrlinger</p>
+
+<p class="date">2026-11-03</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#the-data" id="toc-the-data">The data</a></li>
+  <li><a href="#which-variables-did-varpro-test" id="toc-which-variables-did-varpro-test">Which variables did varPro test?</a></li>
+  <li><a href="#what-does-a-z-of-zero-mean" id="toc-what-does-a-z-of-zero-mean">What does a z of zero mean?</a></li>
+  <li><a href="#reading-the-importance-plot" id="toc-reading-the-importance-plot">Reading the importance plot</a></li>
+  <li><a href="#how-much-do-the-settings-matter" id="toc-how-much-do-the-settings-matter">How much do the settings matter?</a></li>
+  <li><a href="#checking-against-noise" id="toc-checking-against-noise">Checking against noise</a></li>
+  <li><a href="#a-screen-or-a-selection" id="toc-a-screen-or-a-selection">A screen or a selection?</a></li>
+  <li><a href="#what-if-the-events-are-rare" id="toc-what-if-the-events-are-rare">What if the events are rare?</a></li>
+  <li><a href="#partial-dependence-on-small-data" id="toc-partial-dependence-on-small-data">Partial dependence on small data</a></li>
+  <li><a href="#references" id="toc-references">References</a></li>
+  </ul>
+</nav>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">requireNamespace</span>(<span class="st">&quot;ggRandomForests&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>)) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(ggRandomForests)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> <span class="cf">if</span> (<span class="fu">requireNamespace</span>(<span class="st">&quot;pkgload&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>)) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  pkgload<span class="sc">::</span><span class="fu">load_all</span>(<span class="at">export_all =</span> <span class="cn">FALSE</span>, <span class="at">helpers =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">attach_testthat =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="st">&quot;Install ggRandomForests (or pkgload for dev builds) to render this vignette.&quot;</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<p>varPro <span class="citation" data-cites="Lu2024varpro">(Lu and Ishwaran 2024)</span> ranks variables by releasing the rules of a random forest one variable at a time and asking how much the outcome moves. Its defaults suit a large data set, where every candidate variable gets many chances to be tested. On a small one, or one with many rare factor levels, some candidates are barely tested at all, and the output does not tell you which. This vignette shows how to find out, how much the defaults matter, and what the partial plots can and cannot say when the sample is small.</p>
+<p>Most of the behaviours described here belong to varPro and randomForestSRC; for those we name the upstream function and the argument that changes it. Where a behaviour is ggRandomForests’ own, we say so.</p>
+<h1 id="the-data">The data</h1>
+<p>We use the primary biliary cirrhosis data from <code>randomForestSRC</code>: the 276 complete cases, 111 deaths, and 17 predictors, with the yes/no and graded predictors stored as factors. To give the screen something it should reject, we add ten permuted copies of real columns: the same values shuffled between patients, so unrelated to survival by construction. Five copy continuous predictors and five copy factors, so each kind of variable has noise of its own kind. The fits are in <code>vignettes/precompute_varpro_small.R</code>. The two that matter are a varPro fit on its defaults and one with every variable offered to the forest:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survival)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>vp_guided <span class="ot">&lt;-</span> varPro<span class="sc">::</span><span class="fu">varpro</span>(<span class="fu">Surv</span>(days, status) <span class="sc">~</span> ., <span class="at">data =</span> d, <span class="at">ntree =</span> <span class="dv">1000</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>vp_open   <span class="ot">&lt;-</span> varPro<span class="sc">::</span><span class="fu">varpro</span>(<span class="fu">Surv</span>(days, status) <span class="sc">~</span> ., <span class="at">data =</span> d, <span class="at">ntree =</span> <span class="dv">1000</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                            <span class="at">split.weight =</span> <span class="cn">FALSE</span>, <span class="at">mtry =</span> <span class="dv">4</span>)</span></code></pre></div>
+</div>
+<h1 id="which-variables-did-varpro-test">Which variables did varPro test?</h1>
+<p>A variable can drop out at three places, and it helps to name them.</p>
+<ul>
+<li><strong>Eligible.</strong> varPro first ranks the candidates quickly, by default with a lasso and a shallow forest (“split weights”), and builds release rules only for the top of that ranking (<code>nvar</code>). A factor enters as one term per level. A term below that cut is <em>not eligible</em>: no rule is ever built for it, so the screen says nothing about it, for or against.</li>
+<li><strong>Tested.</strong> An eligible term is scored tree by tree, by comparing the outcome inside a rule with the outcome once the rule’s condition on that term is released. A term scored in at least 10% of the trees we call <em>tested</em>.</li>
+<li><strong>Untested.</strong> Everything else: terms that were not eligible, eligible terms with no usable rule, and terms scored in too few trees.</li>
+</ul>
+<p><code>varpro_coverage()</code> reports all three, per term or, with <code>by = &quot;variable&quot;</code>, per variable with factor levels rolled up. For the fit on varPro’s defaults:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>cg_real[, <span class="fu">c</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;eligible&quot;</span>, <span class="st">&quot;n_trees&quot;</span>, <span class="st">&quot;coverage&quot;</span>, <span class="st">&quot;z&quot;</span>, <span class="st">&quot;tested&quot;</span>)]</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      variable eligible n_trees coverage          z tested
+1         bili     TRUE    1000    1.000 2.38730155   TRUE
+2       copper     TRUE     988    0.988 1.04780906   TRUE
+3      albumin     TRUE     982    0.982 0.97009864   TRUE
+4          age     TRUE     950    0.950 1.06184713   TRUE
+5  prothrombin     TRUE     844    0.844 0.79292410   TRUE
+6        edema     TRUE     585    0.585 0.92774489   TRUE
+7      ascites     TRUE     398    0.398 0.86660689   TRUE
+8         chol     TRUE     394    0.394 0.28871954   TRUE
+9        stage     TRUE     318    0.318 0.33882610   TRUE
+10        sgot     TRUE     188    0.188 0.09401103   TRUE
+11     hepatom     TRUE     131    0.131 0.07500533   TRUE
+12     spiders     TRUE      59    0.059 0.00000000  FALSE
+13         sex     TRUE      12    0.012 0.00000000  FALSE
+16         alk     TRUE       0    0.000         NA  FALSE
+17        trig     TRUE       0    0.000         NA  FALSE
+18    platelet     TRUE       0    0.000         NA  FALSE
+23   treatment    FALSE       0    0.000         NA  FALSE</code></pre>
+</div>
+</div>
+<p>Of 17 predictors, 1 was not eligible (treatment), 3 were eligible but never got a usable rule (alk, trig, platelet), and 2 were returned but scored in too few trees to rank (spiders in 5.9% of trees; sex in 1.2% of trees). That is 6 of 17 predictors about which the screen has no evidence either way.</p>
+<h1 id="what-does-a-z-of-zero-mean">What does a z of zero mean?</h1>
+<p>varPro’s importance (z) is an average over the trees, and a tree with no rule for the term counts as zero. The average is winsorised: trees above the 90th percentile are pulled down to it and trees below the 10th pulled up, before averaging (<code>trim = 0.1</code> in <code>varPro::importance()</code>). Nothing is dropped; the clamping stops a few extreme trees from dominating.</p>
+<p>The side effect is the one to know about. For a term scored in fewer than one tree in ten, the 90th percentile is itself zero, so every non-zero tree is pulled down to zero and z comes back as exactly 0, whatever those trees found. The reverse does not hold: a term scored in every tree also gets z = 0 when the outcome means its rules compare agree. <strong>A z of 0 is ambiguous, and coverage tells the two apart:</strong> with low coverage it means “not tested enough to rank”, with high coverage “tested and found unimportant”. Read coverage beside z, never z alone.</p>
+<h1 id="reading-the-importance-plot">Reading the importance plot</h1>
+<p><code>gg_varpro()</code> draws each term’s importance across the trees. Score all the trees: by default <code>varPro::importance()</code>, and <code>gg_varpro()</code> with it, scores a random sample of 150, so the answer can change from run to run. Here the default sample selects 6 terms and scoring all 1,000 trees selects 7.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vs<span class="sc">$</span>gg_guided_all)</span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img role="img" src="data:image/png;base64,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"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Live: plot(gg_varpro(vp_guided, max.tree = vp_guided$rf$ntree))</span></span></code></pre></div>
+</div>
+<p>Three things are easy to misread.</p>
+<ul>
+<li><strong>Untested trees add zeros.</strong> Each tree that never tested a term contributes a 0, which pulls the lower whisker and box toward 0 as coverage falls. At high coverage the box reflects the scored trees, and need not reach 0.</li>
+<li><strong>Order and colour measure different things.</strong> Rows are ordered by the median tree, but coloured by z, the winsorised mean, against the cutoff (dashed). A term that a few trees find very important and many find unimportant has a long box and a low median; it can rank below a term with steadier, smaller importance.</li>
+<li><strong>A row with no box</strong> is a term scored in too few trees; its z is 0 for the reason above, and the caption calls these open boxes.</li>
+</ul>
+<h1 id="how-much-do-the-settings-matter">How much do the settings matter?</h1>
+<p>Two settings turn the per-tree scores into a ranking and a selection: the winsorising <code>trim</code>, and the <code>cutoff</code> (0.79 by default) that colours a term as selected. We rescored the same fit with less winsorising.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>trim_tab <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">trim =</span> <span class="fu">names</span>(vs<span class="sc">$</span>trim_z),</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">terms_above_0 =</span> <span class="fu">vapply</span>(vs<span class="sc">$</span>trim_z, <span class="cf">function</span>(t) <span class="fu">sum</span>(t<span class="sc">$</span>z <span class="sc">&gt;</span> <span class="dv">0</span>), <span class="fu">integer</span>(<span class="dv">1</span>)),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">terms_above_0.79 =</span> <span class="fu">vapply</span>(vs<span class="sc">$</span>trim_z, <span class="cf">function</span>(t) <span class="fu">sum</span>(t<span class="sc">$</span>z <span class="sc">&gt;</span> <span class="fl">0.79</span>), <span class="fu">integer</span>(<span class="dv">1</span>)),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">rank_agreement =</span> <span class="fu">vapply</span>(vs<span class="sc">$</span>trim_z, <span class="cf">function</span>(t) {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    b <span class="ot">&lt;-</span> vs<span class="sc">$</span>trim_z[[<span class="dv">1</span>]]</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">round</span>(stats<span class="sc">::</span><span class="fu">cor</span>(t<span class="sc">$</span>z, b<span class="sc">$</span>z[<span class="fu">match</span>(t<span class="sc">$</span>term, b<span class="sc">$</span>term)], <span class="at">method =</span> <span class="st">&quot;spearman&quot;</span>), <span class="dv">2</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  }, <span class="fu">numeric</span>(<span class="dv">1</span>)))</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>trim_tab</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       trim terms_above_0 terms_above_0.79 rank_agreement
+0.1     0.1            12                7           1.00
+0.05   0.05            13                7           0.97
+0.025 0.025            13                7           0.97
+0         0            16                7           0.97</code></pre>
+</div>
+</div>
+<p>The trim matters little: the ranking holds, and the terms that gain a z above zero are the barely tested ones, at values close to zero. The cutoff matters a great deal. Here is how many variables each cutoff keeps.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>vz <span class="ot">&lt;-</span> cg_real[<span class="sc">!</span><span class="fu">is.na</span>(cg_real<span class="sc">$</span>z), ]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>cuts <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.5</span>, <span class="fl">0.7</span>, <span class="fl">0.79</span>, <span class="fl">0.9</span>, <span class="dv">1</span>, <span class="fl">1.5</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">cutoff =</span> cuts,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">variables_kept =</span> <span class="fu">vapply</span>(cuts, <span class="cf">function</span>(k) <span class="fu">sum</span>(vz<span class="sc">$</span>z <span class="sc">&gt;</span> k), <span class="fu">integer</span>(<span class="dv">1</span>)))</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  cutoff variables_kept
+1   0.00             11
+2   0.50              7
+3   0.70              7
+4   0.79              7
+5   0.90              5
+6   1.00              3
+7   1.50              1</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>band <span class="ot">&lt;-</span> vz[vz<span class="sc">$</span>z <span class="sc">&gt;</span> <span class="fl">0.5</span> <span class="sc">&amp;</span> vz<span class="sc">$</span>z <span class="sc">&lt;=</span> <span class="dv">1</span>, ]</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>band[<span class="fu">order</span>(<span class="sc">-</span>band<span class="sc">$</span>z), <span class="fu">c</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;z&quot;</span>, <span class="st">&quot;coverage&quot;</span>)]</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     variable         z coverage
+3     albumin 0.9700986    0.982
+6       edema 0.9277449    0.585
+7     ascites 0.8666069    0.398
+5 prothrombin 0.7929241    0.844</code></pre>
+</div>
+</div>
+<p>4 well-tested variables sit between z 0.5 and 1.0, one of them (prothrombin, z 0.79) right on the default line. Anywhere in that range the “selected” set runs from 3 to 7 variables. varPro’s own cross-validation, <code>varPro::cv.varpro()</code>, chooses a cutoff of 0.72 for this fit. With varPro’s default standardisation z also shrinks as more terms share each tree, so a cutoff does not carry from one fit to another. If you need a selection, tune the cutoff; do not take 0.79 as given.</p>
+<h1 id="checking-against-noise">Checking against noise</h1>
+<p>The noise columns give a reference that moves with the fit. <code>varpro_coverage(noise = &quot;^noise&quot;)</code> marks them, takes the largest z among the <em>tested</em> noise copies of each kind (categorical or continuous), and flags a real variable as <code>selected</code> when it beats that bar.</p>
+<p>On varPro’s defaults the check is empty: the split weights kept every noise copy out (0 of 10 tested), which is a useful filter but leaves nothing to compare against, and <code>varpro_coverage()</code> warns about it. With every variable offered (<code>split.weight = FALSE</code>), the noise is tested:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>co_noise <span class="ot">&lt;-</span> co[co<span class="sc">$</span>noise, ]</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">kind =</span> <span class="fu">c</span>(<span class="st">&quot;continuous&quot;</span>, <span class="st">&quot;categorical&quot;</span>),</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">noise_tested =</span> <span class="fu">c</span>(<span class="fu">sum</span>(co_noise<span class="sc">$</span>tested <span class="sc">&amp;</span> co_noise<span class="sc">$</span>kind <span class="sc">==</span> <span class="st">&quot;continuous&quot;</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">sum</span>(co_noise<span class="sc">$</span>tested <span class="sc">&amp;</span> co_noise<span class="sc">$</span>kind <span class="sc">==</span> <span class="st">&quot;categorical&quot;</span>)),</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">largest_noise_z =</span> <span class="fu">c</span>(<span class="fu">max</span>(co_noise<span class="sc">$</span>z[co_noise<span class="sc">$</span>kind <span class="sc">==</span> <span class="st">&quot;continuous&quot;</span>], <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">max</span>(co_noise<span class="sc">$</span>z[co_noise<span class="sc">$</span>kind <span class="sc">==</span> <span class="st">&quot;categorical&quot;</span>], <span class="at">na.rm =</span> <span class="cn">TRUE</span>)))</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         kind noise_tested largest_noise_z
+1  continuous            5       0.3978672
+2 categorical            5       0.1515197</code></pre>
+</div>
+</div>
+<p>Continuous noise scores higher than categorical noise with no relation to the outcome at all. A forest favours variables with many split points, and a permuted continuous column still offers many. That is why the bar is set per kind. Against it, 15 of the 17 real variables beat the noise in this one fit: the screen tests everything, but it is not parsimonious.</p>
+<h1 id="a-screen-or-a-selection">A screen or a selection?</h1>
+<p>A selection says the kept variables were compared with the rest and found to matter. One varPro fit on its defaults keeps everything it returns, including variables it never tested, with no comparison against noise and no check of its stability. That makes it a <em>screen</em>: it narrows the candidates to a list a model can use, and it does not establish which variables matter.</p>
+<p>If you need a selection, each step above is a lever:</p>
+<ul>
+<li>offer every variable (<code>split.weight = FALSE</code>), so each one is tested;</li>
+<li>report coverage beside z (<code>varpro_coverage()</code>), and score all trees (<code>max.tree = ntree</code>);</li>
+<li>set the cutoff by cross-validation (<code>varPro::cv.varpro()</code>) or by noise copies of each kind, not by the default;</li>
+<li>refit on subsamples and keep the variables selected in most of them;</li>
+<li>and, if the selected variables feed a model you then evaluate, do the selection inside the cross-validation, so the model is not judged on the data that chose its variables.</li>
+</ul>
+<h1 id="what-if-the-events-are-rare">What if the events are rare?</h1>
+<p>In a survival forest the events carry the information, and the PBC data above are generous: 111 deaths among 276 cases. Clinical cohorts are often much thinner, with a few dozen deaths among a couple of thousand patients. To see what varPro can test at that density, we simulated data where the answer is known, at two sizes: 1,900 cases with about 60 events, and 12,000 cases with about 150. Each has 30 predictors, and six of them carry signal:</p>
+<ul>
+<li>three continuous predictors, <code>x1</code> to <code>x3</code>, with hazard ratios of about 2.0, 1.6 and 1.4 per standard deviation;</li>
+<li>two binary predictors, <code>b1</code> (present in 10% of cases, hazard ratio about 2.7) and <code>b2</code> (20%, about 2.0);</li>
+<li><code>x4</code>, continuous, correlated 0.7 with the noise variable <code>n1</code>.</li>
+</ul>
+<p>The other 24 are noise, in correlated blocks of four, and four of them are binary. The simulation is in <code>vignettes/precompute_varpro_rare.R</code>. We fitted each data set on varPro’s defaults and with every variable offered, at three settings of the forest that builds the rules:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="dv">30</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>defaults   <span class="ot">&lt;-</span> <span class="fu">varpro</span>(<span class="fu">Surv</span>(time, status) <span class="sc">~</span> ., d)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>open_all   <span class="ot">&lt;-</span> <span class="fu">varpro</span>(<span class="fu">Surv</span>(time, status) <span class="sc">~</span> ., d, <span class="at">split.weight =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                     <span class="at">sparse =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>open_sqrtp <span class="ot">&lt;-</span> <span class="fu">varpro</span>(<span class="fu">Surv</span>(time, status) <span class="sc">~</span> ., d, <span class="at">split.weight =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">sparse =</span> <span class="cn">FALSE</span>, <span class="at">mtry =</span> <span class="fu">ceiling</span>(<span class="fu">sqrt</span>(p)))</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>open_more  <span class="ot">&lt;-</span> <span class="fu">varpro</span>(<span class="fu">Surv</span>(time, status) <span class="sc">~</span> ., d, <span class="at">split.weight =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>                     <span class="at">sparse =</span> <span class="cn">FALSE</span>, <span class="at">mtry =</span> <span class="fu">ceiling</span>(<span class="fu">sqrt</span>(p)),</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                     <span class="at">ntree =</span> <span class="dv">1000</span>, <span class="at">max.tree =</span> <span class="dv">1000</span>, <span class="at">max.rules.tree =</span> <span class="dv">300</span>,</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>                     <span class="at">nodesize.external =</span> <span class="fu">round</span>(<span class="dv">2</span> <span class="sc">*</span> <span class="fu">nrow</span>(d) <span class="sc">/</span> <span class="fu">sum</span>(d<span class="sc">$</span>status)))</span></code></pre></div>
+</div>
+<p>For each fit the tables give the number of variables tested (scored in at least 10% of trees, as above), how many of the six true signals land in the top six by z, the coverage of the two binary signals, and z for <code>b1</code>, <code>x4</code> and its noise partner <code>n1</code>. The smaller size is averaged over three simulated data sets; the larger is one.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>rs</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     setting events seconds tested truth_top6 cov_b1 cov_b2 z_b1 z_x4 z_n1
+1   defaults     60      13   10.7        4.0    26%    57%   NA 1.41 0.53
+2   open_all     60      21   26.0        3.3     8%    31% 0.06 1.21 0.55
+3 open_sqrtp     60       9   28.0        3.7    16%    43% 0.10 1.05 0.73
+4  open_more     60      25   27.3        3.7    17%    38% 0.11 1.82 1.19</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>rl</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     setting events seconds tested truth_top6 cov_b1 cov_b2 z_b1 z_x4 z_n1
+1   defaults    150     196     10          5    99%    70% 7.37 4.38 2.86
+2   open_all    150     309     26          5    74%    33% 5.78 2.25 1.92
+3 open_sqrtp    150     132     30          5    85%    45% 5.06 2.77 2.80
+4  open_more    150     456     30          5    84%    45% 6.86 3.83 3.07</code></pre>
+</div>
+</div>
+<p><strong>Offering every variable is not enough on its own.</strong> With <code>split.weight = FALSE</code>, varPro grows the rule forest with <code>mtry = Inf</code>, so every split considers every variable. The strongest continuous predictors win most of those contests, and a binary variable, which offers only one split point, rarely gets a split. On the smaller data the number of variables tested rises from 10.7 to 26, but <code>b1</code> is tested in only 8% of the trees, and fewer of the true signals reach the top six than on the defaults. Passing a smaller <code>mtry</code>, about the square root of the number of predictors as <code>rfsrc()</code> uses by default, gives each variable its turn: a few more variables are tested, some of the lost signals come back, and the fit is faster, because each split searches fewer variables. The guided defaults do well on recovery here for a related reason. With only a handful of variables left after the screen, each one gets more of the splits. On the larger data they do as well as any setting, and give <code>b1</code> its highest z, while testing only 10 of the 30 variables. That is the trade: the screen spends the forest on the variables it already favours, and says nothing about the rest.</p>
+<p><strong>More trees and rules help when there are events for them to use.</strong> <code>open_more</code> scores 1,000 trees with up to 300 rules each, and sizes the leaves of the survival forest that varPro grows first, to turn the outcome into a mortality score (<code>nodesize.external</code>), for about two events per leaf. On the larger data that raised z for <code>b1</code> from 5.06 to 6.86 and z for <code>x4</code> from 2.77 to 3.83. On the smaller data it changed little. Either way it costs about three times as long.</p>
+<p><strong>At 60 events, a real rare effect can look like nothing.</strong> <code>b1</code> has a hazard ratio of about 2.7, and on the larger data every setting finds it, with z between 5.06 and 7.37. On the smaller data its z stays near zero whenever every variable is offered, and the defaults screened it out altogether in two of the three data sets, which is why their <code>z_b1</code> reads <code>NA</code> and their <code>cov_b1</code> averages 0%, 79% and 0%. Only the events among the 10% of cases with <code>b1 = 1</code> can show its effect, and at 60 events in all that is too few. Coverage does not warn you here. With <code>mtry = 6</code>, <code>b1</code> counts as tested in all three data sets, in 12% to 25% of the trees, and its z still stays below 0.25. Coverage says when a variable went untested, not when a tested variable had too few events behind it. Before you read a z of zero for a rare indicator as “no effect”, count the events among the cases that have it.</p>
+<p><strong>A correlated stand-in scores like a signal.</strong> <code>n1</code> has no effect on the outcome, but it is correlated with <code>x4</code>, and its z is above zero in 15 of the 16 fits, often close to <code>x4</code>’s, and in 2 of them the higher of the two. varPro measures how much the forest relies on a variable, and a forest relies on a stand-in. The permuted noise copies of the previous section do not catch this, because a permuted column is correlated with nothing; only knowing what the variables measure does.</p>
+<p>For an exploratory fit on sparse survival data, then, we start from:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>p  <span class="ot">&lt;-</span> <span class="fu">ncol</span>(d) <span class="sc">-</span> <span class="dv">2</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>vp <span class="ot">&lt;-</span> <span class="fu">varpro</span>(<span class="fu">Surv</span>(time, status) <span class="sc">~</span> ., d, <span class="at">split.weight =</span> <span class="cn">FALSE</span>, <span class="at">sparse =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>             <span class="at">mtry =</span> <span class="fu">ceiling</span>(<span class="fu">sqrt</span>(p)))</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>gg <span class="ot">&lt;-</span> <span class="fu">gg_varpro</span>(vp, <span class="at">max.tree =</span> vp<span class="sc">$</span>rf<span class="sc">$</span>ntree)</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="fu">varpro_coverage</span>(vp, <span class="at">by =</span> <span class="st">&quot;variable&quot;</span>)</span></code></pre></div>
+</div>
+<p>and add <code>ntree</code>, <code>max.tree</code>, <code>max.rules.tree</code> and <code>nodesize.external</code>, as in <code>open_more</code>, once there are enough events for them to make a difference. These are our starting points from one simulation design, not settings varPro’s authors recommend; on your own data, the coverage table is the check.</p>
+<h1 id="partial-dependence-on-small-data">Partial dependence on small data</h1>
+<p><code>gg_partial_varpro()</code> shows how the prediction moves with one variable <em>locally</em>: it samples training cases at random, makes virtual twins of each by setting the variable to a grid of values with the rest of the case held as it is, and keeps only the twins that resemble the training data (an isolation-forest filter by default). <code>gg_partial_rfsrc()</code> shows it <em>marginally</em>: the variable is set to each value for every case and the predictions averaged. Here is bilirubin both ways, survival at 1461 days:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>one_var <span class="ot">&lt;-</span> <span class="cf">function</span>(p, v) {</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span>continuous <span class="ot">&lt;-</span> p<span class="sc">$</span>continuous[p<span class="sc">$</span>continuous<span class="sc">$</span>name <span class="sc">==</span> v, , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span>categorical <span class="ot">&lt;-</span> p<span class="sc">$</span>categorical[<span class="dv">0</span>, , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  p</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="fu">one_var</span>(vs<span class="sc">$</span>pd_local, <span class="st">&quot;bili&quot;</span>)) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;varPro (local)&quot;</span>),</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="fu">one_var</span>(vs<span class="sc">$</span>pd_marginal, <span class="st">&quot;bili&quot;</span>)) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;randomForestSRC (marginal)&quot;</span>),</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">1</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img role="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAFsCAMAAAAkIPulAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAEIUExURf///6OjowEBARISEnNzc/Dw8NfX11tbWzs7O4uLi+7u7kNDQyoqKnt7ewoKCufn56qqqjQ0NJKSkpubmxsbG4SEhMrKyt7e3lJSUru7u0xMTMfHx2tra7Ozs2NjY+zc2+zo5/OinPWKg/d8c/h2bfGtqe3Qzu/Jxu+/vO7MyvWSi/G1sezg3/OalPKppO3U0vKxrfSWkPvBvf729vPb2vbOy/iIgPOmofOemPWPiPaDe/C5te/Gw+/Avfh4b/j4+PjKxvjv7vjEwfbg3/nW0/nk4+/v7+3Y1/Xk4vHY1vHBvviTjPTr6/C9ufy/uvh6cvmyrfiqpfnNyvHQzviBefmln/iclvjc2j/80L8AAAABYktHRACIBR1IAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAB3RJTUUH6gsDESgQQ2B7MgAALcBJREFUeNrtnQm/oza6p2VhsC1j8I73OnWOK5U6lVoy07mVe1JJd+fOTHfS3dOz9Mx8/28yiFUSAkkYbAz6/6psH3iR0ctj7QsAWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa11YPYhl9M9fCGgAwHBWH4p9H41tHpdGCVv658BlAaMsENAqszInt2H3X/zQNLnVm8/C02/dPTBBxAX5+srL5z/mWj3cBMZpovMy/ad8Ns1VxKPj8pHejKNyFigANn4GkAkCRszKBOYJrDGhwsbfc4Lce7PknJo6XXoCfn6xyAL3l413A4M2D2zyDHZAD1FRxc+dUDKhCQAGgkzCxHSwTQMEcv1twn5yIA99dfvP1P96DgV+P+DuOY2d5wj+q4cKbHWPnmHARHQD7sWPP00uddXSH6Ynt0JktggDHMAwrOD9YqdxSyxQ5L/GIvVjYcBwkZD3bGe8xoIkD7dHCdgZo7r/gp04CGttE4Vmb6BJzsnQ2fsA7Pz+3wCkEdOs/0BjQEQ5kPAtD8XDaGip4fswXMgyAqe3s1tALU1B8505w54lZ/Y83+HYw9ksjU8MD5g7zOjs4MAHU9X964YGeYQFzMEscFpzHd9jDV+IT+IO7HFFh4ZufGtfnojEKnZd6xIa+gw6O/2nkO9SzfaoSB/onFwAZcAXMMc6YCUAT74fh7f2Mzdzg4t9sgvNvFKWga3iIU+Q4izd8AwAzWXT4/OgvZBmYLz2/iJAAGt/5VR+vEyTSfvq/WwXxw98Ke4lz0NiODpj+DeOYHqMLR0Fm4d9hcsKEU3y7DhUW/mRBhdJO2xR6M/WIjaly/YduBoWnNbQIz9pD/8MJ09vDtouokkR6PwzPwMDh54aCvHvZiytJ3gHC8RynOtPo4mHwfUf2vubB86O/kGEg4MJPjWNAh9GdX/XxrpYhU4HQJPjWoHASOsc5oejAHgY1wNkhst0EVv4dJieiD3RYOAYozVe6p1lS1As9YocesYJsGENgEZ4NTvYxCNMQ0Lh4l9oE4XlBxheY20Yv5GMU1/XXfQeekhR0DydcQMPnx3whoBjYR3cYAxrfOWFW/+PFv4hh8DX9pb3ZJd9K1iDDhDyMwG4THRwPolPJiWmSITFhmbkVrQ4o9GbqETtM+6wwjcSVpF7q2eBkH6exDKCp98NSf5Q6+kybIxs6uDFwRDRGnXxm4jIozgMBXLD3FT4/+guZ5xZ9aQJofOfXfbz2CAVJtHEwo4JJDCjt4/AHD5aT6GCSgiYnjok7jQMgwzI7nYKuQo/E3g2qNvgxH+MU9Jh6NgNoHErq/ShXJZqLgLk1TiGgMSumn0PHgB5wXj6MWitRAlOUglJfyDCwDUt5CaDxnTNmNT/e3rKHf2JhprHIBzQs7KTJ+SougyYnwg89ww/LpcLyqLy/Y4o8kHgkecwhK1toEZ4NTvIATW3CpxMURIGzDYuCYDWMUlB7kJjHgE5wHWYf5cyTuDQXPT/qC1kG3OCiIwvolR8vgk4YWf+7tg6OFB9Q0Lddv+6W9Busk1p8cqJvI7/SuAAmE9bWUbmhlil0XuqRBFDQX7phLT71bC6gqU0YXlrxN/y/3eXUN8YgWnDlf4eHE8wY0FXwvvJhxi34Satr+PzoL4QMA7sZApZBAeqXQa/9eHdhRKwx9HP7GcwFFPRsSHYopO2gyYmFDYfTbFinidSNtFOh81KPpICCxdLZBalU4sB8QBOb6GFsh3AZXOKeDDjDSYwfuoWLkTY0TkeQAtqDwRXrgQHtFdGmHraDUl/IMgBGBm6pZQC9l8c730gaml3O4Zsr2efnCh5fcx+v7cnZreZydlrXlfD5hVWuvSAHb+7j9eR+gqbUWBytq0v8/DZ+GdS1F4U2+vFq3U4jv1JxvDwYLS0tLS0tLS0tLS0tLS0tLS2t28rjyrKYv/0j5LG8z+Rf+Tb88PPDu+vh+C4dz2K/5PuL9r+MnxX832QH5znIYv/OcaXItZeG3y5AZSX2j+zzkAq/yQ6Oo4pf40+xO5K/SYdQP2byCv9zYBilhxx7cfh0eFYUXpP9J5QbRc/iecDzFP1P+SVzhRWGQtEn4/8mO5h0QBwxroN4MY4tAiBDKLO/bNYhReHT4cX2TfafUC4RSSp+KZZC/5OZNSfrzoRHPTCx/xvtYOI2OfkKHS3SSfQ5j0GYay8IP/9zk/0nlMvAkPnpqvuf76/4kizWIv83PgWlf8tsDBIHcc7kAWrl2ReEn18SbbL/hHItNm3LECrwf8a/+f6ifCnt/2YDSqT7HpmvZlyacXRhxcazWHtR+PnhNdl/Qrk5zCSpmrr/o3deeFRZVdr/TXYwWZnJli+TaDKApg4m3Hcc4czE2/b3B//FytqLwmfCawugZMmPopWCrND/4d++g7FSB1uckiannCn0f5MdzCLBli/TrNwi3Mg4JbQ4rqIzvv+8rL0ofDa8pOjf6BxIKKKZifEX80MU+z8C1LKwg62Mv9iQpf1/V4ByypcWkXlQgFLtG77/Dht7kqSgGXtR+Gx46R9N9p9QMaBWxl9cQLP+sRL/hw62YgfnhEdm4VL+bzigif/YAiANC5ktMNGN4PKOs7U16HnbA/bfIWMvDj9T4orONNl/QrmZDDUTvwL/Uw4KHDylHEz4X/S8CvzfZAcTt5v+1ClcqAgTv0DaQWEZ1Dv2A/9ZMaDkL1YYPq9K0GpA+Slfjn8oB2cA5WX30v5vsoMjZzEZCt1OlB5gqkikE8Iy/HFC+M/KSXHzwveSUpJHhd5k/wnlRsVpKz9+Of6n0jr8TjuY9b/oeRX4v8kOZl3CcxBdbsn8YmOD48yyBkcSUKvQQZnwiV82ZdFk/wnlkiV4Xvwk/B9n8UPSwRn/C55XQfhNdjABm0VGgIxCWlhJHOLRLg7ejv2d7f/GE0AZe2H4tGdbAygVH278JP3vO3hMODhbvSp+XgXhN9nB7K8q8hXze/Sybo3KRXn973z7wvCTK9mfeJP9JxQNKDd+Of6n0tiIMeYY3//5zyvH/012cPrzSmOQTdeoX3rmt5omD7Q3aHtR+FbmtT2VpExrJFvFlPB/TtHIIr1d9Lzyw78DQL20AdfKRs+SApQuSXEdVBg+XdkkQ2yy/4Ry4+jkx6/A/yRwiYHI/1YeoFz/W82vxdM/MSop9CzqN+eRx9OU02OP59lzw+c0udD302T/CZX0JOXHjy6fMv6xuMczsGeelyXv/0Y7OAOoRUeZbgIhjVOz7HGLd9yi/cs+AKrQb5HZX5P9J5RLeYYbP8pdPP9nj6dlAovjZy/nON//TQc0U2EhiU0aKpgKfHycKvwwx3n2Hv1d2ePZgkKzi0hCuRY3zqSvMz9wylp4POP/bAJS7P9GA4rc5qupy09qB1/Dfwjh/1mZ3KNKtubFtuHRu95I0QxjgHJl5p+52lW3dlKBrg+diq0G9DpX3dpJBcqNUM7RugDlfp0GtMRVQAMqC51OQYEG9FLluqG2Mij3qE5BeWd0Fq8OqM7iFaUBvUw6i69ZGtDLpAGtWRrQy6QBrVkiQM1SqJm6kqQBrcrBpVGr/KpWAaob6qtycEloNKCR/4IIud7VoFOxbRGgrx4e1KDRgEb+wxFy4fBq0KnYtgDQqAz6+vHp/OZB3iEC1KoFtMkOjiJkOFeDTsW2PYB+cz4/nZ8epB0iQK1zgG6gxSJTF3R829Y31L/9Fr07fysPDdKABooitIZzFpnLodMpKKCbmR6f5aEph1q5q5rs4DhC9o5Fpi7o+LatT0Gx3p+/qxm1klfd2kkFiiM0gEw9XgNajUhAX/HyeA1ooeIIreCqcuh0Fg+YnqTHD3Wj1tqeJBfOrgSdim3bAP34pIKaBhQQPUlDm7nnuqBTsb0rQK3TaR1+2p5O2/goBei78ycF1HQtHhCAzuH6OtCp2N4ToObJNA9BWoQmAPTjqbwUoA9Pn2WhQRrQQEmEPNi/DnQqtvcE6P7oJ537wKcY0DjbpEczff8sCw26IqB3kcUjx5GIiwY0V1PLz+V7wcf5bjfC78fxeLymjP7T+T/f+j7vTCmgYzqP12VQRQWATvEnawXAysIfFouFZ/ryE9JQfzj/YDICZp5A/qmKr7q17wLxy/ApoD26oUkDqqi979Nt4OHpOkYVZAYsP72Rcwh9VZ5nKrqqEQ7OKcMTEbI3FDJ8kPgRVIGOb3v/DfXoAMxDcKuWn7/PrdjvNDT/9kXOISVRK3dVIxycU4YnInRyXCGKGtB8rQcnTOXGL3sOBsf4KAPo449yDhGgVi3WjXAwUYYfRWX47WQycYObC8ohUzgniiogp6ySlnTi6wBpmx6PAgZkyQgAAHICJgOnLrq14y4UA+hzpi+pAYA2ohbPKcNPT6cTsfKeCWe3vskWigH0w7MGlC+iDG8RZXgyQktI3jM/JrqSpCgG0B//vRLUWghoThmejNAK7q8AnYpt+wB9/VgJam0czUSU4U9pGZ6MkEc2NOkUtBox0Hx8qRe1OwY0z39EhMgBI7UBairbtgnQN5nxTBpQgf+ICO2IzqSaU0UV2zYB+v5cL2rtHW6HdYSD9J5VoKvLtn2A/nR+kHIIfZU8au0GFBkzQVyuCyhqAaBMJenb2gFt63C7QP20M0kDWo0YQL+eX9WJWrmrmuxgOkJb2KsbOpWuzhYC+jYzpl4DWigmQk5Sj29CGbSFgL7TgKqJiZAN4zxeTzuuRgygn87vqkCtBeuDLrEMw38pNGPcMElWGNGAViMG0Ffnr5LQtH3KBxrA/TpQsRmNoucc4nu+HDrdzAQiQNPf38P5Z0lo2g4oQFDKikFxYxfGRQOqKiYFfcgsLtJZQEFfxoiN0BxOo3uuCzoV2/YBis7vJaFpP6BSYiNkwXF0z3VBp2LbQkAzk5IaAOgNHSz87kyE4qVsNaDViAX05aMcNKj1KejKAOYMwlOxVSZCp2gpWw1oNcoA+loSmraPZurvLNDvm6g/KTTLRMiCo/Ce64JOxbaFgGZmzXUVUMN/rEbwodAsG6FZuJ+CBrQasdBkZs01ANCbONj2v9XGH1QBHYSDQpvQF98aQInoZWbNNWC43U0cvBh6oDcCYKSYxaNpOChUt4NWIxa1zKy5KwLarHnxC+gMIYQ7kf8yboBBW/2Vp3y0NgVly6CZWXMNyOJv1Q7qbY9bV2DDiVA/GDCi++KrEQtoZtZchwGVESdCe7hAupJUlVhAM7PmOg6oJzjPi9AST/zQgFYjFtD3v9SK2t0BKhoxwovQDG9JoytJ1YgFNDNrrgG1+JsAOpwFgrPiBZd4bpjj1cA1oBXrj2E0/nT+M35L1kuLRKy2Fn+OzybLs7FX0Pbp32R4zDfFS8Ux19/CH1Nnt/cFheNBOb9TY5MLksIPUwOKxaagmVlzne2LN3cDs1wWj06Ge+31QTsDaGZSUofLoMflsRygR78erwGtRllAv6kTtfvp6gycM9iVAtSFtq7FV/UMGGgys+a6DCgA+4nAgB8hG7q6ob4asYBmZs11G1Ch+BFawZ5OQasRC+h37Kw5DWih+BFyjZNuZqpGLKCZWXMNAPTOujqxBoYGtCoHM9D88l7GIWVRux9Al4lE/uNFaJEs4FA5dCq2bQGULGKz+8l2tSep3MINsVxo82OiAVV9Dixq7Ky5rgIqvXAD3w3pIk1VQ6di2wJA2TJoZtZcV7P4kgs3xJrDY03Qqdi2EVB21lx3AVX3JTlgwTiEx5jjqS1xHKRns7YmHQbxZaR95vvvf4+5KFIsNOysOQ1ooXIjNDB4ebxOQVWVAZSdNacBLVRuhFbR/PjKocvxENe2jYCys+aqHs10N5UkOeW7gVuP1ymoqjKAsrPmOjvcTk65ETJnDieP14CqygwBSCPFzprrMqCn4F+h8gGd8urxGlBVZVJQdtZclwGFJQcsB/fsGqcaoVOxbReg7F5zDQD0Zg6+CFA05LTV6xQ0kZmo2IyFhp01pwEtVAGgK3Lz46qhU7FtJqAwUaFZBtCfNaCpDy8C1IWz7FENqKIygLKz5hrQDnqngAZz5+RA4ofQkXbQbeHZDKDsrLkGAHqflSQ8d66XOaoBJbWYTCZ9R+BgBppvNKCJ9sE/gf/yASU3PyaOSkPX7kqSr8lgPFgZlsDBiP79sXM+OjvcTk757aAoWgOHjolCvNsP6BJYI/yv2MEsasyAUA2owH8FgC7ggY2JQrzbD6gD0ABjWqRMGRR9eOTEkRv91jfUS6gQULQcVw+dim3DAd3tgQHM4jXWs4C+/+VB7BABahrQMK3ss3m8BpSUZ4D+0ijO4rOAMtV4DWihigFds231fJBqXi68sYBirZM6knU6hfO/jpvNZjePjmYBfTj/JANNB2rxPeI1T8WAIseQAakCQO+zmYmUeTLNQ/Ko5/GnLKDo8bXYIWVRu6NK0nodTOvcFreEFpdB0Q7uy0PXekBX5A4A+yMA27hVzzvGhzmAvn6RQ63lWfwQL147mw1LpqBhXLZ4Lduy0LU+i+87wwREMPXzeit2djiha9/v9y1gJnOsgqElfzR/xWvY/jEZaUIsQRsdMk1ixlb8N2kTn0vnb5HXpYbkkJZ42VrK7rYzv4YSNgJA0XAmA1JHAfURHDj9aBuAANBp+NkKud2fTidOM/5/nP/Lre/7fiQCdB7uO6cBzXXgOCpD7bd+Fh+tkrFKb5mTxdOLi3S4kiTlXwGgHqSaQjWgtKy+M44Gi6ADMA/RDOxDasEDlJp5rAEtlAhQZMCKoVOxbTigE8OYpw93PQjy8w1RFAV8QD8+CR1SFrXuABofPVBDmjSgpE5rsQ0PUGpIaIcBraAd1M/jHXJqkm5mSpRWkYvNONBQqyx3FtAL20GTo9QSIxrQRDCZ9SFwMAeapzd1oXZHgF7YDpocPZLdnTqLpyTRihgBQEeMrCV1tiepmnZQvFToslLoVGwbDuhKtJc0yElBycUbOgxoqOIpM2JA0QxaVUKnYttwQKmepBzxyqDo2/N3Eqi1f9Kc1JQZIaBTYhmx6wKKGg4o1ZOUIy6gn85v60Gt3FW3crDclBlRGdRPQocVQtcuQImepBxxAX345bPAISVRK3fVrRwsN2VGDOgoHdKkAaVF9CTliAsoevwgcEhJ1MpddSsHy0yZkQHUSrs7dTMTqZVD9iTxxQf09b9dhlo71geVmTIjUQYluzsbBegmbIacAsueBP+vrbI9SdQCTZ0dDyo3ZUYK0D6cxjFRiHfttfhd3MQ7mIf/WY339HvVElbhQR6gxLykDgOKtS6uI8kBmq7E2ExAd9vwP6vhnn6vWrZE4YMPKLHncccBTUXN6drE6Y1MGRShU7zacqMWD4sB3UE4wf+B2TeWOMNAA8de+QknhAt8Hr/38aY8/QmC65nRx93okelF2g7cUn3x1I6dGtDIUfw5XXKAHuMVHJoFaNwVHqegs7kfzYNfL5wCczelUlALNwc7HoL+6f4uNb1IpZZfDJWOWW4AoI2ohfLmdJmygCJoFIGkNKuTH0KZShKbxVu4wQJBsLWj42QWb6zBeumfxaknNGPT+pUD6MsXATSoaykoZ07XfDabSfQmY22gJWd4TbGATsMEzZzHC/OTgE76oD+PmIRubFr/TeYAmg4XaUA76K0AXZGdcJw5XdZ0OkXkpEFqBiD1lwVXnKN8W3YKYnlbs3jiIQvoHqeclgGOeJTMZEED6ufxDgoB9ZPR2PQynQaBCm1yoPnxUQRNBwA9OHbajpwzp0syi0e7cNekRq0skqnFL4/AHPrlT2cPPJ9GMIxq9sH78jDEbPqVp8MgMb1MR/8XPjJE4xm50KTjmRoA6O3KoOtDMt4mZ06XLKC9cAP5Ro1miipJowRQdHCWGBdvDIf4t9gLa/Hh+wgeMaBH28G1+Nj0crnFO/3kQJO21DdguN1NK0kHaIRPKZrTtaPndEm1g6JkA/lGAaomD9fj66gXKa6wHCqdlnRFQM3GAWr1HWPljTZF/pMDNBoVeseAzvHvtFpAgwLy0S624aP2TdJS39xafNSVDPd1VSb7jjMJKt8FT0Ua0GmQx98toAhuwrcqHRw8Pqe4myoH0HTeXHMB9bWvtSWuH49lKKilyZZBo1GhdwtoLZJZ2ygH0IfzewE0HQC0kmnHiUZwqwFVVw6g6Ur1dwCon8XD/dDpe2NnE6xAVkU/cWXTjmN5eF+vRg23u7X84pM5XxXP+MgF9PFHATSNmDSXAnoyTcNGYLACFfUTV7P8IikbuhrQVKbtPzzbPjgl5iT5+vAsRK1RKagbtjv3BgBU1k9czbTjRCO/mqSz+ESriZ9LGbitudAsD9AvLwJoGgao/xB2xxDQ6/UTAyVAkT1uFKCqzq5YeDDoCDddqW5DE+pzvNdHA3qSFAGtpp9Ycukg+TIoQitoaUAT4fb5IR5rI5nXxeshh5/N//rLZ/ZpRWfM6EB0gnPcjMMjj8crKCffYNLXk/fBO84VF9Bq+omllw6ST0E9ONSAJpr5N40TT7NUQz1CH395RcSRH5PcU9UWDPIh5QNaXT+xWCqAoiXUgCZa7KwDnpfQXxWa5QL68PShPGotGCxCLZ2fL5Us3s/j5xrQRCtn5786szJTPrB+Cns7uwooTFRopgQosncNambKeQhX9rOgGbQAUPT4WDlqJa+6ss9UpAboilhHTAxdJwAVqQDQt3jm3H/rKqCX1uK5cfHgTgG6lmfxks+hAJrvXx6qbtG8n5VFaqjFI1xNcqVt7x1Qr19FKEWA/uX8pruAJg4qPq2WxaM5s/NcCegUbNGNAJ1V6f8i1L48fdftMqgpnLSpmIKCzA7yqtBdC1Cvf3BOAExt3GIX/rGenIKFgBbL5QK4h0Ev/AS8w8GYzg08YHRvL1dgBjf4LE5Bp0tbZn2bsoC+On/uMqAmnrQjyKdUAR3RO8+pQ1choGt7GSn5ME0BNVyws6yxaW7W0R/rJQKDLTDHAAyR67gABZ/8s8iEU3DaB/OLJlNgA3zWBxRfnre+zXAWqzyg6MNLlwHtH/ybPRQv+qYKqOtsOEcVoFNZWUQAqHfKaJ8CegBgvl/tAVivoj/8D2Dt/2DX88XSDea6BZ+Adwo61BdHsMBldj8JDUj1AV0VrP1pWdbC3nrHWZn1QWO9O//QXECVjMvICJ5syeUX86CzoSdtK++j6itJOIOe7ydrP9seRX+s/fx9PQHr8XY/cF2f2fBTcDYEdD4NrvUBPQQhTIqnc4zxl6HdBYCixw9Vj2aqrpKkZFxGYeZ0+QK2FEgLOJCMdxMA3fsFy50VA+o7ZLMHvRFwjQDQ8BMBqDc0wWGPs/gQ0P0AmAU5eDifs8Q+Sal+Ov81H6cbD7dTMi6jLc7dV1OR/9QARUtbMt63bagPmQRzI6wkBYAexo6fy5v+a2+IEcSfpkMCUNBbGnO/eLnzDtFFhl2QiI6xb7fFKagAmgdq52Mm+q0G1AnaQJf+v3KA5kI3x3OTJG1Vws1/DFU1M63noFq5xrA/FIyoF0Hz+ukh71S7AZUMULWSZCLX2Ejbyod7ja7OygH1k89RT9DQLCiDot/Ov+fidOPlF5UdXNKHhWfVAUW7TEvTnQBah4QDgUSAor895+LUekAv2cgrv2a+hWxj/Z1k8dXr4JegpsUmQkB/TZerz3CTe1EjAPWi+uNilL7Gb1KqaiMvFqSlw3TIdxXQ0QlBSzBtVgjo35++5Jy59XhQgYMNGM4l8Jar5DV+k9PSrGYjLxakI+zJxLv9gC5NAMN5HxcAan7MqyY1vaE+muyy266S1/hNThdt5FUEkj2Ut1UJN2PbcECNoBG0uAwlBvRVuqECc+bmgP4c6Pffg9fg86sMoAcX99CFr/GbpCrbyIsFacIkoV0FtD/3Ad2WmxdPOOT5MefMjYfboYdzRj+xgG57uC85fI3fZFXZRl4sSB60pW1Vws3YNhxQc7aE9rL4GyUA/Xr+hn/m1oCih0TffRd9YAE94Ob2U/ga/aHkw9IbeRX2r8/oqR9dBdR371S0R5gEoA85eXzTG+rjCddhohklnSopqIzKAbqGE3G82w+ozPKBEoCipzf8Mw1vZooBtVbpa/wmKVP4uMoBijZLsqWpmw31cssHygD6+DqHm/yLmpCCXqyLBiwXA7qNt54riHfdG3nV7j+B5JYPlAH0+2f+mbYDKjNgWXXvo/iD46CSex+VsL2R/4SSWz5QjNprfjW+9eNBZQYslwX0AOcaUBnJoPb5qUJA76gvvpYBy9EH19iJ4n1XlaRyc4ynACySL0y2kwZuf5Dk+yJocBz/kWyaxHBTeFXeqfsBVG7AcjlA0YoY03TXgF4wx3g09stRMKKS2E765IJ53LwnKoPiOL49/4XPTeFVeacqW92uIgfnKBywbIgHLJcE1HPSMU1NBDSaYxxOLE7nGLNTjIk5xupTjIMsyotKoul20h5ZbZKpJH1KNk1iuCm8Ku/MnZRBJQMs1ZMUaJYmoTcCdG3bJ4Tmtr1AaGPbFvLsYwpoMMc4nGIczCIOP3oOM8U4mWNcNMU4R9ScpHQ76e10Embx3nQ6dUVFbP/U38+/qhbM80+pFP1vX8gv3w4qBGkLh9K29QBqDQYrhKaDgY/lZDDwkDfYpoCGc4zDicXpHOPMFONkjvFqK/JVRgOfb7Afh3/0ku2kj30TT4fymZ3NZmuZgJ7+e6VP/W508h9BcSvTBYCiWTIstInTjsM5xtHE4nSOcWaKcTLHeCLqtOTcgWGfxjCak5RuJ40z+ySbj2KAcoXj+MIdEnrrdtDaNT/5mdug2vGgxOc9HBXb3hZQG4HNPphY7AULN4RzjDNTjP0sPpzCKZhizNdxPo3vLt1OGuHpoBZ5lyJonj9UhdpdLR4WlKjMmipJvsZxf2cjK0nBHONoYnE6xzgzxRgMd9Ek+OIpxhll1reMtpP261/WYXCk7lKE2o/clvrWAxo20QvXFVDK4sk/5nF/ZxP74muYwklLen1LCdTevHDPtH1tphMuB4nXFSgNKHKcQtvbpqB1A4olUekXQRPE8SduS33rAUXLWT8pw+f6r3QlCaF+NLK+m4NF5CTTDoq+nl9VhFqVPUlXEFGGz9FFgLrR5KQmZvG1q5LlFyOHfOKOqW89oDL9IpdUknApdFoA3X10dZZVJcsvRg757vxrNaiVu+pWgMr0i1wGqOsYytCp2DYZUFDJ8ouRQ355Xw1q5a66FaDbgZvfjxXpMkDRBi5UoVOxbTigMssvygH68lENtauMB61d1W/klQHJC/o7bwPo7SWz/KIcoNyW+tb3JMnookoSwqPu9t0FVGb5RTMEQADNh2c11NoCaPW7fLCHPbwYY1cBxcsvippJ5FLQjy9qqLUE0J14Gv2lgKIBPHYY0AqWXwwM3v9TDbV2ADrBk+ZOxXMZLgbUgnZ3Aa1i+cXA4FdeV9Ktp3zUrmDSnFn5+qCMhnB9m4b626uS5RcDg294i4S2PgUNuzjqG80UynMGXU1Bg+UX0aXLL+KXV+ev1aB2V4Cu+/6jXRX3J10OKJrw9+juQApazfKL+OUBLxtXBWp3BagDobAptAJA2bXuimzbBajM8ouS0PCWZ2p9TxL5/PNt1CpJvIPjsEc+Y9v6LF5m+cXI/yJoeMszXW3AcmMdDKoB1IIzBeiQgm3DAZVZflESNV5LfeWAKs6Lb4QumJOUKuhOkoWOH+5dAiozXEyuDIq+vPC4UUZN6rs47m+uLm4HDUSugyOCTiXchgMqM1xMElDe8kwaUFARoOYkGNQkZ6sQbtMBlRkuJgnot5yW+nYDKlo2IlIlgAIPGrK2bQJUZriYJKDvOC317QYUSrQxgUqambDtgN06CXWhDCojEaBRHP9yfquCWjvGg8qoIkBdeyZpqwHlxpG3kUK7U9BEJTeTVVwtpJdNQtsOqLVaeWIrufGg3Jb69gM6v2AzWdX+dZvdwLPtgB7hYACnQjPJFJTXUt96QC/aTFYV0BUcqECnYttMQGd4Nbul0EyykoSev68EtVJY38rB4WayxfvWVAYoMqArbSsbbpMBhclLoWQB5Wyk0PrxoPRmsnlLqFdTBsV7IE+kbCtbWeTGqhjQN9mW+tb3xVObyeYsoV4doGjgWDK2XQNUcq3k389/r2Kt5HLrMt/IhdRmsjlLqFcIqMUMu2t7Fr/wFbwUmsmi9sP5D/UDmn/NzZRsJstZQt2aTqeo5D5JvKNDOBV7SmlPJXBz/+VrN45VaCZbi+dspND6AcuUptkl1Oez2Uw4L1lBCNq3jmXzJIImBvTh/HPnAF2R9OUuoV5JT1KoETVyueVZvKRE0CRl8qfM6je33iepdvXhMB2xmLuEemVlUF8z25W2lQm3BYDK1uLR6xcF1NqRgvqJ5cDpx91xeUuoVwnoEe6kbWXC7RKgbzOF0A4A6gM4vsJopvTgEm6lbWkPcW27BOjDE7sXTQcAtfrOuORgkXJz3ffp7l46BQ0kDSj6wjbVtx7QlWHMRd9dMaB+PaknbUt5iGvbKUDfsXl868eDniS24asaUDRbWtK2Iq92C1D0wgxoavdopsw+U3xVMquTjPc+6U/SWXzwHEIAZKD5+ETPS2o3oNL7TFUMKBrCeSF0/HDbDagcNJ+YBZraDaikqgfUc6LGUA0olgKg6IVeCLz1w+1WEv2YlZdB03F3GlAsFUDf0Hl86wHtO0Ph2hc1ABosuixrWxxuxwD9RPfHtx5QAPYb2K9xK8TkKP1nNEteA4qlAih6pPL41q9uh3WVniTW9gBPSAMaSgnQz7+QeXzrG+ov6kkq19UZyXY8DWjsYAVoXlGz41sPqFxPktp23HLQrZ2BbqhPHKzQu/P8fCFqLexJqgNQtIIjnYLGDlZA7T25L3frAb1ot+PLAHUd6LV80pyklMqgfh5P7Crb+ob6i3Y7vgxQtIBDncVjqQGKnonp8a1vZrrCbsf58d5BS2fxQBnQb4k8vvUp6NWWX+QddJczDShQBvThl88yqLUDUBnVBiiaEmOXhT7qLqAsah/SPL7140FlVB+gaAhX0rYa0Fhf06WWW18GPQ0CFdrUVUnCRx3eFnSdBFQhVXtIFwptPaDH6XQ6Mor3Oq0RULB2xheG2xZAVaD58UUCtXbMiw/kFm8YXyegZg/2Lwu3BYCKoMk45Ov5GzFq7ejqDHWlFZa5tjs4uijcLgL6kCwx0npAgxlJx+L1kmqsJPm2ngPXcrYtaKhPF2Dtbzab+KGrQ5MsMdJ6QINWUKd4M8l6AUVTcqkRgS0n3HsClFiAdUI5WBWaZPpx6wGVWbqwZkDRnG1ram0Kmi7Aah4Op/CD67oF0SPjSCqeflxiW9hyVzXZwXUDigbxJM9i2/sHNF2A1Z0As4/ng01ns5nEiDJW/+Pp1nG5jnyHmXPRVj6qlSQV2+CwB+nW0NZm8b1kAVasNf7k7vd7V27V4yC2kX47/6n0Wsl5VxHBx0eoa64v04YA2PbBqXZOkjKgqEevDN5aQNMFWLHW8VjHKAYoV5yYPz59ElzVgq7OlV9SXxv+/0OhWe1ZPB683Je25QZ8H4CmC7Du/Yy+Hz905YZ6X989Pr1Tvyo+cyc9SXgw6Aiv71+819QVAEV9sjW0tYASC7AuNqek7aQMoOjh+ZevbQcUt88PcUn9RsPtCFt3RhDaXkD5KgUoevj+/G3LAZ35Dx0nnmbJhvpKepIiWU64lENgaxbbUuF2FlD08OP5fbsBXeysw9x/74u2QlRahUluXnzGduvYcVVep6CSqH08f251JQmsnJ3/6sxEUz6uASjaGzOvyEca0Kw+n/9n/kWt6EnCEu1ojqoAVAK6IzTcItuickZHAUW/nz885F3UGkCl/QiC5tpod7fgSPSaHCeMzfQlsSWuT65OwwETSEwyJcxMJtDM9XeuCwA1/9f5OYfQ7gB6lUpSoE2wYFN7uzpzdAmg4O3TI59QDWj1gKIJPCANqDQ0wVXfPD2+4p66/1q8pK7RDhprAmct7urM0WWAok8vL3/J90zeVarfdWsnFeiagKKxT6gGVBKa6KpXL0+f1K9S/K5bO6lAqoAqxJsD3RAeugZoaWjiq16FHfOKV6l9162dVOi/q5VBsSZhTUk2XA0oijvmVa9S+a4mO7j+4Xa0VnDpydpqQMP3oGNe+qoSPUlNdvC1AUUn6KxlbTWgoXDHvPRVesqHrI9zbCfQXsvatgDQSytJob6c39CndBm0NkDRfmksJG01oLE+n6nNujWg9QFqIsuG7Jo4uqFehNp7qmNeA1pTLT50rWtDm64qaUCFqP1MdsxrQOsDNHg9OPae9hDXVgNK6O3TvyeEtmE8qJxuBCja+9m8K/KqBpTSu7RjXqegNVaSQnk2dI4iWw0opU9PL68oz0hdJfFdt3ZSgW5RSYq0cmDflbHVgMZKOuY1oLWnoL7cE1yOCm07AKgaanHHvB5uV3cZNNQRwuW+wLYDgCr2qj88P31FGtBLoFOydTcOHKy7DKgqag/P5981oIrQXVIc8CYGXJ48Dag0aj+e33/6w18fFK8qeKiNdnAl40EvK696YwihvTnts7YdALTEwLkv50BPL4/Pzx9ef/z8/h8/f3336dVDaUB1JUlku18MDAiNU4/et0YDyterT//7h29/+vzxy+sPz48v//rnOdI/MbMf/s+Xj59/+oePbMLsfQOqNoROxVYFZoCmm7GBk9Je2gnaGkDrXiv54dWnb3749R8+s68//N+/Pb48xcjiZPYxSmZ//dNvf3jFLRk02cHNARRrv1liRmen1WIxGYytNgDKW1QWkGvHmnnnAHWO+pyeIY3iVQz89z///a//7zef2fdvfGb/9vivp4TZf/7rJUH2z+B2C9hK6sa1+Kytu13Nol1wYa8NgIYxQLmqtsk9/6qHh1e//fb255/evwlKBkEy+zZJHxqrxgEaQrq2rP26PVl8EwDlXPUQZ/i3dlKBmlFJ6nA76C0BTd3fXGlAa5YG9DI1BdDODrerdltYhPR40HpsWwvoBahdbTtuDWhZ2w4AWi6z1oBqQCtzcEloNKCR/242YFna9q4BraeSVG3BoMkO1oDWrCYB2oXRTBpQRWlAL5MGtGZpQC/2n8W9aX40LZdra8rb8l3reQW2TfafjIPzoidC7WpXNdvB+5krbYtmW/mAxwt521P/1m6oVavB9a6alLqqwdKA1i8N6AXSgNYvDegFcnvyRRCzJw8zmFryttu9vO0dan9s+lVaWlpaWu2TdTqtZW37m81Grt8W9eXDDm3lw74/qfg4VuAV1Qut02Ba7usaK/NkmgdZMCayoQ52B+mwQ1v5sO9PSj6OFHhF9ULzYIKVVebrmitcpJatoZiHw0naVD7swFYh7LuTio8TYa+oXmj59utpqa9rrHBV2+rJ2boTYPblqvEBdJJhB7YKYd+dVHycCHulzIUjr9TXNVZBbKby9ms52xRQsX1gqxD23UnVx4ESQJUudPv7cl/XWO23fn6gUKRey7WyhVm8XNgpoC1twVP1caAgi1e9cDo3S35dY4UOQdFaSns/3+jLlb4D6CTDDmGWD/vupOLjRNgrqhd6i9Jf11ytByfpHp/FRqmSJBv2QS3s+5OKj2MFHlS88LjbbDbTUl+npaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpXXH+v84+1hv7QSS3wAAAABJRU5ErkJggg=="></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The two panels come from different forests: the varPro fit above (one-hot factors, the noise columns, guided splits) and a plain <code>rfsrc()</code> fit on the 17 real predictors, which is how the two are usually produced. Agreement is reassuring. A difference can come from the methods (the local profile drops unsupported twins, so the marginal curve may be extrapolating where there are no cases) or simply from the two forests; to separate those, pass the varPro forest (<code>vp$rf</code>) to <code>gg_partial_rfsrc()</code>. Four things matter more on small data.</p>
+<p><strong>The band is not a confidence interval.</strong> Both plots summarise the cases of <em>one</em> fitted forest. The spread shows how much cases differ, not how uncertain the curve is; varPro’s is narrower still, because <code>varPro::partialpro()</code> gives every case the same intercept. To see the uncertainty of the curve, refit on subsamples. Five refits on 63% of the cases move the marginal bilirubin curve this much:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>refits <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">lapply</span>(vs<span class="sc">$</span>pd_refits, <span class="cf">function</span>(p) {</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cbind</span>(p<span class="sc">$</span>continuous, <span class="at">refit =</span> <span class="fu">factor</span>(p<span class="sc">$</span>refit))</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>full <span class="ot">&lt;-</span> vs<span class="sc">$</span>pd_marginal<span class="sc">$</span>continuous</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>full <span class="ot">&lt;-</span> full[full<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;bili&quot;</span>, ]</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(refits, <span class="fu">aes</span>(x, yhat, <span class="at">group =</span> refit)) <span class="sc">+</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">colour =</span> <span class="st">&quot;grey60&quot;</span>) <span class="sc">+</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> full, <span class="fu">aes</span>(x, yhat), <span class="at">inherit.aes =</span> <span class="cn">FALSE</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;bili&quot;</span>, <span class="at">y =</span> <span class="fu">sprintf</span>(<span class="st">&quot;Survival at %d days&quot;</span>, vs<span class="sc">$</span>tau),</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Marginal partial: full fit (black) and five subsample refits (grey)&quot;</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img role="img" src="data:image/png;base64,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"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Survival horizons snap to event times.</strong> randomForestSRC estimates survival on the grid of observed event times, so a requested horizon is moved to an event time. A request for 1461 days returns day 1444. Before the first event it is silent: requests at days 10, 30 and 41 (the first death) all return the same curve, at day 41, and a request at day 365 returns day 348. In a small arm with no early events, every early horizon is the same curve. Check the returned time, and choose horizons after the first event.</p>
+<p><strong>Factors are partialled level by level.</strong> varPro one-hot encodes a factor, so <code>stage</code> becomes stage1, stage2, stage3, stage4, and <code>gg_partial_varpro()</code> (through <code>varPro::partialpro()</code>) looks terms up by those names: ask for <code>stage</code> and it is skipped with a warning. Each level is then partialled on its own, with every case set to 0 and to 1 on that level:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>ct <span class="ot">&lt;-</span> vs<span class="sc">$</span>pd_local<span class="sc">$</span>categorical</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>lvl <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;stage3&quot;</span>, <span class="st">&quot;stage4&quot;</span>, <span class="st">&quot;edema0&quot;</span>, <span class="st">&quot;edema1&quot;</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>level_median <span class="ot">&lt;-</span> <span class="cf">function</span>(l, at) {</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">median</span>(ct<span class="sc">$</span>parametric[ct<span class="sc">$</span>name <span class="sc">==</span> l <span class="sc">&amp;</span> ct<span class="sc">$</span>variable <span class="sc">==</span> at], <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">level =</span> lvl,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">partial_at_0 =</span> <span class="fu">vapply</span>(lvl, level_median, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">at =</span> <span class="dv">0</span>),</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">partial_at_1 =</span> <span class="fu">vapply</span>(lvl, level_median, <span class="fu">numeric</span>(<span class="dv">1</span>), <span class="at">at =</span> <span class="dv">1</span>),</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">row.names =</span> <span class="cn">NULL</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   level partial_at_0 partial_at_1
+1 stage3    0.8861823    0.8881534
+2 stage4    0.8929344    0.8480336
+3 edema0    0.8047510    0.8815061
+4 edema1    0.8931489    0.6818633</code></pre>
+</div>
+</div>
+<p>Stage 4 and severe edema (<code>edema1</code>) lower predicted survival, as the data say: Kaplan-Meier survival at 1461 days is 0.54 for stage 4 against 0.87 for the other stages. Before ggRandomForests PR #350 (in releases up to 4.0.0-rc9), these columns could be labelled in the wrong order, swapping “0” and “1”; refit any factor partials made with an earlier build.</p>
+<p>One caveat remains, and it is varPro’s. <code>partialpro()</code> sets the one level column and leaves the factor’s other level columns as they were, so a stage 3 case “set to stage4 = 1” is stage 3 and stage 4 at once, a case that cannot exist. Here it matters little: the forest’s mean predicted survival for stage 4 is 0.717 with the other level columns left alone and 0.714 with the whole factor set to stage 4. On other data it could matter more; <code>gg_partial_rfsrc()</code> sets the factor itself to each level, and is the check.</p>
+<p><strong>Survival partials are clamped to [0, 1].</strong> <code>varPro::partialpro()</code> smooths each case without a link function, so on the survival scale a curve can leave [0, 1]; <code>gg_partial_varpro()</code> clamps it. On a small arm, a curve sitting on 0 or 1 is a sign of that clamp, not of certainty.</p>
+<h1 class="unnumbered" id="references">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-Lu2024varpro" class="csl-entry" role="listitem">
+Lu, M., and H. Ishwaran. 2024. <span>“Model-Independent Variable Selection via the Rule-Based Variable Priority.”</span> <em>arXiv Preprint</em>. <a href="https://arxiv.org/abs/2409.09003">https://arxiv.org/abs/2409.09003</a>.
+</div>
+</div>
+
+
+
+
+
+</body></html>

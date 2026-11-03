@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   comment = "#>"
 )
-options(mc.cores = 1, rf.cores = 1)
+old_opts <- options(mc.cores = 1, rf.cores = 1)
 
 
 ## ----packages-----------------------------------------------------------------
@@ -162,6 +162,7 @@ plot(gg_survival(interval = "years", censor = "status",
 
 
 ## ----rfsrc-fit----------------------------------------------------------------
+set.seed(42)
 # Step 1: impute missing values via random forest proximity
 pbc_imputed <- impute.rfsrc(Surv(years, status) ~ .,
                              data    = pbc_trial,
@@ -210,7 +211,7 @@ plot(gg_rfsrc(rfsrc_pbc_test), alpha = 0.2) +
 
 
 ## ----vimp-plot, fig.width=6, fig.cap="Variable importance ranking. Blue = positive VIMP, red = negative."----
-plot(gg_vimp(rfsrc_pbc), lbls = st_labs) +
+plot(gg_vimp(rfsrc_pbc), labels = st_labs) +
   theme(legend.position = c(0.8, 0.2)) +
   labs(fill = "VIMP > 0")
 
@@ -227,7 +228,7 @@ xvar_all <- c(xvar, xvar_cat)
 
 ## ----vardep-bili, fig.height=4, fig.cap="Variable dependence of survival at 1 and 3 years on bilirubin."----
 gg_v <- gg_variable(rfsrc_pbc, time = c(1, 3),
-                    time.labels = c("1 Year", "3 Years"))
+                    time_labels = c("1 Year", "3 Years"))
 
 plot(gg_v, xvar = "bili", alpha = 0.4) +
   labs(y = "Survival", x = st_labs["bili"]) +
@@ -361,5 +362,14 @@ plot(gg_bs, type = "crps")
 
 
 ## ----brier-crps-scalar--------------------------------------------------------
-attr(gg_bs, "crps_integrated")
+attr(gg_bs, "crps_integrated")  # area under the Brier curve, in years
+attr(gg_bs, "crps_std")         # divided by max(gg_bs$time)
+tail(gg_bs$crps, 1)             # right edge of the running CRPS plot
+
+
+## -----------------------------------------------------------------------------
+#| label: restore-options
+#| include: false
+#| cache: false
+options(old_opts)
 

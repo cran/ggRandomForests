@@ -7,13 +7,13 @@
 \method{plot}{gg_variable}(
   x,
   xvar,
-  time,
-  time_labels,
   panel = FALSE,
   oob = TRUE,
   points = TRUE,
   smooth = TRUE,
-  ...
+  labels = NULL,
+  ...,
+  time_units = NULL
 )
 }
 \arguments{
@@ -21,10 +21,6 @@
 \code{\link[randomForestSRC]{rfsrc}} object}
 
 \item{xvar}{variable (or list of variables) of interest.}
-
-\item{time}{For survival, one or more times of interest}
-
-\item{time_labels}{string labels for times}
 
 \item{panel}{Should plots be faceted along multiple xvar?}
 
@@ -34,7 +30,23 @@
 
 \item{smooth}{include a smooth curve (boolean)}
 
+\item{labels}{Optional variable labels. One of: a named character vector
+(\code{c(wt = "Weight")}); a labelled data frame, whose
+\code{attr(col, "label")} values are read; or a two-column
+\code{key}/\code{label} data frame. Variables with no label keep their raw
+name. Applied to the facet strips in the panel plot and to the x axis title
+in the individual plot. Defaults to \code{NULL} (raw names).}
+
 \item{...}{arguments passed to the \code{ggplot2} functions.}
+
+\item{time_units}{Optional name of the time unit the forest was fit in, used
+only in the survival y axis title. The horizon is chosen at
+\code{gg_variable(rf, time = 1191)}; \code{plot(gg_dta)} then titles the
+axis \code{"Survival at 1191"}, and \code{time_units = "days"} makes that
+\code{"Survival at 1191 days"}. Nothing on an
+\code{\link[randomForestSRC]{rfsrc}} object records the unit, so the
+package cannot infer it. Defaults to \code{NULL} (no unit printed). Not
+printed when multiple times are faceted.}
 }
 \value{
 A single \code{ggplot} object when \code{length(xvar) == 1} or
@@ -131,8 +143,8 @@ Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
 Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R, Rnews,
 7(2):25-31.
 
-Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-Regression and Classification. R package version >= 3.4.0.
+Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+Regression, and Classification (RF-SRC). R package version 3.6.2.
 \url{https://cran.r-project.org/package=randomForestSRC}
 }
 \seealso{

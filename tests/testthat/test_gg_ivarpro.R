@@ -78,27 +78,6 @@ test_that("gg_ivarpro binary classification which_class = NULL defaults to last 
   expect_setequal(as.character(unique(out$class)), "virginica")
 })
 
-# A class whose every local-importance cell is nonfinite yields a 0-row
-# frame; tagging it with its class name must not fail R's row-count check.
-test_that("gg_ivarpro binary: all-nonfinite profile returns an empty gg_ivarpro", {
-  v  <- .varpro_iris_binary_for_ivarpro()
-  iv <- .ivarpro_iris_binary()
-  iv[] <- lapply(iv, function(x) rep(NaN, length(x)))
-  out <- gg_ivarpro(v, ivarpro_fit = iv)
-  expect_s3_class(out, "gg_ivarpro")
-  expect_equal(nrow(out), 0L)
-  expect_true("class" %in% names(out))
-})
-
-test_that("gg_ivarpro multiclass: one all-nonfinite class drops out, the rest survive", {
-  v  <- .varpro_iris_multiclass_for_ivarpro()
-  iv <- .ivarpro_iris_multiclass()
-  iv[["setosa"]][] <- lapply(iv[["setosa"]], function(x) rep(NaN, length(x)))
-  out <- gg_ivarpro(v, ivarpro_fit = iv)
-  expect_gt(nrow(out), 0L)
-  expect_false("setosa" %in% as.character(out$class))
-})
-
 # Which cells ivarpro() leaves finite depends on the upstream RNG: on
 # randomForestSRC 3.9.3 the binary fixture comes back all NA. The binary
 # tests check ggRF's labelling and mirroring, not varPro's slopes, so they
@@ -158,24 +137,42 @@ test_that("gg_ivarpro binary: a y.external target that is not a class is not mir
   expect_equal(out$local_imp, .raw_ivarpro_at(iv, out))
 })
 
+# A class whose every local-importance cell is nonfinite yields a 0-row
+# frame; tagging it with its class name must not fail R's row-count check.
+test_that("gg_ivarpro binary: all-nonfinite profile returns an empty gg_ivarpro", {
+  v  <- .varpro_iris_binary_for_ivarpro()
+  iv <- .ivarpro_iris_binary()
+  iv[] <- lapply(iv, function(x) rep(NaN, length(x)))
+  out <- gg_ivarpro(v, ivarpro_fit = iv)
+  expect_s3_class(out, "gg_ivarpro")
+  expect_equal(nrow(out), 0L)
+  expect_true("class" %in% names(out))
+})
+
+test_that("gg_ivarpro multiclass: one all-nonfinite class drops out, the rest survive", {
+  v  <- .varpro_iris_multiclass_for_ivarpro()
+  iv <- .ivarpro_iris_multiclass()
+  iv[["setosa"]][] <- lapply(iv[["setosa"]], function(x) rep(NaN, length(x)))
+  out <- gg_ivarpro(v, ivarpro_fit = iv)
+  expect_gt(nrow(out), 0L)
+  expect_false("setosa" %in% as.character(out$class))
+})
+
 # A y.external target may carry a class's name and still be any numeric
 # response, so it must not be mirrored into a second, complementary class.
 test_that("gg_ivarpro binary: y.external named after a class is not mirrored", {
   v <- .varpro_iris_binary_for_ivarpro()
   ext <- matrix(v$x[, 1L], dimnames = list(NULL, "versicolor"))
-  ## The default view is the last level whether or not iv was mirrored, so
-  ## probe the first level: a mirrored profile would have rows there.
-  ## gg_ivarpro() runs ivarpro() itself, so it sees y.external in '...'
-  set.seed(20261023L)
-  expect_equal(nrow(gg_ivarpro(v, y.external = ext, which_class = "versicolor")), 0L)
+  ## A y.external profile is kept as one class, under its own target, so the
+  ## other level has no rows and the default view is the profile's own level.
   ## precomputed with save.data = TRUE: the saved response is not the OOB
   ## probability of versicolor
   set.seed(20261023L)
-  iv <- varPro::ivarpro(v, y.external = ext, save.data = TRUE)
-  iv <- .finite_ivarpro(iv)
-  expect_equal(nrow(gg_ivarpro(v, ivarpro_fit = iv, which_class = "versicolor")), 0L)
+  iv <- .finite_ivarpro(varPro::ivarpro(v, y.external = ext, save.data = TRUE))
+  expect_equal(nrow(gg_ivarpro(v, ivarpro_fit = iv, which_class = "virginica")), 0L)
   out <- gg_ivarpro(v, ivarpro_fit = iv)
   expect_gt(nrow(out), 0L)
+  expect_true(all(out$class == "versicolor"))
   expect_equal(out$local_imp, .raw_ivarpro_at(iv, out))
   ## precomputed, named after the second level: never what ivarpro() explains
   set.seed(20261023L)
@@ -186,7 +183,18 @@ test_that("gg_ivarpro binary: y.external named after a class is not mirrored", {
   expect_equal(nrow(gg_ivarpro(v, ivarpro_fit = iv, which_class = "versicolor")), 0L)
   out <- gg_ivarpro(v, ivarpro_fit = iv)
   expect_gt(nrow(out), 0L)
+  expect_true(all(out$class == "virginica"))
   expect_equal(out$local_imp, .raw_ivarpro_at(iv, out))
+  ## gg_ivarpro() runs ivarpro() itself, so it sees y.external in '...'. The
+  ## mocked fit looks internal and saves no data, so only that check stops
+  ## the mirror.
+  iv_int <- .finite_ivarpro(.ivarpro_iris_binary())
+  local_mocked_bindings(ivarpro = function(...) iv_int, .package = "varPro")
+  expect_equal(nrow(gg_ivarpro(v, y.external = ext, which_class = "virginica")), 0L)
+  out <- gg_ivarpro(v, y.external = ext)
+  expect_gt(nrow(out), 0L)
+  expect_true(all(out$class == "versicolor"))
+  expect_equal(out$local_imp, .raw_ivarpro_at(iv_int, out))
 })
 
 test_that("gg_ivarpro binary: a saved internal target is still mirrored", {
@@ -329,11 +337,18 @@ test_that("gg_ivarpro warns when ... is supplied alongside ivarpro_fit", {
 
 # ---- family guard ---------------------------------------------------------
 
-test_that("gg_ivarpro errors on regr+ / surv families", {
-  v <- .varpro_boston()
-  v_fake <- v
-  v_fake$family <- "surv"
-  expect_error(gg_ivarpro(v_fake), "family = 'surv'")
+test_that("gg_ivarpro names its supported families in unsupported-family errors", {
+  surv <- structure(list(family = "surv"), class = "varpro")
+  regr_plus <- structure(list(family = "regr+"), class = "varpro")
+
+  expect_error(
+    gg_ivarpro(surv),
+    "^gg_ivarpro supports varPro regression and classification fits only; got family = 'surv'\\.$"
+  )
+  expect_error(
+    gg_ivarpro(regr_plus),
+    "^gg_ivarpro supports varPro regression and classification fits only; got family = 'regr\\+'\\.$"
+  )
 })
 
 # ---- plot dispatch matrix --------------------------------------------------
@@ -440,4 +455,69 @@ test_that("gg_ivarpro cached and uncached paths agree (slow)", {
                tolerance = 1e-6)
   expect_false(attr(uncached, "provenance")$precomputed)
   expect_true(attr(cached,   "provenance")$precomputed)
+})
+
+## ---- labels= on the variable axis (issue #239) -----------------------------
+
+test_that("plot.gg_ivarpro labels the variable axis on the jitter path", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+  p <- plot(out, labels = c(rm = "Rooms per dwelling"))
+
+  expect_true("Rooms per dwelling" %in% .varpro_axis_labels(p))
+})
+
+test_that("plot.gg_ivarpro labels the variable axis on the which_obs bar path", {
+  # The two branches build different geoms, so both need covering.
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston(),
+                    which_obs = 1L)
+  p <- plot(out, labels = c(rm = "Rooms per dwelling"))
+
+  expect_true("Rooms per dwelling" %in% .varpro_axis_labels(p))
+})
+
+test_that("plot.gg_ivarpro falls back to the raw name per variable", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+  axis <- .varpro_axis_labels(plot(out, labels = c(rm = "Rooms per dwelling")))
+
+  expect_false("rm" %in% axis)
+  expect_true("crim" %in% axis)
+})
+
+test_that("plot.gg_ivarpro labels every panel when faceted by class", {
+  out <- gg_ivarpro(.varpro_iris_multiclass_for_ivarpro(),
+                    ivarpro_fit = .ivarpro_iris_multiclass())
+  built <- ggplot2::ggplot_build(plot(out, labels = c(Petal.Width = "Petal width")))
+
+  per_panel <- vapply(built$layout$panel_params,
+                      function(pp) "Petal width" %in% as.character(pp$y$get_labels()),
+                      logical(1))
+  expect_gt(length(per_panel), 1L)
+  expect_true(all(per_panel))
+})
+
+test_that("plot.gg_ivarpro with labels = NULL keeps the raw names", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+
+  expect_true("rm" %in% .varpro_axis_labels(plot(out)))
+})
+
+test_that("plot.gg_ivarpro warns once when no label resolves", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+
+  expect_warning(plot(out, labels = c(rm = "")), "No variable labels")
+})
+
+test_that("plot.gg_ivarpro keeps raw names and order in the returned data", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+  p <- plot(out, labels = c(rm = "Rooms per dwelling"))
+
+  expect_true("rm" %in% as.character(p$data$variable))
+  expect_equal(levels(p$data$variable), levels(out$variable))
+})
+
+test_that("autoplot.gg_ivarpro forwards labels", {
+  out <- gg_ivarpro(.varpro_boston(), ivarpro_fit = .ivarpro_boston())
+  p <- ggplot2::autoplot(out, labels = c(rm = "Rooms per dwelling"))
+
+  expect_true("Rooms per dwelling" %in% .varpro_axis_labels(p))
 })

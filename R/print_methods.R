@@ -149,13 +149,63 @@ print.gg_survival <- function(x, ...) {
 #' @rdname print.gg
 #' @export
 print.gg_brier <- function(x, ...) {
-  crps <- attr(x, "crps_integrated")
+  crps <- .gg_brier_crps_std(x)
   suffix <- if (!is.null(crps)) {
-    sprintf("  |  integrated CRPS: %.4g", crps)
+    sprintf("  |  CRPS (time-normalized): %.4g", crps)
   } else {
     ""
   }
   cat(.gg_header(x, "gg_brier"), suffix, "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_rhf <- function(x, ...) {
+  cat(.gg_header(x, "gg_rhf"),
+      sprintf("  |  cases: %d  times: %d  source: %s",
+              length(unique(x$id)),
+              attr(x, "ntime") %||% length(unique(x$time)),
+              x$source[1]),
+      "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_tune_rhf <- function(x, ...) {
+  selected <- x[x$selected, , drop = FALSE]
+  cat(.gg_header(x, "gg_tune_rhf"),
+      sprintf("  |  metric: %s  evaluations: %d",
+              x$metric[1L], nrow(x)),
+      sprintf("  |  selected treesize: %d  value: %.4g",
+              selected$treesize, selected$value),
+      "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_auct <- function(x, ...) {
+  iauc <- attr(x, "iauc")
+  cat(.gg_header(x, "gg_auct"),
+      sprintf("  |  times: %d  marker: %s  iAUC(Uno): %.3f",
+              nrow(x), x$marker[1],
+              if (!is.null(iauc)) iauc$uno else NA_real_),
+      "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_rhf_importance <- function(x, ...) {
+  prov <- attr(x, "provenance") %||% list()
+  cat(.gg_header(x, "gg_rhf_importance"),
+      sprintf("  |  variables: %d  windows: %d  y_source: %s",
+              nlevels(x$variable), length(unique(x$time_index)),
+              prov$y_source %||% NA_character_),
+      sprintf("  |  precomputed: %s  rank: q90", isTRUE(prov$precomputed)),
+      "\n", sep = "")
   invisible(x)
 }
 
@@ -189,16 +239,15 @@ print.gg_varpro <- function(x, ...) {
   prov     <- attr(x, "provenance")
   cutoff   <- if (!is.null(prov)) prov$cutoff   %||% 0.79 else 0.79
   faithful <- if (!is.null(prov)) prov$faithful  %||% FALSE else FALSE
-  family   <- if (!is.null(prov)) prov$family    %||% NA_character_ else NA_character_
   n_total  <- nrow(x$imp)
   n_sel    <- sum(x$imp$selected, na.rm = TRUE)
   cat(.gg_header(x, "gg_varpro"),
-      sprintf("  |  family: %s", family),
-      sprintf("  |  cutoff: %.2g", cutoff),
+      if (is.null(prov$noise)) sprintf("  |  cutoff: %.2g", cutoff) else
+        sprintf("  |  noise: %s", prov$noise),
       sprintf("  |  faithful: %s", faithful),
       "\n",
-      sprintf("  %d of %d variables selected (z > %.2g)\n",
-              n_sel, n_total, cutoff),
+      sprintf("  %d of %d variables selected (%s)\n", n_sel, n_total,
+              .varpro_sel_rule(prov, cutoff)),
       sep = "")
   invisible(x)
 }
@@ -326,6 +375,36 @@ print.gg_shap <- function(x, ...) {
   cat(.gg_header(x, "gg_shap"),
       sprintf("  |  variables: %d  |  observations: %d",
               nlevels(x$vars), length(unique(x$id))),
+      "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_ale_rfsrc <- function(x, ...) {
+  nvar_cont <- if (is.data.frame(x$continuous) && nrow(x$continuous) > 0) {
+    length(unique(x$continuous$name))
+  } else {
+    0L
+  }
+  nvar_cat  <- if (is.data.frame(x$categorical) && nrow(x$categorical) > 0) {
+    length(unique(x$categorical$name))
+  } else {
+    0L
+  }
+  cat(.gg_header(x, "gg_ale_rfsrc"),
+      sprintf("  |  continuous: %d, categorical: %d", nvar_cont, nvar_cat),
+      "\n", sep = "")
+  invisible(x)
+}
+
+#' @rdname print.gg
+#' @export
+print.gg_ale_interaction <- function(x, ...) {
+  cat(.gg_header(x, "gg_ale_interaction"),
+      sprintf("  |  %s x %s  |  grid: %d x %d",
+              x$name1[1], x$name2[1],
+              length(unique(x$x)), length(unique(x$y))),
       "\n", sep = "")
   invisible(x)
 }

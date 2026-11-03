@@ -22,7 +22,7 @@
 #' \strong{You have to ask rfsrc for the trajectory.}  How many trees you get
 #' a curve over is decided by \code{randomForestSRC::rfsrc()}, not here.  Its
 #' \code{block.size} argument controls how often the error is recorded, and it
-#' defaults to \code{NULL} unless you request importance -- which records the
+#' defaults to \code{NULL} unless you request importance; \code{NULL} records the
 #' error at the \emph{final tree only}.  So a default fit gives
 #' \code{gg_error()} a single point, not a curve, and \code{tree.err = TRUE}
 #' on its own does not change that.  Grow the forest with
@@ -64,8 +64,8 @@
 #' Ishwaran H. and Kogalur U.B. (2007). Random survival forests for R,
 #' Rnews, 7(2):25-31.
 #'
-#' Ishwaran H. and Kogalur U.B. randomForestSRC: Random Forests for Survival,
-#' Regression and Classification. R package version >= 3.4.0.
+#' Ishwaran H, Kogalur U (2026). Fast Unified Random Forests for Survival,
+#' Regression, and Classification (RF-SRC). R package version 3.6.2.
 #' \url{https://cran.r-project.org/package=randomForestSRC}
 #'
 #' @aliases gg_error gg_error.rfsrc gg_error.randomForest
